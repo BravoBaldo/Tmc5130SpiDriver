@@ -1,7 +1,6 @@
 #include <SPI.h>
 #include "TMC5130.h"
 #include "TMC5130_Display.h"
-//#include "ansi.h"     //https://github.com/RobTillaart/ANSI
 #include "TCA9555.h"  //https://github.com/RobTillaart/TCA9555
 
 #define  I2C_SDA        16     //pin21 i2c serial data
@@ -12,21 +11,14 @@
 #define SPI_FREQ        4000000   //4000000
 
 TCA9555 EXPANDER_A(EXPANDER_ADDR_A);
+ANSI    ansi(&Serial);
 
-void  SpiEnableStepper_A(bool en) {
-//  digitalWrite(SPI_CS, en?LOW:HIGH);
-  EXPANDER_A.write1(9, en?0:1);
-}
-
-void  SpiEnableStepper_B(bool en) {
-  EXPANDER_A.write1(8, en?0:1);
-}
+void  SpiEnableStepper(uint8_t csPin, bool en) { EXPANDER_A.write1(csPin, en?0:1); }
 void  initPinCS(uint8_t csPin){ pinMode(csPin, OUTPUT); digitalWrite(csPin, HIGH); }
 
-ANSI ansi(&Serial);
 
-TMC5130 stepper_A(SPI, SpiEnableStepper_A, 4000000);
-TMC5130 stepper_B(SPI, SpiEnableStepper_B, 4000000);
+TMC5130 stepper_A(SPI, 9, SpiEnableStepper, 4000000);
+TMC5130 stepper_B(SPI, 8, SpiEnableStepper, 4000000);
 
 
 void setup() {
@@ -39,14 +31,6 @@ void setup() {
 
   initPinCS(SPI_CS);
   stepper_A.Init_01();
-/*
-  stepper_A.setCurrent(20, 8, 8);
-  stepper_A.setMicrosteps(0);
-  stepper_A.enableStealthChop(true);
-  stepper_A.setSecondAcceleration(2000);
-  stepper_A.setMaxVelocity(400);
-  stepper_A.setPosition(0);
-*/
   stepper_B.Init_01();
 
   Serial.println("SPI Full Demo avviata");
@@ -65,7 +49,7 @@ void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for eac
   Serial.println(millis()-time);
 }
 
-struct Fsa{
+struct Fsa {  //Finite State Machine for Motors
   TMC5130       *stepper;
   uint8_t       fsa;      //Finite State Automata
   bool          dir;      //current direction
@@ -80,17 +64,16 @@ struct Fsa{
 
 void loop_Gen(struct Fsa &f){
  switch(f.fsa){
-    
-    case 0:   //Avvia Stepper
+    case 0:   //Start Stepper
       f.Steps =  f.stepper->Init_MicroSteps(f.ms);
       if(f.Laps)
         f.stepper->moveTo((f.dir ? -f.Steps : f.Steps));
       else
-        f.stepper->moveTo((f.dir ? 0 : f.Steps));
+        f.stepper->moveTo((f.dir ? 0        : f.Steps));
       f.fsa++;
       break;
 
-    case 1:   //Aspetta Target
+    case 1:   //Wait Target
       {
         uint8_t St_A = f.stepper->GetSpiStatus();
         if(St_A&0x20){              //Stepper a destinazione
@@ -99,18 +82,18 @@ void loop_Gen(struct Fsa &f){
       }
       break;
 
-    case 2: //Avvia Timer
+    case 2: //Start Timer
       f.Delay = millis();
       f.fsa++;
       break;
 
-    case 3: //Aspetta Timer
+    case 3: //Wait Timer
       if( (millis()-f.Delay) > 2000){
         f.fsa++;
       }
       break;
 
-    case 4: //Cambia Marcia e direzione
+    case 4: //Change micro Stepping and direction
       f.dir = !f.dir;
       if(!f.dir){
         f.ms++; if(f.ms>8) f.ms = 0;
@@ -122,30 +105,39 @@ void loop_Gen(struct Fsa &f){
 }
 
 void loop(void){
+  static unsigned long timeRefresh = millis();
   unsigned long time = millis();
-  loop_Gen(fsa_A);  //  loop_A(fsa_A);
-  loop_Gen(fsa_B);  //loop_B(fsa_B);
+  loop_Gen(fsa_A);
+  loop_Gen(fsa_B);
 
   uint8_t St = fsa_A.stepper->GetSpiStatus();
   ansi.gotoXY(1, 1);
     ansi.print("Stepper A: ");
-    ansi.print(" Ic Vers.: ");  ansi.print(fsa_A.stepper->getIcVersion(), HEX);
-    ansi.print(" MicroSteps: "); ansi.print(fsa_A.stepper->getMicrosteps());
-    ansi.print(" CHOPCONF: ");  ansi.print(fsa_A.stepper->readReg(TMC5130::CHOPCONF), HEX);
+    ansi.print(" Ic Vers.: ");    ansi.print(fsa_A.stepper->getIcVersion(), HEX);
+    ansi.print(" MicroSteps: ");  ansi.print(fsa_A.stepper->getMicrosteps());
+    ansi.print(" CHOPCONF: ");    ansi.print(fsa_A.stepper->readReg(TMC5130::CHOPCONF), HEX);
     GenShowReg(ShowAsSpiStatus, St, 1, 5, true, true);
-    ShowActuals(fsa_A.stepper, 1, 20);
+    ShowActualsFast(fsa_A.stepper, 1, 16);
+    ShowSwitchMode(fsa_A.stepper, 60, 16);
 
   St = fsa_B.stepper->GetSpiStatus();
   ansi.gotoXY(1, 2);
     ansi.print("Stepper B: ");
-    ansi.print(" Ic Vers.: ");  ansi.print(fsa_B.stepper->getIcVersion(), HEX);
-    ansi.print(" MicroSteps: "); ansi.print(fsa_B.stepper->getMicrosteps());
-    ansi.print(" CHOPCONF: ");  ansi.print(fsa_B.stepper->readReg(TMC5130::CHOPCONF), HEX);
+    ansi.print(" Ic Vers.: ");    ansi.print(fsa_B.stepper->getIcVersion(), HEX);
+    ansi.print(" MicroSteps: ");  ansi.print(fsa_B.stepper->getMicrosteps());
+    ansi.print(" CHOPCONF: ");    ansi.print(fsa_B.stepper->readReg(TMC5130::CHOPCONF), HEX);
     GenShowReg(ShowAsSpiStatus, St, 30, 5);
-    ShowActuals(fsa_B.stepper, 30, 20);
+    ShowActualsFast(fsa_B.stepper, 30, 16);
 
   ansi.gotoXY(1, 4);
     ansi.print(millis() - time);
+
+  unsigned long t = (millis()-timeRefresh);
+  //ansi.gotoXY(20, 4); ansi.print(t);
+  if(t>10000){
+    timeRefresh = millis();
+    ansi.clearScreen();
+  }
 
 }
 

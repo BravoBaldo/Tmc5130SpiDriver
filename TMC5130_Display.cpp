@@ -43,7 +43,7 @@ static char* RampStatus_x[] = {"            |","       |","       |","      |","
 static char* SpiStatus_v[] = {  "==== SPI STATUS ===",
                                 "reset_flag......: ",
                                 "driver_error....: ",
-                                "sg2.............: ",
+                                "StallGuard2.....: ",
                                 "standstill......: ",
                                 "velocity_reached: ",
                                 "position_reached: ",
@@ -154,18 +154,37 @@ void ShowActuals(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTit
       ansi.gotoXY(Col, Row++);  ansi.print("===== ACTUALS =====");
     }
     ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XACTUAL  ));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print(          stp->readReg(TMC5130::XTARGET  ));        ansi.print("       ");
+    ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XTARGET  ));        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(          stp->readReg(TMC5130::X_COMPARE));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->readReg(TMC5130::TSTEP    ));        ansi.print("       ");
+    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->readReg(TMC5130::TSTEP)&0xFFFFF);        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("VACTUAL...: ");  ansi.print(          stp->getVelocity()              );        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("RAMP_STAT.: ");  ansi.print(          stp->readReg(TMC5130::RAMP_STAT), HEX);   ansi.print("       ");    
-    ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(stp->readReg(TMC5130::XLATCH   ));                  ansi.print("       ");
+    ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(          stp->readReg(TMC5130::XLATCH   )     );   ansi.print("       ");
 
     uint32_t MsCurAct =  stp->readReg(TMC5130::MSCURACT);
     ansi.gotoXY(Col, Row++);  ansi.print("MSCURACT..: ");  ansi.print(MsCurAct,HEX);                          ansi.print("          ");
     ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print((uint16_t)( MsCurAct      & 0x1FF));    ansi.print("   ");
     ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print((uint16_t)((MsCurAct>>16) & 0x1FF));    ansi.print("   ");
 }
+
+void ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle) {
+    if(ShowTitle){
+      ansi.gotoXY(Col, Row++);  ansi.print("===== ACTUALS =====");
+    }
+    uint32_t r = 0;
+        stp->genSpiFunct(TMC5130::XACTUAL, 0, true);  //1) Dummy reading, but prepare next result
+    r = stp->genSpiFunct(TMC5130::XTARGET,   0, true);  ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print((int32_t)r);        ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::X_COMPARE, 0, true);  ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print((int32_t)r);        ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::TSTEP,     0, true);  ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(r         );        ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::VACTUAL,   0, true);  ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(r&0xFFFFF );        ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::RAMP_STAT, 0, true);  ansi.gotoXY(Col, Row++);  ansi.print("VACTUAL...: ");  ansi.print(((int32_t)(r<<8))>>8);        ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::XLATCH,    0, true);  ansi.gotoXY(Col, Row++);  ansi.print("RAMP_STAT.: ");  ansi.print(r, HEX);   ansi.print("       ");    
+    r = stp->genSpiFunct(TMC5130::MSCURACT,  0, true);  ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(r     );   ansi.print("       ");
+    r = stp->genSpiFunct(TMC5130::XACTUAL,   0, true);  ansi.gotoXY(Col, Row++);  ansi.print("MSCURACT..: ");  ansi.print(r, HEX);   ansi.print("          ");
+                                                        ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print((uint16_t)( r      & 0x1FF));    ansi.print("   ");
+                                                        ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print((uint16_t)((r>>16) & 0x1FF));    ansi.print("   ");
+}
+
 
 void ShowCoolConf(uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true){
     uint32_t cf = 0x1234567890;//stp->readReg(TMC5130::COOLCONF);

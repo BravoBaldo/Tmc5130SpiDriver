@@ -2,7 +2,7 @@
 #pragma once
 #include <Arduino.h>
 #include "TMC5130.h"
-#include "ansi.h"
+#include "ansi.h"     //https://github.com/RobTillaart/ANSI
 
 extern ANSI ansi;
 
@@ -23,5 +23,6 @@ void ShowGStatus    (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, boo
 uint16_t ShowSwitchMode (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void ShowSwitchMode2(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void ShowActuals    (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
+void ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 
 void ShowWaiting    (TMC5130 *stp, const float waiting, bool WaitStop=true);

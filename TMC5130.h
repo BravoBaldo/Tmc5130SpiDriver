@@ -17,7 +17,10 @@
 #include <HardwareSerial.h>
 #include <functional>  // for std::function
 
-extern void  EnableChip(bool en);
+typedef std::function<void(uint8_t, bool)> SPI_ENABLER_CB;
+
+extern void EnableSpiOnChip(uint8_t csPin, bool en);
+//extern SPI_ENABLER_CB EnableSpiOnChip;
 
 class TMC5130 {
 public:
@@ -28,7 +31,7 @@ public:
     MODE_STEPDIR  //NOT TESTED
   };
 
-  typedef enum  : uint8_t {
+  typedef enum : uint8_t {
     TMC5130_MODE_POSITION  = 0,  //Positioning mode (using all A, D and V parameters)
     TMC5130_MODE_VELPOS    = 1,  //Velocity mode to positive VMAX (using AMAX acceleration)
     TMC5130_MODE_VELNEG    = 2,  //Velocity mode to negative VMAX (using AMAX acceleration)
@@ -36,7 +39,7 @@ public:
   }TMC5130_RampMode;
 
   //MicroSteps Mask
-  typedef enum  : uint32_t {
+  typedef enum : uint32_t {
     ms_256 = 0x00000000,
     ms_128 = 0x01000000,
     ms_64  = 0x02000000,
@@ -113,7 +116,7 @@ public:
     LOST_STEPS  = 0x73,
   };
 
-  typedef enum  : uint32_t {
+  typedef enum : uint32_t {
     GCONF_I_scale_analog		    = 0b000000000000000001,
     GCONF_internal_Rsense		    = 0b000000000000000010,
     GCONF_en_pwm_mode			      = 0b000000000000000100,
@@ -147,11 +150,10 @@ public:
 #define SW_MODE_SG_STOP           0x400
 #define SW_MODE_EN_SOFTSTOP       0x800
 
+
+
   // ====== Ctors ======
-#if defined(USEESPPINS)
-  TMC5130(SPIClass &spiRef, uint8_t csPin,                  uint32_t spiHz = 1000000);
-#endif
-  TMC5130(SPIClass &spiRef, std::function<void(bool)> cbCS, uint32_t spiHz = 1000000);
+  TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000);
 
   // ====== Inits ======
   bool beginSPI     (SPIClass &spiRef = SPI, uint32_t spiHz = 1000000);
@@ -202,19 +204,17 @@ public:
   void setFirstDeceleration   (uint16_t dmax);  //[μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
   void setSecondDeceleration  (uint16_t dmax);  //[μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
 
-  inline void    setPosition    (int32_t x)       { writeReg(XACTUAL, x); }
-  inline int32_t getPosition    (void)            { return (int32_t)readReg(XACTUAL); }
+  inline void     setPosition (int32_t x)       { writeReg(XACTUAL, x); }
+  inline int32_t  getPosition (void)            { return (int32_t)readReg(XACTUAL); }
 
-  inline void moveTo            (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(TMC5130_MODE_POSITION); }
-  inline void moveBy            (int32_t dx)      { moveTo(getPosition() + dx); }
+  inline void     moveTo      (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(TMC5130_MODE_POSITION); }
+  inline void     moveBy      (int32_t dx)      { moveTo(getPosition() + dx); }
 
-  inline void hardStop          (void)            { setRampMode(TMC5130_MODE_HOLD); writeReg(VMAX, 0); }
-  inline uint8_t getIcVersion   (void)            { return (readReg(IOIN)>>24) & 0xFF;}
-
-
+  inline void     hardStop      (void)            { setRampMode(TMC5130_MODE_HOLD); writeReg(VMAX, 0); }
+  inline uint8_t  getIcVersion  (void)            { return (readReg(IOIN)>>24) & 0xFF;}
 
   // ====== Utilities Step/Dir ======
-  void stepOnce           ();
+  void stepOnce           (void);
   void setDirection       (bool dirCW);
   void enableDriver       (bool en);
   void SetSwMode          (int32_t m);
@@ -225,18 +225,19 @@ public:
   uint8_t   GetSpiStatus    (void) {return SPI_Status;}
   uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);
 
-  void      SetPinCSFunct   (std::function<void(bool)> callback)  {cbEnableChipSelect = callback;};
-//void      SetPinCSFunct2  (void (*callback)(bool))              {cbEnableChipSelect2 = callback;};
+  void      SetPinCSFunct   (SPI_ENABLER_CB callback)                      {cbEnableChipSelect = callback;};
+//void      SetPinCSFunct2  (void (*callback)(uint8_t, bool))              {cbEnableChipSelect2 = callback;};
 private:
-  uint8_t SPI_Status;
-  InterfaceMode mode = MODE_SPI;
 
   // SPI
-  SPIClass  *spi = nullptr;
-  uint8_t   pinCS = SS;
-  uint32_t  spiFreq = 4000000;
-  std::function<void(bool)> cbEnableChipSelect = nullptr/*EnableChip*/;
-//  void (*cbEnableChipSelect2)(bool) = EnableChip;
+  uint8_t       SPI_Status;       //Last SPI status register
+  InterfaceMode mode = MODE_SPI;
+  uint8_t       csPinAddress;
+  SPIClass      *spi = nullptr;
+  uint8_t       pinCS = SS;
+  uint32_t      spiFreq = 4000000;
+  SPI_ENABLER_CB cbEnableChipSelect = nullptr/*EnableChip*/;
+//  void (*cbEnableChipSelect2)(uint8_t, bool) = EnableChip;
 
   // UART
   HardwareSerial *uart = nullptr;

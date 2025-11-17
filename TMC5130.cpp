@@ -17,24 +17,23 @@
 
 #include "TMC5130.h"
 
-#if defined(USEESPPINS)
-static uint8_t DefaultPinCS = 5;
-void  EnableChip(bool en)     { digitalWrite(DefaultPinCS, en?LOW:HIGH);  }
-#endif
+//Default routine for Chip Selection
+void  EnableSpiOnChip(uint8_t csPin, bool en)     { digitalWrite(csPin, en?LOW:HIGH);  }
+
 // =====================================================
 // ======= SEZIONE SPI (Serial Peripheral Interface) ====
 // =====================================================
 
 uint32_t TMC5130::genSpiFunct(Reg reg, uint32_t value, bool Read){
   spi->beginTransaction(SPISettings(spiFreq, MSBFIRST, SPI_MODE3));
-  cbEnableChipSelect(true);
+  cbEnableChipSelect(csPinAddress, true);
   SPI_Status = spi->transfer( Read ? ((uint8_t)reg & 0x7F) : ((uint8_t)reg | 0x80) );
   // Successivi 4 byte: dati MSB → LSB
   uint8_t b3 = spi->transfer((value >> 24) & 0xFF);
   uint8_t b2 = spi->transfer((value >> 16) & 0xFF);
   uint8_t b1 = spi->transfer((value >>  8) & 0xFF);
   uint8_t b0 = spi->transfer((value      ) & 0xFF);
-  cbEnableChipSelect(false);
+  cbEnableChipSelect(csPinAddress, false);
   spi->endTransaction();
 
   uint32_t val = ((uint32_t)b3 << 24) | ((uint32_t)b2 << 16) |
@@ -271,44 +270,38 @@ void TMC5130::setTCOOLTHRS(uint32_t val) {
   writeReg(TCOOLTHRS, val);
 }
 
-#if defined(USEESPPINS)
-TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, uint32_t spiHz){
-  DefaultPinCS = csPin;
-  cbEnableChipSelect = EnableChip;
-  beginSPI(spiRef, spiHz);
-}
-#endif
-TMC5130::TMC5130(SPIClass &spiRef, std::function<void(bool)> cbCS, uint32_t spiHz): cbEnableChipSelect(cbCS){
+TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t spiHz): cbEnableChipSelect(cbCS), csPinAddress(csPin){
   beginSPI(spiRef, spiHz);  
 }
 
-// =====================================================
-// ======= MOTION CONTROLLER INTEGRATO =================
-// =====================================================
+// ====================================================
+// ======= MOTION CONTROLLER EMBEDDED =================
+// ====================================================
 
-void TMC5130::setRampMode       (TMC5130_RampMode m)       {
+void TMC5130::setRampMode(TMC5130_RampMode m) {
   assert(m>=0 && m<=3);
   writeReg(RAMPMODE, m);
 }
 
-void TMC5130::setMaxVelocity(uint32_t v){
+void TMC5130::setMaxVelocity(uint32_t v) {
   assert(v>=0 && v<=0x7FFE00);
   writeReg(VMAX, v);
-}    //0...8388096=7FFE00
+}
 
 void TMC5130::setStartVelocity(uint32_t v){
   assert(v>=0 && v<=0x3FFFF);
   writeReg(VSTART, v);
-}  //0...262143=3FFFF  //Motor start velocity
+}
+
 void TMC5130::setFirstVelocity  (uint32_t v)  {
   assert(v>=0 && v<=0xFFFFF);
   writeReg(V1, v);
-}      //0...1048575=FFFFF
+}
 
 void TMC5130::setStopVelocity   (uint32_t v)  {
   assert(v>=0 && v<=0x3FFFF);
   writeReg(VSTOP, v);
-}   //1...262143=3FFFF  //Motor stop velocity (unsigned)
+}
 
 void TMC5130::setFirstAcceleration(uint16_t a) {  //[μsteps / ta²]  0...65535=0xFFFF
   assert(a>=0 && a<=0xFFFF);
@@ -324,6 +317,7 @@ void TMC5130::setFirstDeceleration(uint16_t d) {  //[μsteps / ta²]  0...65535=
   assert(d>=0 && d<=0xFFFF);
   writeReg(DMAX, d);
 }
+
 void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=0xFFFF
   assert(d>=1 && d<=0xFFFF);
   writeReg(D1, d);
@@ -414,22 +408,23 @@ void TMC5130::Init_01(void){
   setStopVelocity       (10);                     //writeReg(VSTOP,       0x0000000A);  //SPI send: 0xAB0000000A; // VSTOP = 10 Stop velocity (Near to zero)
   setRampMode           (TMC5130_MODE_POSITION);  //writeReg(RAMPMODE,    0x00000000);  //SPI send: 0xA000000000; // RAMPMODE = 0 (Target position move)
 
-
-  // Ready to move!
-  //moveTo(4294916096);               //writeReg(XTARGET,     0xFFFF3800);  //SPI send: 0xADFFFF3800; // XTARGET = -51200 (Move one rotation left (200*256 microsteps)
-
+#define ENABLE_STALLGUARD
 //  StopEnable(true);
   SetSwMode(0
-    | SW_MODE_STOP_L_ENABLE
-    | SW_MODE_POL_STOP_L
+    | SW_MODE_STOP_L_ENABLE | SW_MODE_POL_STOP_L  //Enable Left Limit Switch
   //  | SW_MODE_STOP_R_ENABLE
   //  | SW_MODE_POL_STOP_R
   //  | SW_MODE_SWAP_LR
+#if defined(ENABLE_STALLGUARD)
+      | SW_MODE_SG_STOP     //Enable StallGuard2
+#endif
   );
   setCurrent(1, 1, 1);  //  writeReg(IHOLD_IRUN,  0x00061F0A);  //SPI send: 0x9000061F0A; // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-  //setMicrosteps(ms_FS);
   setMicrosteps(8);
-//  writeReg(CHOPCONF, 0b1000000000010000000011000011);//x10100C3);
+#if defined(ENABLE_STALLGUARD)
+  setTCOOLTHRS(100);
+#endif
+
 }
 
 int32_t TMC5130::Init_MicroSteps(uint8_t ms){
@@ -457,6 +452,6 @@ int32_t TMC5130::Init_MicroSteps(uint8_t ms){
 //  MaxVel = 100000;
   setFirstAcceleration(FirstAcc);
   setFirstVelocity(FirstVel);
-  setMaxVelocity(MaxVel);
+  setMaxVelocity(MaxVel*2);
   return Steps;
 }
