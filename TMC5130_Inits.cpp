@@ -88,14 +88,16 @@ void TMC5130_Init_01(TMC5130 &stepper){
 
 #define ENABLE_STALLGUARD
 //  stepper.StopEnable(true);
-  stepper.SetSwMode(0
-      | SW_MODE_STOP_L_ENABLE | SW_MODE_POL_STOP_L  //Enable Left Limit Switch
-  //  | SW_MODE_STOP_R_ENABLE
-  //  | SW_MODE_POL_STOP_R
-  //  | SW_MODE_SWAP_LR
+  stepper.SetSwMode((TMC5130::SwModes)(
+      0
+      | TMC5130::SW_MODE_STOP_L_ENABLE | TMC5130::SW_MODE_POL_STOP_L  //Enable Left Limit Switch
+  //  | TMC5130::SW_MODE_STOP_R_ENABLE
+  //  | TMC5130::SW_MODE_POL_STOP_R
+  //  | TMC5130::SW_MODE_SWAP_LR
 #if defined(ENABLE_STALLGUARD)
-      | SW_MODE_SG_STOP     //Enable StallGuard2
+      | TMC5130::SW_MODE_SG_STOP     //Enable StallGuard2
 #endif
+  )
   );
   stepper.setCurrent(1, 1, 1);  //  writeReg(IHOLD_IRUN,  0x00061F0A);  //SPI send: 0x9000061F0A; // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
   stepper.setMicrosteps(8);

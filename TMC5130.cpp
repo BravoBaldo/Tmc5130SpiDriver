@@ -253,8 +253,8 @@ void TMC5130::SetGconfBit(GconfBits b, bool en){
 }
 
 
-void TMC5130::SetSwMode(int32_t m){
-  assert(m>=0 && m<=0xFFF);
+void TMC5130::SetSwMode(SwModes m){
+  assert(m>=(SwModes)0 && m<=(SwModes)0xFFF);
   writeReg(SW_MODE, m );
 }
 

@@ -137,19 +137,20 @@ public:
     GCONF_test_mode				      = 0b100000000000000000,
   }GconfBits;
 
-#define SW_MODE_STOP_L_ENABLE     0x001
-#define SW_MODE_STOP_R_ENABLE     0x002
-#define SW_MODE_POL_STOP_L        0x004
-#define SW_MODE_POL_STOP_R        0x008
-#define SW_MODE_SWAP_LR           0x010
-#define SW_MODE_LATCH_L_ACTIVE    0x020
-#define SW_MODE_LATCH_L_INACTIVE  0x040
-#define SW_MODE_LATCH_R_ACTIVE    0x080
-#define SW_MODE_LATCH_R_INACTIVE  0x100
-#define SW_MODE_EN_LATCH_ENCODER  0x200
-#define SW_MODE_SG_STOP           0x400
-#define SW_MODE_EN_SOFTSTOP       0x800
-
+  typedef enum : uint16_t {
+    SW_MODE_STOP_L_ENABLE     = 0x001,
+    SW_MODE_STOP_R_ENABLE     = 0x002,
+    SW_MODE_POL_STOP_L        = 0x004,
+    SW_MODE_POL_STOP_R        = 0x008,
+    SW_MODE_SWAP_LR           = 0x010,
+    SW_MODE_LATCH_L_ACTIVE    = 0x020,
+    SW_MODE_LATCH_L_INACTIVE  = 0x040,
+    SW_MODE_LATCH_R_ACTIVE    = 0x080,
+    SW_MODE_LATCH_R_INACTIVE  = 0x100,
+    SW_MODE_EN_LATCH_ENCODER  = 0x200,
+    SW_MODE_SG_STOP           = 0x400,
+    SW_MODE_EN_SOFTSTOP       = 0x800,
+  }SwModes;
 
 
   // ====== Ctors ======
@@ -217,7 +218,7 @@ public:
   void stepOnce           (void);
   void setDirection       (bool dirCW);
   void enableDriver       (bool en);
-  void SetSwMode          (int32_t m);
+  void SetSwMode          (SwModes m);
 
   int32_t   Init_MicroSteps (uint8_t ms);
   inline uint8_t   GetLastSpiStatus   (void)                                            {return SPI_Status;}
