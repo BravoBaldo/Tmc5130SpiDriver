@@ -153,7 +153,7 @@ public:
 
 
   // ====== Ctors ======
-  TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000);
+  TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr);
 
   // ====== Inits ======
   bool beginSPI     (SPIClass &spiRef = SPI, uint32_t spiHz = 1000000);
@@ -210,8 +210,8 @@ public:
   inline void     moveTo      (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(TMC5130_MODE_POSITION); }
   inline void     moveBy      (int32_t dx)      { moveTo(getPosition() + dx); }
 
-  inline void     hardStop      (void)            { setRampMode(TMC5130_MODE_HOLD); writeReg(VMAX, 0); }
-  inline uint8_t  getIcVersion  (void)            { return (readReg(IOIN)>>24) & 0xFF;}
+  inline void     hardStop      (void)          { setRampMode(TMC5130_MODE_HOLD); writeReg(VMAX, 0); }
+  inline uint8_t  getIcVersion  (void)          { return (readReg(IOIN)>>24) & 0xFF; }
 
   // ====== Utilities Step/Dir ======
   void stepOnce           (void);
@@ -219,14 +219,21 @@ public:
   void enableDriver       (bool en);
   void SetSwMode          (int32_t m);
 
-  void      Init_00         (void);
-  void      Init_01         (void);
   int32_t   Init_MicroSteps (uint8_t ms);
-  uint8_t   GetSpiStatus    (void) {return SPI_Status;}
+  inline uint8_t   GetLastSpiStatus   (void)                                            {return SPI_Status;}
+  inline uint8_t   GetSpiStatus       (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
+      //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
+      readReg(reg);
+      return SPI_Status;
+    };
+
   uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);
 
   void      SetPinCSFunct   (SPI_ENABLER_CB callback)                      {cbEnableChipSelect = callback;};
 //void      SetPinCSFunct2  (void (*callback)(uint8_t, bool))              {cbEnableChipSelect2 = callback;};
+
+  char*     GetName         (void)  {return StepName;}
+  void      SetName         (char* n)  {StepName=n;}
 private:
 
   // SPI
@@ -238,7 +245,7 @@ private:
   uint32_t      spiFreq = 4000000;
   SPI_ENABLER_CB cbEnableChipSelect = nullptr/*EnableChip*/;
 //  void (*cbEnableChipSelect2)(uint8_t, bool) = EnableChip;
-
+  char*         StepName=nullptr;
   // UART
   HardwareSerial *uart = nullptr;
   uint8_t uartAddr = 0;

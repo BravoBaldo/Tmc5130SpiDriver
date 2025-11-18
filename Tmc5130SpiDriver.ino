@@ -2,23 +2,40 @@
 #include "TMC5130.h"
 #include "TMC5130_Display.h"
 #include "TCA9555.h"  //https://github.com/RobTillaart/TCA9555
+#include "TMC5130_Inits.h"
 
-#define  I2C_SDA        16     //pin21 i2c serial data
-#define  I2C_SCK        17     //pin47 i2c serial clock
+#define wxSIZEOF(a) (sizeof(a)/sizeof(a[0]))
+
+#define I2C_SDA        16     //pin21 i2c serial data
+#define I2C_SCK        17     //pin47 i2c serial clock
 #define EXPANDER_ADDR_A	0x20  //I/O port expander A
 
-#define SPI_CS          5        //SPI's Chip Select
+//#define SPI_CS          5        //SPI's Chip Select
 #define SPI_FREQ        4000000   //4000000
 
-TCA9555 EXPANDER_A(EXPANDER_ADDR_A);
+enum : uint8_t {
+  StepperNameA = 0,
+  StepperNameB,
+  StepperName_Count  //Must be last
+}StepperNames;
+
+
+enum : uint8_t {
+  ExpanderA = 0,
+  Expander_Count  //Must be last
+}Exanders;
+
+
+TCA9555 EXPANDERS[]{  TCA9555(EXPANDER_ADDR_A),
+                  };
 ANSI    ansi(&Serial);
 
-void  SpiEnableStepper(uint8_t csPin, bool en) { EXPANDER_A.write1(csPin, en?0:1); }
-void  initPinCS(uint8_t csPin){ pinMode(csPin, OUTPUT); digitalWrite(csPin, HIGH); }
+void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
-
-TMC5130 stepper_A(SPI, 9, SpiEnableStepper, 4000000);
-TMC5130 stepper_B(SPI, 8, SpiEnableStepper, 4000000);
+//AAA: Maybe SPI_FREQ must be unique!!!
+TMC5130 Steppers[]={TMC5130(SPI, 9, SpiEnableSteppers, SPI_FREQ, "Motor A"),
+                    TMC5130(SPI, 8, SpiEnableSteppers, SPI_FREQ, "Motor B"),
+                };
 
 
 void setup() {
@@ -26,17 +43,17 @@ void setup() {
 
   //Expanders initializations
   Wire.begin(I2C_SDA, I2C_SCK, 400000);
-  EXPANDER_A.begin(OUTPUT, 0x0000);  //per default mette tutti output
-  EXPANDER_A.write16(0xFFFF); //1 means OFF!!!!
+  EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000);  //per default mette tutti output
+  EXPANDERS[ExpanderA].write16(0xFFFF); //1 means OFF!!!!
 
-  initPinCS(SPI_CS);
-  stepper_A.Init_01();
-  stepper_B.Init_01();
+//pinMode(SPI_CS, OUTPUT); digitalWrite(SPI_CS, HIGH);  //Init for ChipSelect on board
 
-  Serial.println("SPI Full Demo avviata");
-//  ansi.clearScreen();
+  for(int i=0; i<wxSIZEOF(Steppers); i++){
+    TMC5130_Init_01(Steppers[i]);
+  }
 
-  Serial.print("TCA9555_LIB_VERSION: ");  Serial.println(TCA9555_LIB_VERSION);
+  SetFreeRunning(Steppers[1], 1); //Free running @ ??? Rotation Per Second
+  Steppers[1].writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //
 }
 
 void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for each run
@@ -59,10 +76,11 @@ struct Fsa {  //Finite State Machine for Motors
   unsigned long MaxWait;  //Time to wait 
   bool          Waiting;  //Flag for waiting
   bool          Laps;     //false=0...Steps, true=-Steps...Steps
-}fsa_A={&stepper_A, 0, true,  0, 0, 0, 1000, false, false},
- fsa_B={&stepper_B, 0, false, 3, 0, 0, 2000, false, true };
+}fsa[]={  {&Steppers[StepperNameA], 0, true,  0, 0, 0, 1000, false, false},
+//        {&Steppers[StepperNameB], 0, false, 3, 0, 0, 2000, false, true }
+ };
 
-void loop_Gen(struct Fsa &f){
+uint8_t loop_Gen(struct Fsa &f){
  switch(f.fsa){
     case 0:   //Start Stepper
       f.Steps =  f.stepper->Init_MicroSteps(f.ms);
@@ -100,35 +118,43 @@ void loop_Gen(struct Fsa &f){
       }
       f.fsa = 0;
       break;
+
     default: f.fsa = 0; break;
   }
+  return f.fsa;
+}
+
+void DisplayMotor(TMC5130 &stp, uint8_t idx){
+  ansi.gotoXY(1, 1+idx);
+    ansi.print(stp.GetName());
+    ansi.print(": Ic Ver.: ");    ansi.print(stp.getIcVersion(), HEX);
+    ansi.print(" MicroSteps: ");  ansi.print(stp.getMicrosteps());
+//  ansi.print(" CHOPCONF: ");    ansi.print(stp.readReg(TMC5130::CHOPCONF), HEX);
+
+    uint8_t Row = 5+idx*16;
+    uint8_t St  = stp.GetSpiStatus();
+    GenShowReg(ShowAsSpiStatus, St,  1, Row, true, true);
+    ShowActualsFast(&stp,           22, Row);
+//    ShowSwitchMode(&stp,            51, Row);
+//    ShowCurrents(&stp,            51, Row);
+    ShowDrvStatus(&stp,            51, Row);
 }
 
 void loop(void){
   static unsigned long timeRefresh = millis();
   unsigned long time = millis();
-  loop_Gen(fsa_A);
-  loop_Gen(fsa_B);
 
-  uint8_t St = fsa_A.stepper->GetSpiStatus();
-  ansi.gotoXY(1, 1);
-    ansi.print("Stepper A: ");
-    ansi.print(" Ic Vers.: ");    ansi.print(fsa_A.stepper->getIcVersion(), HEX);
-    ansi.print(" MicroSteps: ");  ansi.print(fsa_A.stepper->getMicrosteps());
-    ansi.print(" CHOPCONF: ");    ansi.print(fsa_A.stepper->readReg(TMC5130::CHOPCONF), HEX);
-    GenShowReg(ShowAsSpiStatus, St, 1, 5, true, true);
-    ShowActualsFast(fsa_A.stepper, 1, 16);
-    ShowSwitchMode(fsa_A.stepper, 60, 16);
+  //--Execute Finite State Machines ---------------------------------------------------------------------
+  for(uint8_t i=0; i<wxSIZEOF(fsa); i++){
+    loop_Gen(fsa[i]);
+  }
 
-  St = fsa_B.stepper->GetSpiStatus();
-  ansi.gotoXY(1, 2);
-    ansi.print("Stepper B: ");
-    ansi.print(" Ic Vers.: ");    ansi.print(fsa_B.stepper->getIcVersion(), HEX);
-    ansi.print(" MicroSteps: ");  ansi.print(fsa_B.stepper->getMicrosteps());
-    ansi.print(" CHOPCONF: ");    ansi.print(fsa_B.stepper->readReg(TMC5130::CHOPCONF), HEX);
-    GenShowReg(ShowAsSpiStatus, St, 30, 5);
-    ShowActualsFast(fsa_B.stepper, 30, 16);
+  //--Display Results-----------------------------------------------------------------
+  for(uint8_t i=0; i<wxSIZEOF(Steppers); i++){
+    DisplayMotor(Steppers[i], i);
+  }
 
+  //--Display Times -----------------------------------------------------------------
   ansi.gotoXY(1, 4);
     ansi.print(millis() - time);
 
@@ -137,23 +163,5 @@ void loop(void){
   if(t>10000){
     timeRefresh = millis();
     ansi.clearScreen();
-  }
-
-}
-
-void loopQQ() {
-  static bool     dir = false;
-  static uint8_t  ms = 0;
-  int32_t Steps     = stepper_A.Init_MicroSteps(ms);
-  //CalcTime(&stepper_A, ms, (dir ? 0 : Steps));  //shows the time for each run 
-
-  //stepper_A.moveTo((dir ? -Steps : Steps));
-  stepper_A.moveTo((dir ? 0 : Steps));
-  ShowWaiting( &stepper_A, 5000, false);
-  //delay(5000);
-  //bboard.ShowWaitingX(&stepper_A, 5000, false);
-  dir = !dir;
-  if(!dir){
-    ms++; if(ms>8) ms=0;
   }
 }

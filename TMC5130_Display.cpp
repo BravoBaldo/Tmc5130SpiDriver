@@ -149,6 +149,37 @@ void ShowGStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTit
   GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::GSTAT), GStatus_v, GStatus_h, GStatus_x, sizeof(GStatus_v)/sizeof(GStatus_v[0]));
 }
 
+void ShowCurrents(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
+  uint32_t act = stp->readReg(TMC5130::MSCURACT);
+
+  if(ShowTitle){
+    ansi.gotoXY(Col, Row++);  ansi.print("==== CURRENTS ====");
+  }
+  ansi.gotoXY(Col, Row++);  ansi.print("MSCURACT: ");  ansi.print(          act, HEX          );        ansi.print("       ");
+  ansi.gotoXY(Col, Row++);  ansi.print("CUR_B...: ");  ansi.print( (int8_t)( act      & 0x1FF));        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("CUR_A...: ");  ansi.print( (int8_t)((act>>16) & 0x1FF));        ansi.print("    ");
+}
+
+void ShowDrvStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
+  uint32_t drv = stp->readReg(TMC5130::DRV_STATUS);
+  if(ShowTitle){
+    ansi.gotoXY(Col, Row++);  ansi.print("==== DRV_STATUS ====");
+  }
+  ansi.gotoXY(Col, Row++);  ansi.print("DRV_STATUS..: ");  ansi.print(          drv, HEX       );        ansi.print("       ");
+  ansi.gotoXY(Col, Row++);  ansi.print("SG_RESULT...: ");  ansi.print( (uint8_t)((drv) & 0x3FF));        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("fsactive....: ");  ansi.print( (drv&0x00008000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("CS ACTUAL...: ");  ansi.print( (uint8_t)((drv>>16) & 0x1F));        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("StallGuard..: ");  ansi.print( (drv&0x01000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("ot..........: ");  ansi.print( (drv&0x02000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("otpw........: ");  ansi.print( (drv&0x04000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("s2ga........: ");  ansi.print( (drv&0x08000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("s2gb........: ");  ansi.print( (drv&0x10000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("ola.........: ");  ansi.print( (drv&0x20000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("olb.........: ");  ansi.print( (drv&0x40000000)?1:0 );        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("stst........: ");  ansi.print( (drv&0x80000000)?1:0 );        ansi.print("    ");
+
+}
+
 void ShowActuals(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
     if(ShowTitle){
       ansi.gotoXY(Col, Row++);  ansi.print("===== ACTUALS =====");
@@ -156,7 +187,7 @@ void ShowActuals(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTit
     ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XACTUAL  ));        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XTARGET  ));        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(          stp->readReg(TMC5130::X_COMPARE));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->readReg(TMC5130::TSTEP)&0xFFFFF);        ansi.print("       ");
+    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->readReg(TMC5130::TSTEP)&0xFFFFF);    ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("VACTUAL...: ");  ansi.print(          stp->getVelocity()              );        ansi.print("       ");
     ansi.gotoXY(Col, Row++);  ansi.print("RAMP_STAT.: ");  ansi.print(          stp->readReg(TMC5130::RAMP_STAT), HEX);   ansi.print("       ");    
     ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(          stp->readReg(TMC5130::XLATCH   )     );   ansi.print("       ");
@@ -166,6 +197,7 @@ void ShowActuals(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTit
     ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print((uint16_t)( MsCurAct      & 0x1FF));    ansi.print("   ");
     ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print((uint16_t)((MsCurAct>>16) & 0x1FF));    ansi.print("   ");
 }
+
 
 void ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle) {
     if(ShowTitle){

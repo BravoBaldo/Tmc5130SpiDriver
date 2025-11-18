@@ -270,7 +270,7 @@ void TMC5130::setTCOOLTHRS(uint32_t val) {
   writeReg(TCOOLTHRS, val);
 }
 
-TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t spiHz): cbEnableChipSelect(cbCS), csPinAddress(csPin){
+TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t spiHz, char* Name): cbEnableChipSelect(cbCS), csPinAddress(csPin), StepName(Name){
   beginSPI(spiRef, spiHz);  
 }
 
@@ -323,110 +323,6 @@ void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=
   writeReg(D1, d);
 }
 
-void TMC5130::Init_00(void){
-  writeReg(TMC5130::GCONF,       0);
-  writeReg(TMC5130::GSTAT,       0);
-  writeReg(TMC5130::IFCNT,       0);
-  writeReg(TMC5130::SLAVECONF,   0);
-  writeReg(TMC5130::IOIN,        0x1100002F); //TMC5130_IOIN_OUTPUT
-  writeReg(TMC5130::X_COMPARE,   0x00000000);
-  writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //
-  
-  writeReg(TMC5130::TPOWERDOWN,  0x00000000);
-  writeReg(TMC5130::TSTEP,       0x0000004D);
-  writeReg(TMC5130::TPWMTHRS,    0x00000000);
-  writeReg(TMC5130::TCOOLTHRS,   0x00000000);
-  writeReg(TMC5130::THIGH,       0x00000000);
-  writeReg(TMC5130::RAMPMODE,    0x00000002);
-  writeReg(TMC5130::XACTUAL,     0xFFE38782);
-  writeReg(TMC5130::VACTUAL,     0x00FCB924);
-  writeReg(TMC5130::VSTART,      0x00000000);
-  writeReg(TMC5130::A1,          0x000003C6);
-  writeReg(TMC5130::V1,          0x0001A36E);
-
-  writeReg(TMC5130::AMAX,        0x000003C6);
-  writeReg(TMC5130::VMAX,        0x000346DC);
-  writeReg(TMC5130::DMAX,        0x000003C6);
-  writeReg(TMC5130::D1,          0x000003C6);
-  writeReg(TMC5130::VSTOP,       0x0000000A);
-  writeReg(TMC5130::TZEROWAIT,   0x00000000);
-  writeReg(TMC5130::XTARGET,     0x00002710);
-  writeReg(TMC5130::VDCMIN,      0x00000000);
-  writeReg(TMC5130::SW_MODE,     0x00000000);
-  writeReg(TMC5130::RAMP_STAT,   0x00000103);
-  writeReg(TMC5130::XLATCH,      0x00000000);
-  writeReg(TMC5130::ENCMODE,     0x00000000);
-  writeReg(TMC5130::X_ENC,       0x00000000);
-  writeReg(TMC5130::ENC_CONST,   0x00010000);
-  writeReg(TMC5130::ENC_STATUS,  0x00000000);
-  writeReg(TMC5130::ENC_LATCH,   0x00000000);
-
-  //reset default microstep table:
-  writeReg(TMC5130::MSLUT_0,     0xAAAAB554);  //0xAAAAB554
-  writeReg(TMC5130::MSLUT_1,     0x4A9554AA);  //0x4A9554AA
-  writeReg(TMC5130::MSLUT_2,     0x24492929);  //0x24492929
-  writeReg(TMC5130::MSLUT_3,     0x10104222);  //0x10104222
-  writeReg(TMC5130::MSLUT_4,     0xFBFFFFFF);  //0xFBFFFFFF
-  writeReg(TMC5130::MSLUT_5,     0xB5BB777D);  //0xB5BB777D
-  writeReg(TMC5130::MSLUT_6,     0x49295556);  //0x49295556
-  writeReg(TMC5130::MSLUT_7,     0x00404222);  //0x00404222
-  writeReg(TMC5130::MSLUTSEL,    0xFFFF8056);  //0xFFFF8056  X1=128, X2=255, X3=255  W3=%01, W2=%01, W1=%01, W0=%10
-  writeReg(TMC5130::MSLUTSTART,  0x00F70000);  //0x00F70000  START_SIN_0= 0, START_SIN90= 247
-
-  writeReg(TMC5130::MSCNT,       0x0000006B);
-  writeReg(TMC5130::MSCURACT,    0x00F601E5);
-  writeReg(TMC5130::CHOPCONF,    0x000101D5);  //**** 00010000000111010101
-  writeReg(TMC5130::COOLCONF,    0x00000000);
-  writeReg(TMC5130::DCCTRL,      0x00000000);
-  writeReg(TMC5130::DRV_STATUS,  0x61010000);
-  writeReg(TMC5130::PWMCONF,     0x000500C8);
-  writeReg(TMC5130::PWMSTATUS,   0x00000000); //TMC5130_PWM_SCALE
-  writeReg(TMC5130::ENCM_CTRL,   0x00000000);
-  writeReg(TMC5130::LOST_STEPS,  0x00000000); 
-}
-
-void TMC5130::Init_01(void){
-                                  //00010000000011000011
-  setChopconf          (65731);  //writeReg(CHOPCONF,    0x000100C3);  //SPI send: 0xEC000100C3; // CHOPCONF: TOFF=3, HSTRT=4, HEND=1, TBL=2, CHM=0 (SpreadCycle)
-
-//  irun      = 0x1F; //31  Corrente a motore in moto 0...31
-//  ihold     = 0xA;  //10  Corrente a motore fermo 0...31
-//  holdDelay = 0x06; //6   0: spegnimento istantaneo, 1..15: Ritardo per ogni step di riduzione della corrente in multipli di 2^18 clock
-  setCurrent(31, 10, 6);  //  writeReg(IHOLD_IRUN,  0x00061F0A);  //SPI send: 0x9000061F0A; // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-
-  writeReg(TPOWERDOWN,  0x0000000A);  //SPI send: 0x910000000A; // TPOWERDOWN=10: Delay before power down in stand still
-  writeReg(GCONF,       0x00000004);  //SPI send: 0x8000000004; // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
-  writeReg(TPWMTHRS,    0x000001F4);  //SPI send: 0x93000001F4; // TPWM_THRS=500 yields a switching velocity about 35000 = ca. 30RPM
-  writeReg(PWMCONF,     0x000401C8);  //SPI send: 0xF0000401C8;
-
-  setFirstAcceleration  (1000);                   //writeReg(A1,          0x000003E8);  //SPI send: 0xA4000003E8; // A1 = 1 000 First acceleration
-  setFirstVelocity      (50000);                  //writeReg(V1,          0x0000C350);  //SPI send: 0xA50000C350; // V1 = 50 000 Acceleration threshold velocity V1
-  setSecondAcceleration (500);                    //writeReg(AMAX,        0x000001F4);  //SPI send: 0xA6000001F4; // AMAX = 500 Acceleration above V1
-  setMaxVelocity        (200000);                 //writeReg(VMAX,        0x00030D40);  //SPI send: 0xA700030D40; // VMAX = 200 000
-  setFirstDeceleration  (700);                    //writeReg(DMAX,        0x000002BC);  //SPI send: 0xA8000002BC; // DMAX = 700 Deceleration above V1
-  setSecondDeceleration (1400);                   //writeReg(D1,          0x00000578);  //SPI send: 0xAA00000578; // D1 = 1400 Deceleration below V1
-  setStopVelocity       (10);                     //writeReg(VSTOP,       0x0000000A);  //SPI send: 0xAB0000000A; // VSTOP = 10 Stop velocity (Near to zero)
-  setRampMode           (TMC5130_MODE_POSITION);  //writeReg(RAMPMODE,    0x00000000);  //SPI send: 0xA000000000; // RAMPMODE = 0 (Target position move)
-
-#define ENABLE_STALLGUARD
-//  StopEnable(true);
-  SetSwMode(0
-    | SW_MODE_STOP_L_ENABLE | SW_MODE_POL_STOP_L  //Enable Left Limit Switch
-  //  | SW_MODE_STOP_R_ENABLE
-  //  | SW_MODE_POL_STOP_R
-  //  | SW_MODE_SWAP_LR
-#if defined(ENABLE_STALLGUARD)
-      | SW_MODE_SG_STOP     //Enable StallGuard2
-#endif
-  );
-  setCurrent(1, 1, 1);  //  writeReg(IHOLD_IRUN,  0x00061F0A);  //SPI send: 0x9000061F0A; // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-  setMicrosteps(8);
-#if defined(ENABLE_STALLGUARD)
-  setTCOOLTHRS(100);
-#endif
-
-}
-
 int32_t TMC5130::Init_MicroSteps(uint8_t ms){
   assert(ms>=0 && ms<=8);
   setMicrosteps(ms);
@@ -435,16 +331,18 @@ int32_t TMC5130::Init_MicroSteps(uint8_t ms){
   uint16_t FirstAcc = 10;
   uint32_t FirstVel = 10;
   uint32_t MaxVel   = 100;
+  uint32_t SpeedFor1RPS   = 53687>>ms;  //Velocity for 1 Rotation Per Second
+
   switch(ms){
-    case  8: FirstAcc =  50;    FirstVel = 100;    MaxVel =   200; Steps =   200; break;
-    case  7: FirstAcc =  50;    FirstVel = 100;    MaxVel =   400; Steps =   400; break;
-    case  6: FirstAcc =  50;    FirstVel = 100;    MaxVel =   800; Steps =   800; break;
-    case  5: FirstAcc =  50;    FirstVel = 100;    MaxVel =  1600; Steps =  1600; break;
-    case  4: FirstAcc =  50;    FirstVel = 100;    MaxVel =  3200; Steps =  3200; break;
-    case  3: FirstAcc =  50;    FirstVel = 100;    MaxVel =  6400; Steps =  6400; break;
-    case  2: FirstAcc =  50;    FirstVel = 100;    MaxVel = 12800; Steps = 12800; break;
-    case  1: FirstAcc =  50;    FirstVel = 100;    MaxVel = 25600; Steps = 25600; break;
-    case  0: FirstAcc =  50;    FirstVel = 100;    MaxVel = 51200; Steps = 51200; break;
+    case  8: FirstAcc =  50;    FirstVel = 100;    MaxVel =   200; Steps =   200; break;  //210
+    case  7: FirstAcc =  50;    FirstVel = 100;    MaxVel =   400; Steps =   400; break;  //419
+    case  6: FirstAcc =  50;    FirstVel = 100;    MaxVel =   800; Steps =   800; break;  //839
+    case  5: FirstAcc =  50;    FirstVel = 100;    MaxVel =  1600; Steps =  1600; break;  //1678
+    case  4: FirstAcc =  50;    FirstVel = 100;    MaxVel =  3200; Steps =  3200; break;  //3355
+    case  3: FirstAcc =  50;    FirstVel = 100;    MaxVel =  6400; Steps =  6400; break;  //6711
+    case  2: FirstAcc =  50;    FirstVel = 100;    MaxVel = 12800; Steps = 12800; break;  //13422
+    case  1: FirstAcc =  50;    FirstVel = 100;    MaxVel = 25600; Steps = 25600; break;  //26844
+    case  0: FirstAcc =  50;    FirstVel = 100;    MaxVel = 51200; Steps = 51200; break;  //53687
     default: FirstAcc =  10;    FirstVel =  10;    MaxVel =   100; Steps =   200; break;
   }
 
