@@ -1,3 +1,13 @@
+/*
+ToDo:
+  Eecute an "HomeToStall"
+  Check if to use Polidoro's class printer....
+  remove TMC5130_RampMode
+*/
+
+
+
+
 #include <SPI.h>
 #include "TMC5130.h"
 #include "TMC5130_Display.h"
@@ -54,6 +64,42 @@ void setup() {
 
   SetFreeRunning(Steppers[1], 1); //Free running @ ??? Rotation Per Second
   Steppers[1].writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //
+
+//  InitTestStall    (Steppers[0]);
+  //Check Communications
+  bool AllOk;
+  do{
+    AllOk = true;
+     Serial.println("Check Communication...");
+    for(int i=0; i<wxSIZEOF(Steppers); i++){
+      Serial.print(i);  Serial.print(") '"); Serial.print(Steppers[i].GetName());  Serial.print("' ");
+      if(Steppers[i].communicating())
+        Serial.println("is ok");
+      else{
+            Serial.println(Steppers[i].communicating() ? "is ok" : "NOT OK");
+            AllOk = false;
+      }
+    }
+    delay(1000);
+  }while(!AllOk);
+
+  Steppers[1].beginRampToZeroVelocity();
+  while (not Steppers[1].zeroVelocity()) {
+    Serial.println("Waiting for zero velocity.");
+    delay(1000);
+  }
+/*
+bool Controller::zeroVelocity() {
+  TMC5130::RampStat ramp_stat;
+  ramp_stat.bytes = stepper.readReg(TMC5130::RAMP_STAT);
+  return ramp_stat.vzero;
+}
+
+
+*/
+
+
+
 }
 
 void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for each run

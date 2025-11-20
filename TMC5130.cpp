@@ -214,9 +214,11 @@ void TMC5130::enableRegBit(bool en, Reg reg, uint32_t Mask) {
 }
 
 void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
-  assert(irun>=0 && irun<=31 && ihold>=0 && ihold<=31  && holdDelay>=0 && holdDelay<=15);
+  assert(irun>=0     && irun<=31 && 
+        ihold>=0     && ihold<=31  && 
+        holdDelay>=0 && holdDelay<=15);
 
-  uint32_t old = readReg(GCONF)|0x10000;  //SetDirectMode
+//  uint32_t old = readReg(GCONF)|0x10000;  //SetDirectMode
 //  enableDirectMode(true);
 
 /*
@@ -227,8 +229,13 @@ void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
               0: instant power down
               1..15: Delay per current reduction step in multiple of 2^18 clocks
 */
-  uint32_t v = ((uint32_t)holdDelay << 16) | ((uint32_t)irun << 8) | (ihold);
-  writeReg(IHOLD_IRUN, v);
+  uint32_t reg = readReg(TMC5130::IHOLD_IRUN) & (~0xF1F1F);
+  reg |= (ihold) & 0x1F;
+  reg |= (irun<<8) & 0x1F00;
+  reg |= (holdDelay<<16) & 0xF0000;
+
+  //reg |= ((uint32_t)holdDelay << 16) | ((uint32_t)irun << 8) | (ihold);
+  writeReg(IHOLD_IRUN, reg);
 }
 
 void TMC5130::setMicrosteps(uint8_t mres) {
@@ -322,6 +329,40 @@ void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=
   assert(d>=1 && d<=0xFFFF);
   writeReg(D1, d);
 }
+
+bool TMC5130::zeroVelocity(void) {
+  //return ((readReg(RAMP_STAT) & 0x200) !=0);
+  RampStat ramp_stat;
+  ramp_stat.bytes = readReg(RAMP_STAT); // & 0x200
+  return ramp_stat.vzero;
+}
+
+void TMC5130::cacheControllerSettings(ControllerParameters &Ret) {
+  //In Polidoro's routine, ther get registers from a local copy (registers_ptr_)
+//  ControllerParameters Ret;
+  Ret.ramp_mode             = getRampMode();  //(RampMode)registers_ptr_->getStored(Registers::RAMPMODE);
+  SwMode sw_mode;  sw_mode.bytes = readReg(SW_MODE);
+  Ret.stop_mode             = (StopMode)sw_mode.en_softstop;
+  Ret.max_velocity          = readReg(VMAX);
+  Ret.max_acceleration      = readReg(AMAX);
+  Ret.start_velocity        = readReg(VSTART);
+  Ret.stop_velocity         = readReg(VSTOP);
+  Ret.first_velocity        = readReg(V1);
+  Ret.first_acceleration    = readReg(A1);
+  Ret.max_deceleration      = readReg(DMAX);
+  Ret.first_deceleration    = readReg(D1);
+  Ret.zero_wait_duration    = readReg(TZEROWAIT);
+  Ret.stall_stop_enabled    = sw_mode.sg_stop;
+  Ret.min_dc_step_velocity  = readReg(VDCMIN);
+//  return Ret;
+}
+
+void TMC5130::beginRampToZeroVelocity( void ){
+  // cacheControllerSettings();
+  writeReg(VSTART, 0); //writeStartVelocity(0);
+  writeReg(VMAX,   0); //writeMaxVelocity(0);
+}
+
 
 int32_t TMC5130::Init_MicroSteps(uint8_t ms){
   assert(ms>=0 && ms<=8);

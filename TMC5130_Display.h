@@ -28,3 +28,20 @@ void      ShowCurrents   (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true
 void      ShowDrvStatus  (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 
 void      ShowWaiting    (TMC5130 *stp, const float waiting, bool WaitStop=true);
+
+
+class Printer {
+public:
+//  Printer();
+  Printer(Print & print) : print_ptr_(&print) {};
+
+  void readAndPrintGconf(TMC5130 &stepper);
+  void printRegister(TMC5130::Gconf gconf);
+
+  void readAndPrintPwmScale(TMC5130 &stepper);
+  void printRegister(TMC5130::PwmScale & pwm_scale);
+
+private:
+  Print * print_ptr_;
+  void printRegisterPortion(const char * str, uint32_t value, int base=DEC);
+};
