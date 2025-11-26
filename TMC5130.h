@@ -45,200 +45,291 @@ public:
   }MicroStepsMask;
 
   // ====== Registri principali (estratto dal datasheet) ======
-  enum Reg : uint8_t {
-    GCONF       = 0x00,   // Global config
-    GSTAT       = 0x01,   // Global status (write 1 to clear flags)
-    IFCNT       = 0x02,   // Interface counter
-    SLAVECONF   = 0x03,   // Slave config (UART)
-    IOIN        = 0x04,   // Input pins
-    X_COMPARE   = 0x05,   //
-/*
-    OtpProgAddress = 0x06,
-    OtpReadAddress = 0x07,
-    FactoryConfAddress = 0x08,
-    ShortConfAddress = 0x09,
-    DrvConfAddress = 0x0A,
-    GlobalScalerAddress = 0x0B,
-    OffsetReadAddress = 0x0C,
+  typedef enum : uint8_t {
+    GCONF       = 0x00,   // Gconf and GconfBits  RW
+    GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
+    IFCNT       = 0x02,   // 0xFF                 R      Interface counter
+    SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
+    IOIN        = 0x04,   // Ioin                 RD      Input pins
+    X_COMPARE   = 0x05,   //0xFFFF FFFF           W
 
-*/
-    IHOLD_IRUN  = 0x10,   // Corrente run/hold
-    TPOWERDOWN  = 0x11,
-    TSTEP       = 0x12,
-    TPWMTHRS    = 0x13,
-    TCOOLTHRS   = 0x14,
-    THIGH       = 0x15,
+    IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
+    TPOWERDOWN  = 0x11,   //0x00FF                W
+    TSTEP       = 0x12,   //0xFFFFF               R
+    TPWMTHRS    = 0x13,   //0xFFFFF               W
+    TCOOLTHRS   = 0x14,   //0xFFFFF               W
+    THIGH       = 0x15,   //0xFFFFF               W
    
-    RAMPMODE    = 0x20,
-    XACTUAL     = 0x21,
-    VACTUAL     = 0x22,
-    VSTART      = 0x23,
-    A1          = 0x24,
-    V1          = 0x25,
-    AMAX        = 0x26,
-    VMAX        = 0x27,
-    DMAX        = 0x28,
+    RAMPMODE    = 0x20,   //0x03                  RW
+    XACTUAL     = 0x21,   //0xFFFF FFFF           RW
+    VACTUAL     = 0x22,   //0x00FF FFFF           R
+    VSTART      = 0x23,   //0x0003 FFFF           W
+    A1          = 0x24,   //0xFFFF                W
+    V1          = 0x25,   //0x000F FFFF           W
+    AMAX        = 0x26,   //0xFFFF                W
+    VMAX        = 0x27,   //0x7F FFFF             W
+    DMAX        = 0x28,   //0xFFFF                W
 
-    D1          = 0x2A,
-    VSTOP       = 0x2B,
-    TZEROWAIT   = 0x2C,
-    XTARGET     = 0x2D,
+    D1          = 0x2A,   //0xFFFF                W
+    VSTOP       = 0x2B,   //0x0003 FFFF           W
+    TZEROWAIT   = 0x2C,   //0xFFFF                W
+    XTARGET     = 0x2D,   //0xFFFF FFFF           RW
 
-    VDCMIN      = 0x33, //Ramp Generator Driver Feature Control Register Set
-    SW_MODE     = 0x34,
-    RAMP_STAT   = 0x35,
-    XLATCH      = 0x36,
-    ENCMODE     = 0x38,  //Encoder Registers 
-    X_ENC       = 0x39,
-    ENC_CONST   = 0x3A,
-    ENC_STATUS  = 0x3B,
-    ENC_LATCH   = 0x3C,
-    SG_RESULT   = 0x40,
-    MSLUT_0     = 0x60, //Motor Driver Registers  - MICROSTEPPING CONTROL REGISTER SET
-    MSLUT_1     = 0x61,
-    MSLUT_2     = 0x62,
-    MSLUT_3     = 0x63,
-    MSLUT_4     = 0x64,
-    MSLUT_5     = 0x65,
-    MSLUT_6     = 0x66,
-    MSLUT_7     = 0x67,
-    MSLUTSEL    = 0x68,
-    MSLUTSTART  = 0x69,
-    MSCNT       = 0x6A,
-    MSCURACT    = 0x6B,
-    CHOPCONF    = 0x6C,  //DRIVER REGISTER SET    
-    COOLCONF    = 0x6D,
-    DCCTRL      = 0x6E,
-    DRV_STATUS  = 0x6F,
+    VDCMIN      = 0x33,   //0x007F FFFF           W    Ramp Generator Driver Feature Control Register Set
+    SW_MODE     = 0x34,   // SwModes and SwMode   RW
+    RAMP_STAT   = 0x35,   // RampStat             RC
+    XLATCH      = 0x36,   //0xFFFF FFFF           R
+    ENCMODE     = 0x38,   // Encmode              RW    Encoder Registers 
+    X_ENC       = 0x39,   //0xFFFF FFFF           RW
+    ENC_CONST   = 0x3A,   // EncConst             W
+    ENC_STATUS  = 0x3B,   //0x0001                RC
+    ENC_LATCH   = 0x3C,   //0xFFFF FFFF           R
 
-    PWMCONF     = 0x70,
-    PWM_SCALE   = 0x71,
-    ENCM_CTRL   = 0x72,
-    LOST_STEPS  = 0x73,
-  };
+    MSLUT_0     = 0x60,   //0sf[0...31]           W    Motor Driver Registers  - MICROSTEPPING CONTROL REGISTER SET
+    MSLUT_1     = 0x61,   //0sf[32...63]          W
+    MSLUT_2     = 0x62,   //0sf[64...95]          W
+    MSLUT_3     = 0x63,   //0sf[96...127]         W
+    MSLUT_4     = 0x64,   //0sf[128...159]        W
+    MSLUT_5     = 0x65,   //0sf[160...191]        W
+    MSLUT_6     = 0x66,   //0sf[192...223]        W
+    MSLUT_7     = 0x67,   //0sf[224...255]        W
+    MSLUTSEL    = 0x68,   // Mslutsel             W
+    MSLUTSTART  = 0x69,   // Mslutstart           W
+    MSCNT       = 0x6A,   //0x3FF                 R
+    MSCURACT    = 0x6B,   // Mscuract             R
+    CHOPCONF    = 0x6C,   // Chopconf             RW    DRIVER REGISTER SET    
+    COOLCONF    = 0x6D,   // Coolconf             W
+    DCCTRL      = 0x6E,   // Dcctrl               W
+    DRV_STATUS  = 0x6F,   // DrvStatus            R
+
+    PWMCONF     = 0x70,   // Pwmconf              W
+    PWM_SCALE   = 0x71,   // PwmScale             R
+    ENCM_CTRL   = 0x72,   // EncmCrtl             W
+    LOST_STEPS  = 0x73,   //                      R
+  }Reg;
+
+ static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
+                                            RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
+                                            CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
+                                        };
+
+  typedef enum : uint32_t { //GCONF
+    GCONF_I_scale_analog		    = 0x00000001, //0000 0000 0000 0000 0000 0001
+    GCONF_internal_Rsense		    = 0x00000002, //0000 0000 0000 0000 0000 0010
+    GCONF_en_pwm_mode			      = 0x00000004, //0000 0000 0000 0000 0000 0100
+    GCONF_enc_commutation		    = 0x00000008, //0000 0000 0000 0000 0000 1000
+    GCONF_shaft					        = 0x00000010, //0000 0000 0000 0000 0001 0000
+    //                                                               XX                                          
+    GCONF_diag0_step			      = 0x00000080, //0000 0000 0000 0000 1000 0000
+    GCONF_diag1_dir	            = 0x00000100, //0000 0000 0000 0001 0000 0000
+    //                                                         XXX
+    GCONF_diag0_int_pushpull	  = 0x00001000, //0000 0000 0001 0000 0000 0000
+    GCONF_diag1_poscomp_pushpull= 0x00002000, //0000 0000 0010 0000 0000 0000
+    GCONF_small_hysteresis		  = 0x00004000, //0000 0000 0100 0000 0000 0000
+    GCONF_stop_enable			      = 0x00008000, //0000 0000 1000 0000 0000 0000
+    GCONF_direct_mode			      = 0x00010000, //0000 0001 0000 0000 0000 0000
+    GCONF_test_mode				      = 0x00020000, //0000 0010 0000 0000 0000 0000
+    //                                XXXX XXXX XXXX XX
+  }GconfBits; //  SetGconfBit, StopEnable
+ 
+
+  typedef union  {    //GCONF
+    struct {
+      uint32_t recalibrate_i_scale_analog     : 1;  //0x01
+      uint32_t faststandstill_internal_rsense : 1;  //0x02
+      uint32_t en_pwm_mode                    : 1;  //0x04
+      uint32_t multistep_filt_enc_commutation : 1;  //0x08
+      uint32_t shaft                          : 1;  //0x10
+      uint32_t XXdiag0_error                  : 1;  //
+      uint32_t XXdiag0_otpw                   : 1;  //
+      uint32_t diag0_stall_int_step           : 1;  //0x80
+      uint32_t diag1_stall_poscomp_dir        : 1;  //0x100
+      uint32_t XXdiag1_index                  : 1;  //
+      uint32_t XXdiag1_onstate                : 1;  //
+      uint32_t XXdiag1_steps_skipped          : 1;  //
+      uint32_t diag0_int_pushpull             : 1;  //0x1000
+      uint32_t diag1_poscomp_pushpull         : 1;  //0x2000
+      uint32_t small_hysteresis               : 1;  //0x4000
+      uint32_t stop_enable                    : 1;  //0x8000
+      uint32_t direct_mode                    : 1;  //0x10000
+      uint32_t test_mode                      : 1;  //0x20000
+      uint32_t reserved                       : 14; //0x
+    };
+    uint32_t bytes;
+  }Gconf;
+
+  typedef union { //GSTAT
+    struct {
+      uint32_t reset    : 1;  //0x1
+      uint32_t drv_err  : 1;  //0x2
+      uint32_t uv_cp    : 1;  //0x4
+      uint32_t reserved : 29;
+    };
+    uint32_t bytes;
+  }Gstat;
+
+  typedef union {  //MSLUTSEL
+    struct {
+      uint32_t W0    : 2;  //0x0000 0003  0000 0000 0000 0000 0000 0000 0000 0011
+      uint32_t W1    : 2;  //0x0000 000C  0000 0000 0000 0000 0000 0000 0000 1100
+      uint32_t W2    : 2;  //0x0000 0030  0000 0000 0000 0000 0000 0000 0011 0000
+      uint32_t W3    : 2;  //0x0000 00C0  0000 0000 0000 0000 0000 0000 1100 0000
+      uint32_t X1    : 8;  //0x0000 FF00  0000 0000 0000 0000 1111 1111 0000 0000
+      uint32_t X2    : 8;  //0x00FF 0000  0000 0000 1111 1111 0000 0000 0000 0000
+      uint32_t X3    : 8;  //0xFF00 0000  1111 1111 0000 0000 0000 0000 0000 0000
+    };
+    uint32_t bytes;
+  }Mslutsel;
+
+  typedef union {  //MSLUTSTART
+    struct {
+      uint32_t start_sin    : 8;  //0x00FF
+      uint32_t reserved0    : 8;
+      uint32_t start_sin90  : 8;  //0xFF 0000
+      uint32_t reserved1    : 8;
+    };
+    uint32_t bytes;
+  }Mslutstart;
+
+  typedef union {
+    struct {
+      uint32_t cur_a      : 9;   //0x01FF
+      uint32_t reserved0  : 7;
+      uint32_t cur_b      : 9;  //0x01FF 0000
+      uint32_t reserved1  : 7;
+    };
+    uint32_t bytes;
+  }Mscuract;
+
+
+  typedef union { //SLAVECONF
+    struct {
+      uint32_t nodeaddr   : 8;  //0x0FF
+      uint32_t senddelay  : 4;  //0xF00
+      uint32_t reserved   : 20; //
+    };
+    uint32_t bytes;
+  }Nodeconf;
+
+
+  typedef union { //ENCMODE
+    struct {
+      uint32_t pol_a            : 1;  //0x1
+      uint32_t pol_b            : 1;  //0x2
+      uint32_t pol_n            : 1;  //0x4
+      uint32_t ignore_ab        : 1;  //0x8
+      uint32_t clr_cont         : 1;  //0x10
+      uint32_t clr_once         : 1;  //0x20
+      uint32_t pos_edge         : 1;  //0x40
+      uint32_t neg_edge         : 1;  //0x80
+      uint32_t clr_enc_x        : 1;  //0x100
+      uint32_t latch_x_act      : 1;  //0x200
+      uint32_t enc_sel_decimal  : 1;  //0x400
+      uint32_t reserved         : 21;
+    };
+    uint32_t bytes;
+  }Encmode;
+
+
+  typedef union { //ENC_CONST
+    struct {
+      uint32_t fractional : 16; //0x0000 FFFF
+      uint32_t integer    : 16; //0xFFFF 0000
+    };
+    uint32_t bytes;
+  }EncConst;
+
 
   typedef union { //PWM_SCALE
     struct {
-      uint32_t pwm_scale_sum : 8;
-      uint32_t reserved0 : 24;
+      uint32_t pwm_scale_sum  : 8;  //0x00FF
+      uint32_t reserved0      : 24;
     };
     uint32_t bytes;
   }PwmScale;
 
+  typedef union { //ENCM_CTRL
+    struct {
+      uint32_t inv            : 1;  //0x0000 0001
+      uint32_t maxspeed       : 1;  //0x0000 0002
+      uint32_t reserved1      : 30;
+    };
+    uint32_t bytes;
+  }EncmCrtl;
+
+
   typedef union { //RAMP_STAT
     struct {
-      uint32_t status_stop_l      : 1;
-      uint32_t status_stop_r      : 1;
-      uint32_t status_latch_l     : 1;
-      uint32_t status_latch_r     : 1;
-      uint32_t event_stop_l       : 1;
-      uint32_t event_stop_r       : 1;
-      uint32_t event_stop_sg      : 1;
-      uint32_t event_pos_reached  : 1;
-      uint32_t velocity_reached   : 1;
-      uint32_t position_reached   : 1;
-      uint32_t vzero              : 1;
-      uint32_t t_zerowait_active  : 1;
-      uint32_t second_move        : 1;
-      uint32_t status_sg          : 1;
+      uint32_t status_stop_l      : 1;  //0x0001
+      uint32_t status_stop_r      : 1;  //0x0002
+      uint32_t status_latch_l     : 1;  //0x0004
+      uint32_t status_latch_r     : 1;  //0x0008
+      uint32_t event_stop_l       : 1;  //0x0010
+      uint32_t event_stop_r       : 1;  //0x0020
+      uint32_t event_stop_sg      : 1;  //0x0040
+      uint32_t event_pos_reached  : 1;  //0x0080
+      uint32_t velocity_reached   : 1;  //0x0100
+      uint32_t position_reached   : 1;  //0x0200
+      uint32_t vzero              : 1;  //0x0400
+      uint32_t t_zerowait_active  : 1;  //0x0800
+      uint32_t second_move        : 1;  //0x1000
+      uint32_t status_sg          : 1;  //0x2000
       uint32_t reserved           : 18;
     };
     uint32_t bytes;
   }RampStat;
 
-
-  typedef enum : uint32_t {
-    GCONF_I_scale_analog		    = 0b000000000000000001,
-    GCONF_internal_Rsense		    = 0b000000000000000010,
-    GCONF_en_pwm_mode			      = 0b000000000000000100,
-    GCONF_enc_commutation		    = 0b000000000000001000,
-    GCONF_shaft					        = 0b000000000000010000,
-    GCONF_diag0_error			      = 0b000000000000100000,
-    GCONF_diag0_otpw			      = 0b000000000001000000,
-    GCONF_diag0_stall			      = 0b000000000010000000,
-    GCONF_diag1_stall			      = 0b000000000100000000,
-    GCONF_diag1_index			      = 0b000000001000000000,
-    GCONF_diag1_onstate		      =	0b000000100000000000,
-    GCONF_diag1_steps_skipped 	= 0b000000100000000000,
-    GCONF_diag0_int_pushpull	  = 0b000001000000000000,
-    GCONF_diag1_poscomp_pushpull= 0b000010000000000000,
-    GCONF_small_hysteresis		  = 0b000100000000000000,
-    GCONF_stop_enable			      = 0b001000000000000000,
-    GCONF_direct_mode			      = 0b010000000000000000,
-    GCONF_test_mode				      = 0b100000000000000000,
-  }GconfBits;
-
-  typedef enum : uint16_t { //SW_MODE
-    SW_MODE_STOP_L_ENABLE     = 0x001,	//stop_l_enable    
-    SW_MODE_STOP_R_ENABLE     = 0x002,  //stop_r_enable    
-    SW_MODE_POL_STOP_L        = 0x004,  //pol_stop_l       
-    SW_MODE_POL_STOP_R        = 0x008,  //pol_stop_r       
-    SW_MODE_SWAP_LR           = 0x010,  //swap_lr          
-    SW_MODE_LATCH_L_ACTIVE    = 0x020,  //latch_l_active   
-    SW_MODE_LATCH_L_INACTIVE  = 0x040,  //latch_l_inactive 
-    SW_MODE_LATCH_R_ACTIVE    = 0x080,  //latch_r_active   
-    SW_MODE_LATCH_R_INACTIVE  = 0x100,  //latch_r_inactive 
-    SW_MODE_EN_LATCH_ENCODER  = 0x200,  //en_latch_encoder 
-    SW_MODE_SG_STOP           = 0x400,  //sg_stop          
-    SW_MODE_EN_SOFTSTOP       = 0x800,  //en_softstop      
-  }SwModes;
+  typedef union { //DRV_STATUS
+    struct {
+      uint32_t sg_result  : 10; //0x 0000 03FF  00000000000000000000001111111111
+      uint32_t reserved0  : 5;  //
+      uint32_t fsactive   : 1;  //0x 0000 8000  00000000000000001000000000000000
+      uint32_t cs_actual  : 5;  //0x 001F 0000  00000000000111110000000000000000
+      uint32_t reserved1  : 3;  //
+      uint32_t stallguard : 1;  //0x 0100 0000  00000001000000000000000000000000
+      uint32_t ot         : 1;  //0x 0200 0000  00000010000000000000000000000000
+      uint32_t otpw       : 1;  //0x 0400 0000  00000100000000000000000000000000
+      uint32_t s2ga       : 1;  //0x 0800 0000  00001000000000000000000000000000
+      uint32_t s2gb       : 1;  //0x 1000 0000  00010000000000000000000000000000
+      uint32_t ola        : 1;  //0x 2000 0000  00100000000000000000000000000000
+      uint32_t olb        : 1;  //0x 4000 0000  01000000000000000000000000000000
+      uint32_t stst       : 1;  //0x 8000 0000  10000000000000000000000000000000
+    };
+    uint32_t bytes;
+  }DrvStatus;
 
   typedef union  {  //SW_MODE
     struct {
-      uint32_t stop_l_enable    : 1;	  //SW_MODE_STOP_L_ENABLE     
-      uint32_t stop_r_enable    : 1;    //SW_MODE_STOP_R_ENABLE     
-      uint32_t pol_stop_l       : 1;    //SW_MODE_POL_STOP_L        
-      uint32_t pol_stop_r       : 1;    //SW_MODE_POL_STOP_R        
-      uint32_t swap_lr          : 1;    //SW_MODE_SWAP_LR           
-      uint32_t latch_l_active   : 1;    //SW_MODE_LATCH_L_ACTIVE    
-      uint32_t latch_l_inactive : 1;    //SW_MODE_LATCH_L_INACTIVE  
-      uint32_t latch_r_active   : 1;    //SW_MODE_LATCH_R_ACTIVE    
-      uint32_t latch_r_inactive : 1;    //SW_MODE_LATCH_R_INACTIVE  
-      uint32_t en_latch_encoder : 1;    //SW_MODE_EN_LATCH_ENCODER  
-      uint32_t sg_stop          : 1;    //SW_MODE_SG_STOP           
-      uint32_t en_softstop      : 1;    //SW_MODE_EN_SOFTSTOP       
+      uint32_t stop_l_enable    : 1;	  //0x001    SW_MODE_STOP_L_ENABLE     
+      uint32_t stop_r_enable    : 1;    //0x002    SW_MODE_STOP_R_ENABLE     
+      uint32_t pol_stop_l       : 1;    //0x004    SW_MODE_POL_STOP_L        
+      uint32_t pol_stop_r       : 1;    //0x008    SW_MODE_POL_STOP_R        
+      uint32_t swap_lr          : 1;    //0x010    SW_MODE_SWAP_LR           
+      uint32_t latch_l_active   : 1;    //0x020    SW_MODE_LATCH_L_ACTIVE    
+      uint32_t latch_l_inactive : 1;    //0x040    SW_MODE_LATCH_L_INACTIVE  
+      uint32_t latch_r_active   : 1;    //0x080    SW_MODE_LATCH_R_ACTIVE    
+      uint32_t latch_r_inactive : 1;    //0x100    SW_MODE_LATCH_R_INACTIVE  
+      uint32_t en_latch_encoder : 1;    //0x200    SW_MODE_EN_LATCH_ENCODER  
+      uint32_t sg_stop          : 1;    //0x400    SW_MODE_SG_STOP           
+      uint32_t en_softstop      : 1;    //0x800    SW_MODE_EN_SOFTSTOP       
       uint32_t reserved         : 20;
     };
     uint32_t bytes;
   }SwMode;
 
-  typedef union  {    //GCONF
-    struct {
-      uint32_t recalibrate_i_scale_analog : 1;
-      uint32_t faststandstill_internal_rsense : 1;
-      uint32_t en_pwm_mode : 1;
-      uint32_t multistep_filt_enc_commutation : 1;
-      uint32_t shaft : 1;
-      uint32_t diag0_error : 1;
-      uint32_t diag0_otpw : 1;
-      uint32_t diag0_stall_int_step : 1;
-      uint32_t diag1_stall_poscomp_dir : 1;
-      uint32_t diag1_index : 1;
-      uint32_t diag1_onstate : 1;
-      uint32_t diag1_steps_skipped : 1;
-      uint32_t diag0_int_pushpull : 1;
-      uint32_t diag1_poscomp_pushpull : 1;
-      uint32_t small_hysteresis : 1;
-      uint32_t stop_enable : 1;
-      uint32_t direct_mode : 1;
-      uint32_t reserved : 15;
-    };
-    uint32_t bytes;
-  }Gconf;
-
 
 
   typedef union {   //PWMCONF
     struct {
-      uint32_t pwm_ampl : 8;  //alias pwm_ofs
-      uint32_t pwm_grad : 8;
-      uint32_t pwm_freq : 2;
-      uint32_t pwm_autoscale : 1;
-      uint32_t pwm_symmetric : 1;
-      uint32_t freewheel : 2;
-      uint32_t reserved0 : 2;
-      uint32_t reserved1 : 4;
-      uint32_t reserved2 : 4;
+      uint32_t pwm_ampl       : 8;  //0x0000 00FF    alias pwm_ofs
+      uint32_t pwm_grad       : 8;  //0x0000 FF00
+      uint32_t pwm_freq       : 2;  //0x0003 0000
+      uint32_t pwm_autoscale  : 1;  //0x0004 0000
+      uint32_t pwm_symmetric  : 1;  //0x0008 0000     alias pwm_autograd
+      uint32_t freewheel      : 2;  //0x0030 0000
+      uint32_t reserved0      : 2;  //0x
+      uint32_t reserved1      : 4;  //0x     pwm_reg does not exists in 5130
+      uint32_t reserved2      : 4;  //0x     pwm_lim does not exists in 5130
     };
     uint32_t bytes;
   }Pwmconf;
@@ -254,63 +345,63 @@ public:
 
   typedef union { //IHOLD_IRUN
     struct {
-      uint32_t ihold : 5;
-      uint32_t reserved0 : 3;
-      uint32_t irun : 5;
-      uint32_t reserved1 : 3;
-      uint32_t iholddelay : 4;
-      uint32_t reserved2 : 12;
+      uint32_t ihold      : 5;  //0x1F
+      uint32_t reserved0  : 3;
+      uint32_t irun       : 5;  //0x1F00
+      uint32_t reserved1  : 3;
+      uint32_t iholddelay : 4;  //0xF0000
+      uint32_t reserved2  : 12;
     };
     uint32_t bytes;
   }IholdIrun;
 
-  typedef union  {  //CHOPCONF
+  typedef union  {  //CHOPCONF dd
     struct {
-      uint32_t toff : 4;
-      uint32_t hstart : 3;
-      uint32_t hend : 4;
-      uint32_t fd3 : 1;
-      uint32_t disfdcc : 1;
-      uint32_t reserved_0 : 1;
-      uint32_t chm : 1;
-      uint32_t tbl : 2;
-      uint32_t reserved_1 : 1;
-      uint32_t vhighfs : 1;
-      uint32_t vhighchm : 1;
-      uint32_t tpfd : 4;
-      uint32_t mres : 4;
-      uint32_t interpolation : 1;
-      uint32_t double_edge : 1;
-      uint32_t diss2g : 1;
-      uint32_t diss2vs : 1;
+      uint32_t toff           : 4;  //0x 0000000F 00000000000000000000000000001111
+      uint32_t HSTRT          : 3;  //0x 00000070 00000000000000000000000001110000
+      uint32_t HEND           : 4;  //0x 00000780 00000000000000000000011110000000
+      uint32_t reserved1      : 2;  //0x 00001800 00000000000000000001100000000000
+      uint32_t rndtf          : 1;  //0x 00002000 00000000000000000010000000000000
+      uint32_t chm            : 1;  //0x 00004000 00000000000000000100000000000000
+      uint32_t tbl            : 2;  //0x 00018000 00000000000000011000000000000000
+      uint32_t vsense         : 1;  //0x 00020000 00000000000000100000000000000000
+      uint32_t vhighfs        : 1;  //0x 00040000 00000000000001000000000000000000
+      uint32_t vhighchm       : 1;  //0x 00080000 00000000000010000000000000000000
+      uint32_t sync           : 4;  //0x 00F00000 00000000111100000000000000000000
+      uint32_t mres           : 4;  //0x 0F000000 00001111000000000000000000000000
+      uint32_t interpol       : 1;  //0x 10000000 00010000000000000000000000000000
+      uint32_t dedge          : 1;  //0x 20000000 00100000000000000000000000000000
+      uint32_t diss2g         : 1;  //0x 40000000 01000000000000000000000000000000
+      uint32_t reserved2      : 1;  //0x 80000000 10000000000000000000000000000000
     };
     uint32_t bytes;
   }Chopconf;
 
+
   typedef union { //COOLCONF
     struct {
-      uint32_t semin : 4;
-      uint32_t reserved0 : 1;
-      uint32_t seup : 2;
-      uint32_t reserved1 : 1;
-      uint32_t semax : 4;
-      uint32_t reserved2 : 1;
-      uint32_t sedn : 2;
-      uint32_t seimin : 1;
-      uint32_t sgt : 7;
-      uint32_t reserved3 : 1;
-      uint32_t sfilt : 1;
-      uint32_t reserved4 : 7;
+      uint32_t semin      : 4;  //0x0000 000F 00000000000000000000000000001111
+      uint32_t reserved0  : 1;  //            000000000000000000000000000X0000
+      uint32_t seup       : 2;  //0x0000 0060 00000000000000000000000001100000
+      uint32_t reserved1  : 1;  //            000000000000000000000000X0000000
+      uint32_t semax      : 4;  //0x0000 0F00 00000000000000000000111100000000
+      uint32_t reserved2  : 1;  //            0000000000000000000X000000000000
+      uint32_t sedn       : 2;  //0x0000 6000 00000000000000000110000000000000
+      uint32_t seimin     : 1;  //0x0000 8000 00000000000000001000000000000000
+      uint32_t sgt        : 7;  //0x007F 0000 00000000011111110000000000000000
+      uint32_t reserved3  : 1;  //            00000000X00000000000000000000000
+      uint32_t sfilt      : 1;  //0x0100 0000 00000001000000000000000000000000
+      uint32_t reserved4  : 7;  //            XXXXXXX0000000000000000000000000
     };
     uint32_t bytes;
   }Coolconf;
 
   typedef union { //DCCTRL
     struct {
-      uint32_t dc_time : 10;
-      uint32_t reserved0 : 6;
-      uint32_t dc_sg : 8;
-      uint32_t reserved1 : 8;
+      uint32_t dc_time    : 10; //0x0000 03FF
+      uint32_t reserved0  : 6;  //
+      uint32_t dc_sg      : 8;  //0x00FF 0000
+      uint32_t reserved1  : 8;  //
     };
     uint32_t bytes;
   } Dcctrl;
@@ -319,29 +410,21 @@ public:
 
   typedef union { //IOIN
     struct {
-      uint32_t refl_step : 1;
-      uint32_t refr_dir : 1;
-      uint32_t encb_dcen_cfg4 : 1;
-      uint32_t enca_dcin_cfg5 : 1;
-      uint32_t drv_enn : 1;
-      uint32_t enc_n_dco_cfg6 : 1;
-      uint32_t sd_mode : 1;
-      uint32_t swcomp_in : 1;
-      uint32_t reserved : 16;
-      uint32_t version : 8;
+      uint32_t refl_step      : 1;  //0x1
+      uint32_t refr_dir       : 1;  //0x2
+      uint32_t encb_dcen_cfg4 : 1;  //0x4
+      uint32_t enca_dcin_cfg5 : 1;  //0x8
+      uint32_t drv_enn        : 1;  //0x10
+      uint32_t enc_n_dco_cfg6 : 1;  //0x20
+      uint32_t sd_mode        : 1;  //0x40
+      uint32_t swcomp_in      : 1;  //0x80
+      uint32_t reserved       : 16;
+      uint32_t version        : 8;  //0xFF00 0000
     };
     uint32_t bytes;
   }Ioin;
 
   typedef enum : uint8_t {
-    TMC5130_MODE_POSITION  = 0,  //Positioning mode (using all A, D and V parameters)
-    TMC5130_MODE_VELPOS    = 1,  //Velocity mode to positive VMAX (using AMAX acceleration)
-    TMC5130_MODE_VELNEG    = 2,  //Velocity mode to negative VMAX (using AMAX acceleration)
-    TMC5130_MODE_HOLD      = 3,  //Hold mode (velocity remains unchanged, unless stop event occurs)
-  }TMC5130_RampMode;
-
-
-  typedef enum {
     PositionMode          = 0,  //Positioning mode (using all A, D and V parameters)
     VelocityPositiveMode  = 1,  //Velocity mode to positive VMAX (using AMAX acceleration)
     VelocityNegativeMode  = 2,  //Velocity mode to negative VMAX (using AMAX acceleration)
@@ -364,7 +447,58 @@ public:
     uint32_t min_dc_step_velocity = 0;
   }ControllerParameters;
 
+struct ConverterParameters {
+  uint8_t   clock_frequency_mhz               = 12;
+  uint32_t  microsteps_per_real_position_unit = 1;
+  uint32_t  seconds_per_real_velocity_unit    = 1;
+};
+
+struct DriverParameters { // global_current_scaler only available on TMC5160
+  uint8_t             global_current_scaler                 = 100;  //Does not exists in 5130
+  uint8_t             run_current                           = 50;   //IHOLD_IRUN
+  uint8_t             hold_current                          = 20;   //IHOLD_IRUN
+  uint8_t             hold_delay                            = 5;    //IHOLD_IRUN
+  uint8_t             pwm_offset                            = 25;   //PWMCONF
+  uint8_t             pwm_gradient                          = 5;
+  bool                automatic_current_control_enabled     = false;
+  MotorDirection      motor_direction                       = ForwardDirection;
+  StandstillMode      standstill_mode                       = NormalMode;
+  ChopperMode         chopper_mode                          = SpreadCycleMode;
+  uint32_t            stealth_chop_threshold                = 100;
+  bool                stealth_chop_enabled                  = true;
+  uint32_t            cool_step_threshold                   = 150;
+  uint8_t             cool_step_min                         = 1;
+  uint8_t             cool_step_max                         = 0;
+  bool                cool_step_enabled                     = false;
+  uint32_t            high_velocity_threshold               = 200;
+  bool                high_velocity_fullstep_enabled        = false;
+  bool                high_velocity_chopper_switch_enabled  = false;
+  int8_t              stall_guard_threshold                 = 0;
+  bool                stall_guard_filter_enabled            = false;
+  bool                short_to_ground_protection_enabled    = true;
+  uint8_t             enabled_toff                          = 3;
+  ComparatorBlankTime comparator_blank_time                 = ClockCycles36;
+  uint16_t            dc_time                               = 0;
+  uint8_t             dc_stall_guard_threshold              = 0;
+};
+
+struct HomeParameters{
+  uint8_t run_current         = 0;
+  uint8_t hold_current        = 0;
+  int32_t target_position     = 0;
+  uint32_t velocity           = 0;
+  uint32_t acceleration       = 0;
+  uint32_t zero_wait_duration = 100;
+};
+
+struct StallParameters {
+  int8_t stall_guard_threshold = 0;
+  uint32_t cool_step_threshold = 0;
+};
+
+
 void cacheControllerSettings(ControllerParameters &Ret);
+void writeControllerParameters(ControllerParameters &parameters);
 
   // ====== Ctors ======
   TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr);
@@ -383,13 +517,15 @@ void cacheControllerSettings(ControllerParameters &Ret);
 
   // ====== High level Configs ======
   void setCurrent       (uint8_t irun, uint8_t ihold, uint8_t holdDelay);
+  inline void setNeutral       (void)  {setCurrent(0, 0, 0);}
+  inline void setParking       (void)  {setCurrent(31, 31, 15);}
   void setMicrosteps    (uint8_t mres);
   void setMicrosteps    (MicroStepsMask m);
 
-  inline uint8_t getMicrosteps (void)  {return (readReg(CHOPCONF)>>24) & 0x0F;}
+  inline uint8_t getMicrosteps  (void)  {return (readReg(CHOPCONF)>>24) & 0x0F;}
+  void softwareEnable           (void);  //CHOPCONF
 
   void SetGconfBit              (GconfBits b, bool en);
-  inline void enableStealthChop (bool en)           { SetGconfBit(GCONF_diag0_stall, en); }
   inline void StopEnable        (bool en)           { SetGconfBit(GCONF_stop_enable, en); }
 
   inline void setChopconf       (uint32_t chopconf) { writeReg(CHOPCONF, chopconf); }
@@ -399,13 +535,14 @@ void cacheControllerSettings(ControllerParameters &Ret);
 
   void setDcStep        (uint16_t dcTime, uint16_t dcSG);
   void setTCOOLTHRS     (uint32_t val);
-  inline uint16_t readStallGuardResult  (void)    { return (uint16_t)(readReg(SG_RESULT) & 0x3FF); }
+
+  uint16_t  readStallGuardResult        (void);   //DRV_STATUS
   inline void enableInverseDirection    (bool en) { enableRegBit(en, GCONF, 0x00010); }
   inline void enableStopEnable          (bool en) { enableRegBit(en, GCONF, 0x08000); }
   inline void enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }
 
   // Motion controller
-  void setRampMode        (TMC5130_RampMode m);
+  void setRampMode        (RampMode m);
   inline RampMode getRampMode (void)  { return (RampMode)(readReg(TMC5130::RAMPMODE) & 0x3); };
   void setMaxVelocity    (uint32_t v);  //0...8388096=7FFE00
   void setStartVelocity  (uint32_t v);  //0...262143=3FFFF  //Motor start velocity
@@ -414,8 +551,9 @@ void cacheControllerSettings(ControllerParameters &Ret);
 
   inline int32_t getVelocity    (void)            {return ((int32_t)readReg(VACTUAL  )<<8)>>8;}
   bool zeroVelocity             (void);
+  bool positionReached          (void);
   void beginRampToZeroVelocity  (void);
-
+  bool homed                    (void);
   void setFirstAcceleration   (uint16_t amax);  //[μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
   void setSecondAcceleration  (uint16_t amax);  //[μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
   void setFirstDeceleration   (uint16_t dmax);  //[μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
@@ -424,18 +562,29 @@ void cacheControllerSettings(ControllerParameters &Ret);
   inline void     setPosition (int32_t x)       { writeReg(XACTUAL, x); }
   inline int32_t  getPosition (void)            { return (int32_t)readReg(XACTUAL); }
 
-  inline void     moveTo      (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(TMC5130_MODE_POSITION); }
+  inline void     moveTo      (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(PositionMode); }
   inline void     moveBy      (int32_t dx)      { moveTo(getPosition() + dx); }
 
-  inline void     hardStop      (void)          { setRampMode(TMC5130_MODE_HOLD); writeReg(VMAX, 0); }
+  inline void     StopMotor   (uint16_t amax=10) { //Method A
+      writeReg(RAMPMODE, VelocityPositiveMode); //setRampMode(VelocityPositiveMode); //RAMPMODE
+      writeReg(AMAX, amax);                     //setSecondAcceleration(amax);       //AMAX
+      writeReg(VMAX, 0);                        //setMaxVelocity(0);                 //VMAX
+  }
+
+  inline void     StopMotorB   (void) { writeReg(VSTART, 0); writeReg(VMAX, 0); } //Method B
+
   inline uint8_t  getIcVersion  (void)          { return (readReg(IOIN)>>24) & 0xFF; }
-  inline bool     communicating (void)          { return getIcVersion()==0x11;}
+  uint8_t         stepAndDirectionMode  (void);    //IOIN
+  inline bool     IsConnected   (void)          { return getIcVersion()==0x11;}
+
+  void writeStopMode            (StopMode stop_mode); //SW_MODE
+  void enableStallStop          (bool En);            //SW_MODE //True=enable, False=disable
+  void endHome                  (void);
 
   // ====== Utilities Step/Dir ======
   void stepOnce           (void);
   void setDirection       (bool dirCW);
   void enableDriver       (bool en);
-  void SetSwMode          (SwModes m);
 
   int32_t   Init_MicroSteps (uint8_t ms);
   inline uint8_t   GetLastSpiStatus   (void)                                            {return SPI_Status;}
@@ -452,6 +601,7 @@ void cacheControllerSettings(ControllerParameters &Ret);
 
   char*     GetName         (void)  {return StepName;}
   void      SetName         (char* n)  {StepName=n;}
+
 private:
 
   // SPI

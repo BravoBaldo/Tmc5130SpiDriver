@@ -3,25 +3,54 @@ ToDo:
   Eecute an "HomeToStall"
   Check if to use Polidoro's class printer....
   remove TMC5130_RampMode
+  unificare Gconf and GconfBits
+
+  Tests
+    Seriale
+    connessione
+    Fermata 'morbida':  Ok StopMotor
+    In 'Neutral=Folle'  Ok
+    In 'Parking'        Ok
+    MotA continuous rotation, MotB two laps forward and two back
 */
-
-
 
 
 #include <SPI.h>
 #include "TMC5130.h"
 #include "TMC5130_Display.h"
-#include "TCA9555.h"  //https://github.com/RobTillaart/TCA9555
+#include "TCA9555.h"          //https://github.com/RobTillaart/TCA9555
 #include "TMC5130_Inits.h"
 
-#define wxSIZEOF(a) (sizeof(a)/sizeof(a[0]))
-
-#define I2C_SDA        16     //pin21 i2c serial data
-#define I2C_SCK        17     //pin47 i2c serial clock
-#define EXPANDER_ADDR_A	0x20  //I/O port expander A
+#define I2C_SDA         16     //pin21 i2c serial data
+#define I2C_SCK         17     //pin47 i2c serial clock
+#define EXPANDER_ADDR_A 0x20  //I/O port expander A
 
 //#define SPI_CS          5        //SPI's Chip Select
 #define SPI_FREQ        4000000   //4000000
+
+
+#define wxSIZEOF(a) (sizeof(a)/sizeof(a[0]))
+#define LOOP_DELAY  500
+#define PAUSE_DELAY 4000
+
+TMC5130::HomeParameters       home_parameters_chip;
+TMC5130::StallParameters      stall_parameters_chip;
+
+
+//--- List All expanders ------------------------------------------
+enum : uint8_t {
+  ExpanderA = 0,
+  Expander_Count  //Must be last
+}Exanders;
+
+TCA9555 EXPANDERS[]{  TCA9555(EXPANDER_ADDR_A),
+                  };
+//-----------------------------------------------------------------
+
+
+
+// --- Setup Steppers -----------------------------------------------------------------
+void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
 enum : uint8_t {
   StepperNameA = 0,
@@ -29,26 +58,16 @@ enum : uint8_t {
   StepperName_Count  //Must be last
 }StepperNames;
 
-
-enum : uint8_t {
-  ExpanderA = 0,
-  Expander_Count  //Must be last
-}Exanders;
-
-
-TCA9555 EXPANDERS[]{  TCA9555(EXPANDER_ADDR_A),
-                  };
-ANSI    ansi(&Serial);
-
-void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
-
 //AAA: Maybe SPI_FREQ must be unique!!!
 TMC5130 Steppers[]={TMC5130(SPI, 9, SpiEnableSteppers, SPI_FREQ, "Motor A"),
                     TMC5130(SPI, 8, SpiEnableSteppers, SPI_FREQ, "Motor B"),
                 };
+#define STEP_STALL StepperNameB //For Stall experiments
+//---------------------------------------------------------------------------------------
 
+ANSI    ansi(&Serial);
 
-void setup() {
+void setup_Basic() {
   Serial.begin(115200);
 
   //Expanders initializations
@@ -56,15 +75,14 @@ void setup() {
   EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000);  //per default mette tutti output
   EXPANDERS[ExpanderA].write16(0xFFFF); //1 means OFF!!!!
 
-//pinMode(SPI_CS, OUTPUT); digitalWrite(SPI_CS, HIGH);  //Init for ChipSelect on board
+  //pinMode(SPI_CS, OUTPUT); digitalWrite(SPI_CS, HIGH);  //Init for ChipSelect on board
 
   for(int i=0; i<wxSIZEOF(Steppers); i++){
     TMC5130_Init_01(Steppers[i]);
   }
 
-  SetFreeRunning(Steppers[1], 1); //Free running @ ??? Rotation Per Second
+#ifdef QQQQQQQQQQQQQQQQQQ
   Steppers[1].writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //
-
 //  InitTestStall    (Steppers[0]);
   //Check Communications
   bool AllOk;
@@ -83,23 +101,29 @@ void setup() {
     delay(1000);
   }while(!AllOk);
 
-  Steppers[1].beginRampToZeroVelocity();
-  while (not Steppers[1].zeroVelocity()) {
+  TMC5130::ControllerParameters OldRegs;
+  Steppers[STEP_STALL].cacheControllerSettings(OldRegs);
+  Steppers[STEP_STALL].beginRampToZeroVelocity();
+  while (not Steppers[STEP_STALL].zeroVelocity()) {
     Serial.println("Waiting for zero velocity.");
     delay(1000);
   }
-/*
-bool Controller::zeroVelocity() {
-  TMC5130::RampStat ramp_stat;
-  ramp_stat.bytes = stepper.readReg(TMC5130::RAMP_STAT);
-  return ramp_stat.vzero;
-}
+  Steppers[STEP_STALL].writeControllerParameters(OldRegs);
 
+  InitTestStall_Setup  (Steppers[STEP_STALL]);
+    home_parameters_chip.run_current        = 7;
+    home_parameters_chip.hold_current       = 3;
+    home_parameters_chip.target_position    = 4294152396;
+    home_parameters_chip.velocity           = 227862;
+    home_parameters_chip.acceleration       = 248;
+    home_parameters_chip.zero_wait_duration = 2353;
 
-*/
+    stall_parameters_chip.stall_guard_threshold = 3;
+    stall_parameters_chip.cool_step_threshold   = 147;
 
+  //ShowReadableRegisters(Steppers[STEP_STALL]);
 
-
+#endif
 }
 
 void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for each run
@@ -123,7 +147,7 @@ struct Fsa {  //Finite State Machine for Motors
   bool          Waiting;  //Flag for waiting
   bool          Laps;     //false=0...Steps, true=-Steps...Steps
 }fsa[]={  {&Steppers[StepperNameA], 0, true,  0, 0, 0, 1000, false, false},
-//        {&Steppers[StepperNameB], 0, false, 3, 0, 0, 2000, false, true }
+          {&Steppers[StepperNameB], 0, false, 3, 0, 0, 2000, false, true }
  };
 
 uint8_t loop_Gen(struct Fsa &f){
@@ -186,7 +210,8 @@ void DisplayMotor(TMC5130 &stp, uint8_t idx){
     ShowDrvStatus(&stp,            51, Row);
 }
 
-void loop(void){
+
+void loopAAA(void){
   static unsigned long timeRefresh = millis();
   unsigned long time = millis();
 
@@ -211,3 +236,110 @@ void loop(void){
     ansi.clearScreen();
   }
 }
+
+void loopWWW(void){
+  Serial.println("Waiting...");
+  delay(PAUSE_DELAY);
+
+  Serial.println("Homing to stall...");
+  beginHomeToStall(Steppers[STEP_STALL], home_parameters_chip, stall_parameters_chip);
+  int32_t actual_position_real;
+  while (not Steppers[STEP_STALL].homed()) {
+    // stepper.printer.readAndPrintDrvStatus();
+    int32_t actual_position_chip = Steppers[STEP_STALL].getPosition(); //stepper.controller.readActualPosition();
+    actual_position_real = actual_position_chip;  //ToDo
+/*
+    int32_t Converter::positionChipToReal(int32_t position_chip) {
+      return position_chip / (int32_t)converter_parameters_.microsteps_per_real_position_unit;
+    }
+    actual_position_real = stepper.converter.positionChipToReal(actual_position_chip);
+*/
+    Serial.print("homing...");
+    Serial.print("actual position (radians): ");  Serial.println(actual_position_real);
+    Serial.print("stall guard result: "); Serial.println(Steppers[STEP_STALL].readStallGuardResult());
+    Serial.print("stall guard threshold: ");
+    Serial.println("???");//Serial.println(stall_parameters_real.stall_guard_threshold);  //ToDo
+    delay(LOOP_DELAY);
+  }
+  Steppers[STEP_STALL].endHome();//  stepper.endHome();
+
+  Serial.println("Homed!");
+  Serial.print("actual_position_real: "); Serial.println(actual_position_real);
+  //Serial.print("home target position: "); Serial.println(home_parameters_real.target_position);
+
+  Serial.println("Waiting...");
+  delay(PAUSE_DELAY);
+
+  #define MOVE_POSITION  110  // radians
+  int32_t target_position_chip = MOVE_POSITION*8149;  //stepper.converter.positionRealToChip(MOVE_POSITION); //110*8149 radians * microsteps_per_real_position_unit
+  Steppers[STEP_STALL].writeReg(TMC5130::XTARGET,  target_position_chip); //stepper.controller.writeTargetPosition(target_position_chip);
+  Serial.print("Moving to another position (radians): "); Serial.print(MOVE_POSITION);  Serial.println("...");
+
+  while (not Steppers[STEP_STALL].positionReached()) {
+    // stepper.printer.readAndPrintRampStat();
+    // stepper.printer.readAndPrintDrvStatus();
+    int32_t actual_position_chip = Steppers[STEP_STALL].getPosition();   //stepper.controller.readActualPosition();
+    int32_t actual_position_real = actual_position_chip/8149;         //stepper.converter.positionChipToReal(actual_position_chip);
+    Serial.print("actual position (radians): ");Serial.println(actual_position_real);
+    Serial.print("stall_guard_result: ");
+    Serial.println(Steppers[STEP_STALL].readStallGuardResult());
+    delay(LOOP_DELAY);
+  }
+  Serial.println("Target position reached!");
+  delay(PAUSE_DELAY);
+
+  Serial.println("--------------------------");
+  delay(LOOP_DELAY);
+}
+
+void setup() {
+  setup_Basic();
+  delay(2000);
+
+  //Init Steppers to default
+  for(int i=0; i<wxSIZEOF(Steppers); i++){
+    ShowReadableRegisters(Steppers[i]);
+    while (!Steppers[i].IsConnected()) {
+      Serial.print("ERROR: Stepper '");
+      Serial.print(Steppers[i].GetName());
+      Serial.println("': No communication detected, check motor power and connections.");
+      delay(500);
+    }
+    TMC5130_Init_00(Steppers[i]);
+  }
+  SetFreeRunning(Steppers[StepperNameA], 1,0); //Free running @ ??? Rotation Per Second
+  SetFreeRunning(Steppers[StepperNameB], 2,8); //Free running @ ??? Rotation Per Second
+}
+
+void ShowMenu(){
+  static char* Menu[]={"","Hard Stop", "Soft Stop", "Neutral", "Parking", "Free running", "Reverse"};
+  Serial.println("\n\n");
+  for(int i=1; i<wxSIZEOF(Menu);i++){
+    Serial.print(i);  Serial.print(".");  Serial.println(Menu[i]);
+  }
+
+  Serial.print("\nYour choice:");
+  while (Serial.available() < 2) ;
+  int menuChoice = Serial.parseInt();
+  Serial.print(menuChoice);
+  if(menuChoice<wxSIZEOF(Menu)){
+    Serial.print(": ");
+    Serial.print(Menu[menuChoice]);
+  }else
+    Serial.println(" Invalid choice");
+
+  switch(menuChoice){
+    case 1: Steppers[1].StopMotor(1000);  break;
+    case 2: Steppers[1].StopMotor(1);     break;
+    case 3: Steppers[1].setNeutral();     break;
+    case 4: Steppers[1].setParking();     break;
+    case 5: Steppers[1].setCurrent(7, 1, 1);  SetFreeRunning(Steppers[StepperNameB], 2,8);  break;
+    case 6: Steppers[1].setRampMode(TMC5130::VelocityNegativeMode); break;
+
+    default: Serial.println("Please choose a valid selection"); return;
+  }
+}
+void loop(void){
+      ShowMenu();
+ }
+ 

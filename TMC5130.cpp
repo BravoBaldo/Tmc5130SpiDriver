@@ -239,7 +239,7 @@ void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
 }
 
 void TMC5130::setMicrosteps(uint8_t mres) {
-  assert(mres>=1 && mres<=0b1000);
+  assert(mres>=0 && mres<=8);
   uint32_t v = readReg(CHOPCONF) & 0xF0FFFFFF;
   uint32_t mr = (((uint32_t)mres)<<24);
   v |= mr;
@@ -257,12 +257,6 @@ void TMC5130::SetGconfBit(GconfBits b, bool en){
   if (en) gconf |= b;
   else    gconf &= ~b;
   writeReg(GCONF, gconf);
-}
-
-
-void TMC5130::SetSwMode(SwModes m){
-  assert(m>=(SwModes)0 && m<=(SwModes)0xFFF);
-  writeReg(SW_MODE, m );
 }
 
 void TMC5130::setDcStep(uint16_t dcTime, uint16_t dcSG) {
@@ -284,11 +278,6 @@ TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t 
 // ====================================================
 // ======= MOTION CONTROLLER EMBEDDED =================
 // ====================================================
-
-void TMC5130::setRampMode(TMC5130_RampMode m) {
-  assert(m>=0 && m<=3);
-  writeReg(RAMPMODE, m);
-}
 
 void TMC5130::setMaxVelocity(uint32_t v) {
   assert(v>=0 && v<=0x7FFE00);
@@ -330,31 +319,77 @@ void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=
   writeReg(D1, d);
 }
 
+void TMC5130::setRampMode(RampMode m) {
+  assert(m>=0 && m<=3);
+  writeReg(RAMPMODE, m);
+}
+
+
 bool TMC5130::zeroVelocity(void) {
-  //return ((readReg(RAMP_STAT) & 0x200) !=0);
+  //return ((readReg(RAMP_STAT) & 0x0400) !=0);
   RampStat ramp_stat;
-  ramp_stat.bytes = readReg(RAMP_STAT); // & 0x200
+  ramp_stat.bytes = readReg(RAMP_STAT); //
   return ramp_stat.vzero;
+}
+
+bool TMC5130::positionReached(void) {  //RAMP_STAT
+  RampStat ramp_stat;
+  ramp_stat.bytes = readReg(RAMP_STAT); //0x0200
+  return ramp_stat.position_reached;  //bit 9
+}
+
+uint16_t TMC5130::readStallGuardResult(void) { //DRV_STATUS
+  DrvStatus drv_status;
+  drv_status.bytes = readReg(DRV_STATUS);
+  return drv_status.sg_result;
+}
+
+void TMC5130::writeStopMode(StopMode stop_mode) { //SW_MODE
+  SwMode sw_mode;
+  sw_mode.bytes = readReg(TMC5130::SW_MODE);
+  sw_mode.en_softstop = stop_mode;
+  writeReg(TMC5130::SW_MODE, sw_mode.bytes);
+}
+
+void TMC5130::enableStallStop(bool En) { //SW_MODE //True=enable, False=disable
+  SwMode sw_mode;
+  sw_mode.bytes = readReg(TMC5130::SW_MODE);
+  sw_mode.sg_stop = En?1:0;
+  writeReg(TMC5130::SW_MODE, sw_mode.bytes);
 }
 
 void TMC5130::cacheControllerSettings(ControllerParameters &Ret) {
   //In Polidoro's routine, ther get registers from a local copy (registers_ptr_)
-//  ControllerParameters Ret;
-  Ret.ramp_mode             = getRampMode();  //(RampMode)registers_ptr_->getStored(Registers::RAMPMODE);
+  Ret.ramp_mode             = getRampMode();                  //VelocityPositiveMode
   SwMode sw_mode;  sw_mode.bytes = readReg(SW_MODE);
-  Ret.stop_mode             = (StopMode)sw_mode.en_softstop;
-  Ret.max_velocity          = readReg(VMAX);
-  Ret.max_acceleration      = readReg(AMAX);
-  Ret.start_velocity        = readReg(VSTART);
-  Ret.stop_velocity         = readReg(VSTOP);
-  Ret.first_velocity        = readReg(V1);
-  Ret.first_acceleration    = readReg(A1);
-  Ret.max_deceleration      = readReg(DMAX);
-  Ret.first_deceleration    = readReg(D1);
-  Ret.zero_wait_duration    = readReg(TZEROWAIT);
-  Ret.stall_stop_enabled    = sw_mode.sg_stop;
-  Ret.min_dc_step_velocity  = readReg(VDCMIN);
-//  return Ret;
+  Ret.stop_mode             = (StopMode)sw_mode.en_softstop;  //HardMode
+  Ret.max_velocity          = readReg(VMAX);                  //10
+  Ret.max_acceleration      = readReg(AMAX);                  //10
+  Ret.start_velocity        = readReg(VSTART);                //1
+  Ret.stop_velocity         = readReg(VSTOP);                 //10
+  Ret.first_velocity        = readReg(V1);                    //0
+  Ret.first_acceleration    = readReg(A1);                    //0
+  Ret.max_deceleration      = readReg(DMAX);                  //1
+  Ret.first_deceleration    = readReg(D1);                    //10
+  Ret.zero_wait_duration    = readReg(TZEROWAIT);             //0
+  Ret.stall_stop_enabled    = sw_mode.sg_stop;                //false
+  Ret.min_dc_step_velocity  = readReg(VDCMIN);                //0
+}
+
+void TMC5130::writeControllerParameters(ControllerParameters &par){
+  writeReg(RAMPMODE,  par.ramp_mode);
+  writeStopMode(      par.stop_mode);
+  writeReg(VMAX,      par.max_velocity);
+  writeReg(AMAX,      par.max_acceleration);
+  writeReg(VSTART,    par.start_velocity);
+  writeReg(VSTOP,     par.stop_velocity);
+  writeReg(V1,        par.first_velocity);
+  writeReg(A1,        par.first_acceleration);
+  writeReg(DMAX,      par.max_deceleration);
+  writeReg(D1,        par.first_deceleration);
+  writeReg(TZEROWAIT, par.zero_wait_duration);
+  enableStallStop(par.stall_stop_enabled);
+  writeReg(VDCMIN,    par.min_dc_step_velocity);
 }
 
 void TMC5130::beginRampToZeroVelocity( void ){
@@ -394,3 +429,48 @@ int32_t TMC5130::Init_MicroSteps(uint8_t ms){
   setMaxVelocity(MaxVel*2);
   return Steps;
 }
+
+uint8_t TMC5130::stepAndDirectionMode(void) { //IOIN
+  Ioin ioin;
+  ioin.bytes = readReg(IOIN);
+  return ioin.sd_mode;
+}
+
+void TMC5130::softwareEnable(){  //CHOPCONF
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.toff = 3;  //from 1...15 enabled_toff_;  //Off time setting controls duration of slow decay phase
+  writeReg(TMC5130::CHOPCONF, chopconf.bytes);
+}
+
+
+bool TMC5130::homed() {  //ToDo: leggere le note
+  // reading ramp_stat clears flags and may cause motion after stall stop
+  // better to read actual velocity instead
+  int32_t actual_velocity = getVelocity();  //controller.readActualVelocity();
+  bool still = (actual_velocity == 0);
+  if (still)
+    writeReg(RAMPMODE, HoldMode); //controller.writeRampMode(HoldMode);
+  return still;
+}
+/*
+uint16_t TMC5130::readStallGuardResult() {
+  Registers::DrvStatus drv_status;
+  drv_status.bytes = registers_ptr_->read(Registers::DrvStatusAddress);
+  return drv_status.sg_result;
+}
+*/
+
+void TMC5130::endHome(void) {
+  setRampMode(HoldMode);       //controller.writeRampMode(HoldMode);
+  writeReg(XACTUAL,  0);                //controller.zeroActualPosition();
+  writeReg(XTARGET,  0);                //controller.zeroTargetPosition();
+
+  //ToDo: driver.restoreDriverSettings();
+  //ToDo: controller.restoreControllerSettings();
+  //ToDo: controller.restoreSwitchSettings();
+
+  readReg(RAMP_STAT);                 //registers.read(Registers::RampStatAddress);  // clear ramp_stat flags
+  setRampMode(PositionMode); //controller.writeRampMode(PositionMode);
+}
+
