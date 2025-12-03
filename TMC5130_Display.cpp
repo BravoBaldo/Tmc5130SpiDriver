@@ -113,11 +113,11 @@ void GenShowReg(ShowAsTyp Typ, uint32_t Val, uint8_t Col, uint8_t Row, bool Vert
   char** Xnames;
   uint8_t Size = 0;
   switch(Typ){
-    case ShowAsSwitch:    Vnames = SwitchMode_v;  Hnames = SwitchMode_h;  Xnames = SwitchMode_x;  Size = sizeof(SwitchMode_v)/sizeof(SwitchMode_v[0]);  break;
-    case ShowAsRamp:      Vnames = RampStatus_v;  Hnames = RampStatus_h;  Xnames = RampStatus_x;  Size = sizeof(RampStatus_v)/sizeof(RampStatus_v[0]);  break;
-    case ShowAsSpiStatus: Vnames =  SpiStatus_v;  Hnames =  SpiStatus_h;  Xnames =  SpiStatus_x;  Size = sizeof( SpiStatus_v)/sizeof( SpiStatus_v[0]);  break;
-    case ShowAsInputs:    Vnames =     Inputs_v;  Hnames =     Inputs_h;  Xnames =     Inputs_x;  Size = sizeof(    Inputs_v)/sizeof(    Inputs_v[0]);  break;
-    case ShowAsGStatus:   Vnames =    GStatus_v;  Hnames =    GStatus_h;  Xnames =    GStatus_x;  Size = sizeof(   GStatus_v)/sizeof(   GStatus_v[0]);  break;
+    case ShowAsSwitch:    Vnames = SwitchMode_v;  Hnames = SwitchMode_h;  Xnames = SwitchMode_x;  Size = wxSIZEOF(SwitchMode_v);  break;
+    case ShowAsRamp:      Vnames = RampStatus_v;  Hnames = RampStatus_h;  Xnames = RampStatus_x;  Size = wxSIZEOF(RampStatus_v);  break;
+    case ShowAsSpiStatus: Vnames =  SpiStatus_v;  Hnames =  SpiStatus_h;  Xnames =  SpiStatus_x;  Size = wxSIZEOF( SpiStatus_v);  break;
+    case ShowAsInputs:    Vnames =     Inputs_v;  Hnames =     Inputs_h;  Xnames =     Inputs_x;  Size = wxSIZEOF(    Inputs_v);  break;
+    case ShowAsGStatus:   Vnames =    GStatus_v;  Hnames =    GStatus_h;  Xnames =    GStatus_x;  Size = wxSIZEOF(   GStatus_v);  break;
     default: return;
   }
   GenShow(Col, Row, Vert, ShowTitle, Val, Vnames, Hnames, Xnames, Size);
@@ -125,28 +125,28 @@ void GenShowReg(ShowAsTyp Typ, uint32_t Val, uint8_t Col, uint8_t Row, bool Vert
 
 uint16_t ShowSwitchMode(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
   uint16_t Val = stp->readReg(TMC5130::SW_MODE);
-  GenShow(Col, Row, Vert, ShowTitle, Val, SwitchMode_v, SwitchMode_h, SwitchMode_x, sizeof(SwitchMode_v)/sizeof(SwitchMode_v[0]));
+  GenShow(Col, Row, Vert, ShowTitle, Val, SwitchMode_v, SwitchMode_h, SwitchMode_x, wxSIZEOF(SwitchMode_v));
   return Val;
 }
 
 void ShowRampStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::RAMP_STAT), RampStatus_v, RampStatus_h, RampStatus_x, sizeof(RampStatus_v)/sizeof(RampStatus_v[0]));
+  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::RAMP_STAT), RampStatus_v, RampStatus_h, RampStatus_x, wxSIZEOF(RampStatus_v));
 }
 
 uint8_t ShowSpiStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
   uint8_t Val = stp->GetSpiStatus();
-  GenShow(Col, Row, Vert, ShowTitle, Val, SpiStatus_v, SpiStatus_h, SpiStatus_x, sizeof(SpiStatus_v)/sizeof(SpiStatus_v[0]));
+  GenShow(Col, Row, Vert, ShowTitle, Val, SpiStatus_v, SpiStatus_h, SpiStatus_x, wxSIZEOF(SpiStatus_v));
   return Val;
 }
 
 uint8_t ShowInputs(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
   uint8_t Val = stp->readReg(TMC5130::IOIN);
-  GenShow(Col, Row, Vert, ShowTitle, Val, Inputs_v, Inputs_h, Inputs_x, sizeof(Inputs_v)/sizeof(Inputs_v[0]));
+  GenShow(Col, Row, Vert, ShowTitle, Val, Inputs_v, Inputs_h, Inputs_x, wxSIZEOF(Inputs_v));
   return Val;
 }
 
 void ShowGStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::GSTAT), GStatus_v, GStatus_h, GStatus_x, sizeof(GStatus_v)/sizeof(GStatus_v[0]));
+  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::GSTAT), GStatus_v, GStatus_h, GStatus_x, wxSIZEOF(GStatus_v));
 }
 
 void ShowCurrents(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
@@ -318,12 +318,14 @@ void Printer::readAndPrintPwmScale(TMC5130 &stepper) {
 void ShowReadableRegisters(TMC5130 &stepper){
 //   print_ptr_->println("--------------------------");
  Serial.println("---Readable Registers---");
-  for(int i=0; i<(sizeof(TMC5130::RegsReadable)/sizeof(TMC5130::RegsReadable[0])); i++){
-    Serial.print(i);
+  for(int i=0; i<(wxSIZEOF(TMC5130::RegsReadable)); i++){
+    Serial.printf("%02d) %02X: %08X\n", i, TMC5130::RegsReadable[i], stepper.readReg(TMC5130::RegsReadable[i]));
+/*    Serial.print(i);
     Serial.print(") ");
     Serial.print(TMC5130::RegsReadable[i], HEX);
     Serial.print(":");
     Serial.println(stepper.readReg(TMC5130::RegsReadable[i]), HEX);
+*/
   }
   Serial.println("-------------------------------\n");
 }

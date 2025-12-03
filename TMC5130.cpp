@@ -213,29 +213,19 @@ void TMC5130::enableRegBit(bool en, Reg reg, uint32_t Mask) {
   writeReg(reg, old);
 }
 
-void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
+void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {  //IHOLD_IRUN
   assert(irun>=0     && irun<=31 && 
         ihold>=0     && ihold<=31  && 
         holdDelay>=0 && holdDelay<=15);
 
-//  uint32_t old = readReg(GCONF)|0x10000;  //SetDirectMode
-//  enableDirectMode(true);
-
-/*
-  IRUN: Motor run current (0=1/32…31=32/32) Hint: Choose sense resistors in a way, that normal IRUN is 16 to 31 for best microstep performance.
-  IHOLD:  Standstill current (0=1/32…31=32/32)  In combination with StealthChop mode, setting IHOLD=0 allows to choose freewheeling or coil short circuit for motor stand still.
-  IHOLDDELAY: Controls the number of clock cycles for motor power down after a motion as soon as standstill is detected (stst=1) and TPOWERDOWN has expired.
-              The smooth transition avoids a motor jerk upon power down.
-              0: instant power down
-              1..15: Delay per current reduction step in multiple of 2^18 clocks
-*/
-  uint32_t reg = readReg(TMC5130::IHOLD_IRUN) & (~0xF1F1F);
+  uint32_t reg = ShadowRegs.Ihold_Irun.bytes & (~0xF1F1F); //AAA read Only
   reg |= (ihold) & 0x1F;
   reg |= (irun<<8) & 0x1F00;
   reg |= (holdDelay<<16) & 0xF0000;
 
   //reg |= ((uint32_t)holdDelay << 16) | ((uint32_t)irun << 8) | (ihold);
   writeReg(IHOLD_IRUN, reg);
+  ShadowRegs.Ihold_Irun.bytes = reg;
 }
 
 void TMC5130::setMicrosteps(uint8_t mres) {
@@ -246,11 +236,13 @@ void TMC5130::setMicrosteps(uint8_t mres) {
   writeReg(CHOPCONF, v);
 }
 
-void TMC5130::setMicrosteps(MicroStepsMask m) {
-  uint32_t v = readReg(CHOPCONF);
-  v = (v & 0xF0FFFFFF) | m;
-  writeReg(CHOPCONF, v);
+void TMC5130::softwareEnable(){  //CHOPCONF
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.toff = 3;  //from 1...15 enabled_toff_;  //Off time setting controls duration of slow decay phase
+  writeReg(TMC5130::CHOPCONF, chopconf.bytes);
 }
+
 
 void TMC5130::SetGconfBit(GconfBits b, bool en){
   uint32_t gconf = readReg(GCONF);
@@ -263,7 +255,7 @@ void TMC5130::setDcStep(uint16_t dcTime, uint16_t dcSG) {
   assert(dcTime>=0 && dcTime<=0x1FF  &&  dcSG>=0 && dcSG<=0xFF);
   
   uint32_t v = ((uint32_t)dcTime << 16) | dcSG;
-  writeReg(DCCTRL, v);
+  setDcctrl(v);
 }
 
 void TMC5130::setTCOOLTHRS(uint32_t val) {
@@ -282,6 +274,7 @@ TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t 
 void TMC5130::setMaxVelocity(uint32_t v) {
   assert(v>=0 && v<=0x7FFE00);
   writeReg(VMAX, v);
+  ShadowRegs.MaxVelocity = v;
 }
 
 void TMC5130::setStartVelocity(uint32_t v){
@@ -363,23 +356,23 @@ void TMC5130::cacheControllerSettings(ControllerParameters &Ret) {
   Ret.ramp_mode             = getRampMode();                  //VelocityPositiveMode
   SwMode sw_mode;  sw_mode.bytes = readReg(SW_MODE);
   Ret.stop_mode             = (StopMode)sw_mode.en_softstop;  //HardMode
-  Ret.max_velocity          = readReg(VMAX);                  //10
+  Ret.max_velocity          = getMaxVelocity();                  //10
   Ret.max_acceleration      = readReg(AMAX);                  //10
   Ret.start_velocity        = readReg(VSTART);                //1
-  Ret.stop_velocity         = readReg(VSTOP);                 //10
+ // Ret.stop_velocity         = readReg(VSTOP);                 //10
   Ret.first_velocity        = readReg(V1);                    //0
   Ret.first_acceleration    = readReg(A1);                    //0
   Ret.max_deceleration      = readReg(DMAX);                  //1
   Ret.first_deceleration    = readReg(D1);                    //10
-  Ret.zero_wait_duration    = readReg(TZEROWAIT);             //0
+//R Ret.zero_wait_duration    = readReg(TZEROWAIT);             //0
   Ret.stall_stop_enabled    = sw_mode.sg_stop;                //false
-  Ret.min_dc_step_velocity  = readReg(VDCMIN);                //0
+//R  Ret.min_dc_step_velocity  = readReg(VDCMIN);                //0
 }
 
 void TMC5130::writeControllerParameters(ControllerParameters &par){
   writeReg(RAMPMODE,  par.ramp_mode);
   writeStopMode(      par.stop_mode);
-  writeReg(VMAX,      par.max_velocity);
+  setMaxVelocity(par.max_velocity);
   writeReg(AMAX,      par.max_acceleration);
   writeReg(VSTART,    par.start_velocity);
   writeReg(VSTOP,     par.stop_velocity);
@@ -395,7 +388,7 @@ void TMC5130::writeControllerParameters(ControllerParameters &par){
 void TMC5130::beginRampToZeroVelocity( void ){
   // cacheControllerSettings();
   writeReg(VSTART, 0); //writeStartVelocity(0);
-  writeReg(VMAX,   0); //writeMaxVelocity(0);
+  setMaxVelocity(0);
 }
 
 
@@ -436,14 +429,6 @@ uint8_t TMC5130::stepAndDirectionMode(void) { //IOIN
   return ioin.sd_mode;
 }
 
-void TMC5130::softwareEnable(){  //CHOPCONF
-  Chopconf chopconf;
-  chopconf.bytes = readReg(CHOPCONF);
-  chopconf.toff = 3;  //from 1...15 enabled_toff_;  //Off time setting controls duration of slow decay phase
-  writeReg(TMC5130::CHOPCONF, chopconf.bytes);
-}
-
-
 bool TMC5130::homed() {  //ToDo: leggere le note
   // reading ramp_stat clears flags and may cause motion after stall stop
   // better to read actual velocity instead
@@ -474,3 +459,32 @@ void TMC5130::endHome(void) {
   setRampMode(PositionMode); //controller.writeRampMode(PositionMode);
 }
 
+void TMC5130::writeStandstillMode(StandstillMode mode) { //PWMCONF
+  Pwmconf pwmconf;
+  pwmconf.bytes = getPwmconf();
+  pwmconf.freewheel = mode;
+  setPwmconf(pwmconf.bytes);
+}
+
+void TMC5130::writePwmOffset(uint8_t pwm_amplitude) {  //PWMCONF
+  Pwmconf pwmconf;
+  pwmconf.bytes = getPwmconf();
+  pwmconf.pwm_ampl = pwm_amplitude;    //pwm_ampl alias pwm_ofs
+  setPwmconf(pwmconf.bytes);
+}
+
+void TMC5130::writePwmGradient(uint8_t pwm_amplitude) {  //PWMCONF
+  TMC5130::Pwmconf pwmconf;
+  pwmconf.bytes = getPwmconf();
+  pwmconf.pwm_grad = pwm_amplitude;
+  setPwmconf(pwmconf.bytes);
+}
+
+void TMC5130::enableAutomaticCurrentControl(bool en) {  //PWMCONF
+  TMC5130::Pwmconf pwmconf;
+  pwmconf.bytes = getPwmconf();
+  pwmconf.pwm_autoscale = en?1:0;
+  pwmconf.pwm_symmetric = en?1:0; //alias pwm_autograd
+//pwmconf.pwm_reg = pwm_reg;      //pwm_reg does not exists in 5130
+  setPwmconf(pwmconf.bytes);
+}
