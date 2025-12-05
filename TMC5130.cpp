@@ -218,14 +218,53 @@ void TMC5130::setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {  //IH
         ihold>=0     && ihold<=31  && 
         holdDelay>=0 && holdDelay<=15);
 
-  uint32_t reg = ShadowRegs.Ihold_Irun.bytes & (~0xF1F1F); //AAA read Only
-  reg |= (ihold) & 0x1F;
-  reg |= (irun<<8) & 0x1F00;
-  reg |= (holdDelay<<16) & 0xF0000;
+  //IHOLD_IRUN is WriteOnly
+  ShadowRegs.Ihold_Irun.bytes = 0;
+  ShadowRegs.Ihold_Irun.irun       = irun;
+  ShadowRegs.Ihold_Irun.ihold      = ihold;
+  ShadowRegs.Ihold_Irun.iholddelay = holdDelay;
+  writeReg(IHOLD_IRUN, ShadowRegs.Ihold_Irun.bytes);
+}
 
-  //reg |= ((uint32_t)holdDelay << 16) | ((uint32_t)irun << 8) | (ihold);
-  writeReg(IHOLD_IRUN, reg);
-  ShadowRegs.Ihold_Irun.bytes = reg;
+void TMC5130::setNodeConf(uint8_t naddr, uint8_t sdelay) { //SLAVECONF or NODECONF WriteOnly
+  assert(naddr>=0     && naddr<=253 && 
+        sdelay>=0 && sdelay<=15);
+  ShadowRegs.NODECONF.bytes = 0;
+  ShadowRegs.NODECONF.nodeaddr  = naddr;
+  ShadowRegs.NODECONF.senddelay = sdelay;
+  writeReg(NODECONF, ShadowRegs.NODECONF.bytes);
+}
+
+void TMC5130::setXCompare(int32_t xcomp) { //X_COMPARE WriteOnly
+  ShadowRegs.X_COMPARE = xcomp;
+  writeReg(NODECONF, ShadowRegs.X_COMPARE);
+}
+
+void TMC5130::setTHigh(uint32_t v){
+  assert(v>=0 && v<=0xFFFFF);
+  writeReg(IHOLD_IRUN, v);
+  ShadowRegs.THIGH = v;
+}
+
+void TMC5130::Sethold_delay(uint8_t hold_delay){
+  assert(hold_delay>=0 && hold_delay<=15);
+  //IHOLD_IRUN is write Only
+  ShadowRegs.Ihold_Irun.iholddelay = hold_delay;
+  writeReg(IHOLD_IRUN, ShadowRegs.Ihold_Irun.bytes);
+}
+
+void TMC5130::SetIhold(uint8_t ihold){
+  assert(ihold>=0 && ihold<=31);
+  //IHOLD_IRUN is write Only
+  ShadowRegs.Ihold_Irun.ihold = ihold;
+  writeReg(IHOLD_IRUN, ShadowRegs.Ihold_Irun.bytes);
+}
+
+void TMC5130::SetIrun(uint8_t irun){
+  assert(irun>=0 && irun<=31);
+  //IHOLD_IRUN is write Only
+  ShadowRegs.Ihold_Irun.irun = irun;
+  writeReg(IHOLD_IRUN, ShadowRegs.Ihold_Irun.bytes);
 }
 
 void TMC5130::setMicrosteps(uint8_t mres) {
@@ -243,6 +282,58 @@ void TMC5130::softwareEnable(){  //CHOPCONF
   writeReg(TMC5130::CHOPCONF, chopconf.bytes);
 }
 
+void TMC5130::writeChopperMode(ChopperMode chopper_mode) {  //CHOPCONF
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.chm = chopper_mode;
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
+void TMC5130::enableHighVelocityFullstep(bool En) { //CHOPCONF //True=enable, False=disable
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.vhighfs = En?1:0;
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
+void TMC5130::enableHighVelocityChopperSwitch(bool En) {  //CHOPCONF //True=enable, False=disable
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.vhighchm = En?1:0;
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
+void TMC5130::enableShortToGroundProtection(bool En) {  //CHOPCONF  //True=enable=0, False=disable=1
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.diss2g = En?0:1; //Note: Inverted
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
+void TMC5130::writeComparatorBlankTime(ComparatorBlankTime tbl) {  //CHOPCONF
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.tbl = tbl;
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
+void TMC5130::writeEnabledToff(uint8_t toff) { //CHOPCONF
+//  %0000: Driver disable, all bridges off
+//  %0001: 1 – use only with TBL ≥ 2
+
+//  const static uint8_t DISABLE_TOFF         = 0b0;
+//  const static uint8_t ENABLED_TOFF_MIN     = 1;
+//  const static uint8_t ENABLED_TOFF_MAX     = 15;
+//  const static uint8_t ENABLED_TOFF_DEFAULT = 3;
+
+  if (toff <  1)  toff =  1;
+  if (toff > 15)  toff = 15;
+  Chopconf chopconf;
+  chopconf.bytes = readReg(CHOPCONF);
+  chopconf.toff = toff;
+  writeReg(CHOPCONF, chopconf.bytes);
+}
+
 
 void TMC5130::SetGconfBit(GconfBits b, bool en){
   uint32_t gconf = readReg(GCONF);
@@ -251,11 +342,29 @@ void TMC5130::SetGconfBit(GconfBits b, bool en){
   writeReg(GCONF, gconf);
 }
 
+void TMC5130::setGconf(uint32_t gconf){
+  assert(gconf>=0 && gconf <= 0x1FFFF);
+  writeReg(GCONF, gconf);
+}
+
+void TMC5130::setMotorDirection(MotorDirection motor_direction) {  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
+    Gconf gconf;
+    gconf.bytes = readReg(GCONF);
+    gconf.shaft = motor_direction;
+    setGconf(gconf.bytes);
+}
+
 void TMC5130::setDcStep(uint16_t dcTime, uint16_t dcSG) {
   assert(dcTime>=0 && dcTime<=0x1FF  &&  dcSG>=0 && dcSG<=0xFF);
   
   uint32_t v = ((uint32_t)dcTime << 16) | dcSG;
   setDcctrl(v);
+}
+
+void TMC5130::setTPwmThrs(uint32_t TPwmThrs){
+  assert(TPwmThrs>=0 && TPwmThrs<=0xFFFFF);
+  writeReg(TCOOLTHRS, TPwmThrs);
+  ShadowRegs.TPwmThrs = TPwmThrs;
 }
 
 void TMC5130::setTCOOLTHRS(uint32_t val) {
@@ -274,7 +383,7 @@ TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t 
 void TMC5130::setMaxVelocity(uint32_t v) {
   assert(v>=0 && v<=0x7FFE00);
   writeReg(VMAX, v);
-  ShadowRegs.MaxVelocity = v;
+  ShadowRegs.VMAX = v;
 }
 
 void TMC5130::setStartVelocity(uint32_t v){
@@ -282,34 +391,40 @@ void TMC5130::setStartVelocity(uint32_t v){
   writeReg(VSTART, v);
 }
 
-void TMC5130::setFirstVelocity  (uint32_t v)  {
+void TMC5130::setFirstVelocity(uint32_t v)  {
   assert(v>=0 && v<=0xFFFFF);
   writeReg(V1, v);
+  ShadowRegs.V1 = v;
 }
 
-void TMC5130::setStopVelocity   (uint32_t v)  {
+void TMC5130::setStopVelocity(uint32_t v)  {
   assert(v>=0 && v<=0x3FFFF);
   writeReg(VSTOP, v);
+  ShadowRegs.VSTOP = v;
 }
 
 void TMC5130::setFirstAcceleration(uint16_t a) {  //[μsteps / ta²]  0...65535=0xFFFF
   assert(a>=0 && a<=0xFFFF);
-  writeReg(A1, a);   
+  writeReg(A1, a);
+  ShadowRegs.A1 = a;
 }
 
 void TMC5130::setSecondAcceleration (uint16_t a) {  //[μsteps / ta²]  0...65535=0xFFFF
   assert(a>=0 && a<=0xFFFFF);
   writeReg(AMAX, a);
+  ShadowRegs.AMAX = a;
 }
 
 void TMC5130::setFirstDeceleration(uint16_t d) {  //[μsteps / ta²]  0...65535=0xFFFF
   assert(d>=0 && d<=0xFFFF);
   writeReg(DMAX, d);
+  ShadowRegs.DMAX = d;
 }
 
 void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=0xFFFF
   assert(d>=1 && d<=0xFFFF);
   writeReg(D1, d);
+  ShadowRegs.D1 = d;
 }
 
 void TMC5130::setRampMode(RampMode m) {
@@ -357,29 +472,29 @@ void TMC5130::cacheControllerSettings(ControllerParameters &Ret) {
   SwMode sw_mode;  sw_mode.bytes = readReg(SW_MODE);
   Ret.stop_mode             = (StopMode)sw_mode.en_softstop;  //HardMode
   Ret.max_velocity          = getMaxVelocity();                  //10
-  Ret.max_acceleration      = readReg(AMAX);                  //10
+  Ret.max_acceleration      = getSecondAcceleration();        //AMAX)//10  WriteOnly
   Ret.start_velocity        = readReg(VSTART);                //1
- // Ret.stop_velocity         = readReg(VSTOP);                 //10
+  Ret.stop_velocity         = getStopVelocity();            //10  VSTOP ReadOnly
   Ret.first_velocity        = readReg(V1);                    //0
   Ret.first_acceleration    = readReg(A1);                    //0
-  Ret.max_deceleration      = readReg(DMAX);                  //1
-  Ret.first_deceleration    = readReg(D1);                    //10
+  Ret.max_deceleration      = getFirstDeceleration();         //1   DMAX WriteOnly
+  Ret.first_deceleration    = getSecondDeceleration();        //10  D1 WriteOnly
 //R Ret.zero_wait_duration    = readReg(TZEROWAIT);             //0
   Ret.stall_stop_enabled    = sw_mode.sg_stop;                //false
 //R  Ret.min_dc_step_velocity  = readReg(VDCMIN);                //0
 }
 
 void TMC5130::writeControllerParameters(ControllerParameters &par){
-  writeReg(RAMPMODE,  par.ramp_mode);
-  writeStopMode(      par.stop_mode);
-  setMaxVelocity(par.max_velocity);
-  writeReg(AMAX,      par.max_acceleration);
+  setRampMode(par.ramp_mode); //RAMPMODE
+  writeStopMode         (par.stop_mode);
+  setMaxVelocity        (par.max_velocity);
+  setSecondAcceleration (par.max_acceleration);  //AMAX,      
   writeReg(VSTART,    par.start_velocity);
-  writeReg(VSTOP,     par.stop_velocity);
+  setStopVelocity(par.stop_velocity); //VSTOP
   writeReg(V1,        par.first_velocity);
   writeReg(A1,        par.first_acceleration);
-  writeReg(DMAX,      par.max_deceleration);
-  writeReg(D1,        par.first_deceleration);
+  setFirstDeceleration  (par.max_deceleration);
+  setSecondDeceleration (par.first_deceleration); //D1
   writeReg(TZEROWAIT, par.zero_wait_duration);
   enableStallStop(par.stall_stop_enabled);
   writeReg(VDCMIN,    par.min_dc_step_velocity);
@@ -435,7 +550,7 @@ bool TMC5130::homed() {  //ToDo: leggere le note
   int32_t actual_velocity = getVelocity();  //controller.readActualVelocity();
   bool still = (actual_velocity == 0);
   if (still)
-    writeReg(RAMPMODE, HoldMode); //controller.writeRampMode(HoldMode);
+    setRampMode(HoldMode); //RAMPMODE controller.writeRampMode(HoldMode);
   return still;
 }
 /*
@@ -449,7 +564,7 @@ uint16_t TMC5130::readStallGuardResult() {
 void TMC5130::endHome(void) {
   setRampMode(HoldMode);       //controller.writeRampMode(HoldMode);
   writeReg(XACTUAL,  0);                //controller.zeroActualPosition();
-  writeReg(XTARGET,  0);                //controller.zeroTargetPosition();
+  setTarget(0);                //XTARGET   controller.zeroTargetPosition();
 
   //ToDo: driver.restoreDriverSettings();
   //ToDo: controller.restoreControllerSettings();

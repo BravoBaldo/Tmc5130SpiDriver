@@ -1,27 +1,36 @@
-
 #include "TMC5130_Inits.h"
 
 //From Datasheet:
 //Enable the driver for step and direction operation and initialize the chopper for SpreadCycle operation and for StealthChop at <30 RPM:
 void TMC5130_Init_DS0(TMC5130 &stepper) {
-  stepper.writeReg(TMC5130::CHOPCONF,   0x000100C3);  // CHOPCONF: TOFF=3, HSTRT=4, HEND=1, TBL=2, CHM=0 (SpreadCycle)
-  stepper.writeReg(TMC5130::IHOLD_IRUN, 0x00061F0A);  // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-  stepper.writeReg(TMC5130::TPOWERDOWN, 0x0000000A);  // TPOWERDOWN=10: Delay before power down in stand still
-  stepper.writeReg(TMC5130::GCONF,      0x00000004);  // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
-  stepper.writeReg(TMC5130::TPWMTHRS,   0x000001F4);  // TPWM_THRS=500 yields a switching velocity about 35000 = ca. 30RPM
-  stepper.writeReg(TMC5130::PWMCONF,    0x000401C8);  // PWMCONF: AUTO=1, 2/1024 Fclk, Switch amplitude limit=200, Grad=1
+  stepper.setChopconf   (0x000100C3);  // CHOPCONF: TOFF=3, HSTRT=4, HEND=1, TBL=2, CHM=0 (SpreadCycle)
+  stepper.setCurrent    (31, 10, 6);  //stepper.writeReg(TMC5130::IHOLD_IRUN, 0x00061F0A);  // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
+  stepper.setTPowerDown (10);  // TPOWERDOWN=10: Delay before power down in stand still
+  stepper.setGconf      (0x00000004);  //GCONF      EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
+  stepper.setTPwmThrs   (500);  // TPWM_THRS=500 yields a switching velocity about 35000 = ca. 30RPM
+  //stepper.writeReg(TMC5130::PWMCONF,    0x000401C8);  // PWMCONF: AUTO=1, 2/1024 Fclk, Switch amplitude limit=200, Grad=1
+    { //0x000401C8 = 0 1 00 00000001 11001000
+    TMC5130::Pwmconf pwmconf;         //PWMCONF
+        pwmconf.pwm_ampl       = 200; //User defined maximum PWM amplitude
+        pwmconf.pwm_grad       = 1;   //User defined maximum PWM amplitude change per half wave (1 to 15)
+        pwmconf.pwm_freq       = 0;   //%00: fPWM=2/1024 fCLK
+        pwmconf.pwm_autoscale  = 1;   //Enable automatic current control
+        pwmconf.pwm_symmetric  = 0;
+        pwmconf.freewheel      = 0;   //%00: Normal operation
+    stepper.setPwmconf(pwmconf.bytes);
+  }
 }
 
 //Enable and initialize the motion controller and move one rotation (51200 microsteps) using the ramp generator
 void TMC5130_Init_DS1(TMC5130 &stepper) {
-  stepper.writeReg(TMC5130::A1,       0x000003E8); // A1 = 1000 First acceleration
-  stepper.writeReg(TMC5130::V1,       0x0000C350); // V1 = 50000 Acceleration threshold velocity V1
-  stepper.writeReg(TMC5130::AMAX,     0x000001F4); // AMAX = 500 Acceleration above V1
-  stepper.writeReg(TMC5130::VMAX,     0x00030D40); // VMAX = 200000
-  stepper.writeReg(TMC5130::DMAX,     0x000002BC); // DMAX = 700 Deceleration above V1
-  stepper.writeReg(TMC5130::D1,       0x00000578); // D1 = 1400 Deceleration below V1
-  stepper.writeReg(TMC5130::VSTOP,    0x0000000A); // VSTOP = 10 Stop velocity (Near to zero)
-  stepper.writeReg(TMC5130::RAMPMODE, 0x00000000); // RAMPMODE = 0 (Target position move)
+  stepper.setFirstAcceleration  (1000); // A1 = 1000 First acceleration
+  stepper.setFirstVelocity      (50000); // V1 = 50000 Acceleration threshold velocity V1
+  stepper.setSecondAcceleration (500); // AMAX = 500 Acceleration above V1
+  stepper.setMaxVelocity        (200000); // VMAX = 200000
+  stepper.setFirstDeceleration  (700); // DMAX = 700 Deceleration above V1
+  stepper.setSecondDeceleration (1400); // D1 = 1400 Deceleration below V1
+  stepper.setStopVelocity       (10); // VSTOP = 10 Stop velocity (Near to zero)
+  stepper.setRampMode           (TMC5130::PositionMode); // RAMPMODE = 0 (Target position move)
   stepper.setPosition(0);
 // Ready to move!
   stepper.writeReg(TMC5130::XTARGET,  0xFFFF3800); // XTARGET = -51200 (Move one rotation left (200*256 microsteps)
@@ -85,19 +94,19 @@ Set XTARGET
 
 void TMC5130_Init_00(TMC5130 &stepper){
 //1 Stop Motor
-  stepper.setGconf              (0);                      //writeReg(TMC5130::GCONF,       0);  0x00000004);  //SPI send: 0x8000000004; // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
-  stepper.writeReg(TMC5130::NODECONF,   0);
-  stepper.writeReg(TMC5130::X_COMPARE,  0);
-  stepper.setCurrent                  (1, 1, 7);    //writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //  
-  stepper.setTPowerDown               (0x00000000); //TPOWERDOWN
-  stepper.writeReg(TMC5130::TPWMTHRS,    0x00000000);
+  stepper.setGconf              (0);        //writeReg(TMC5130::GCONF,       0);  0x00000004);  //SPI send: 0x8000000004; // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
+  stepper.setNodeConf           (0, 0);  //NODECONF
+  stepper.setXCompare           (0);     //X_COMPARE
+  stepper.setCurrent            (1, 1, 7);    //writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //  
+  stepper.setTPowerDown         (0); //TPOWERDOWN
+  stepper.setTPwmThrs           (0); //TPWMTHRS
   stepper.setTCOOLTHRS          (0);                //TCOOLTHRS
-  stepper.writeReg(TMC5130::THIGH,       0x00000000);
+  stepper.setTHigh              (0);
   stepper.setRampMode           (TMC5130::VelocityNegativeMode);  //stepper.writeReg(TMC5130::RAMPMODE,    0x00000002);
-  stepper.setPosition(0xFFE38782);        //XACTUAL
-  stepper.setStartVelocity(0);            //VSTART
-  stepper.setFirstAcceleration(966);      //A1 0x000003C6
-  stepper.setFirstVelocity(107374);       //V1  0x0001A36E  
+  stepper.setPosition           (0xFFE38782);        //XACTUAL
+  stepper.setStartVelocity      (0);            //VSTART
+  stepper.setFirstAcceleration  (966);      //A1 0x000003C6
+  stepper.setFirstVelocity      (107374);       //V1  0x0001A36E  
   stepper.setSecondAcceleration (966);    //AMAX 0x000003C6
   stepper.setMaxVelocity        (214748); //VMAX  0x000346DC
   stepper.setFirstDeceleration  (966);    //DMAX //0x000003C6
@@ -172,7 +181,7 @@ void TMC5130_Init_00(TMC5130 &stepper){
   stepper.StopMotor             (1000);
   stepper.setRampMode           (TMC5130::PositionMode);
   stepper.setPosition           (0);
-  stepper.moveTo                (0);  //Include setRampMode
+  stepper.setTarget             (0);  //Include setRampMode
 }
 
 void TMC5130_Init_01(TMC5130 &stepper){
@@ -182,9 +191,9 @@ void TMC5130_Init_01(TMC5130 &stepper){
 //  ihold     = 0xA;  //10  Corrente a motore fermo 0...31
 //  holdDelay = 0x06; //6   0: spegnimento istantaneo, 1..15: Ritardo per ogni step di riduzione della corrente in multipli di 2^18 clock
   stepper.setCurrent    (31, 10, 6);  //  writeReg(IHOLD_IRUN,  0x00061F0A);  //SPI send: 0x9000061F0A; // IHOLD_IRUN: IHOLD=10, IRUN=31 (max. current), IHOLDDELAY=6
-  stepper.setTPowerDown (0x0000000A);  //SPI send: 0x910000000A; // TPOWERDOWN=10: Delay before power down in stand still
-  stepper.writeReg      (TMC5130::GCONF,       0x00000004);  //SPI send: 0x8000000004; // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
-  stepper.writeReg      (TMC5130::TPWMTHRS,    0x000001F4);  //SPI send: 0x93000001F4; // TPWM_THRS=500 yields a switching velocity about 35000 = ca. 30RPM
+  stepper.setTPowerDown (10);  //SPI send: 0x910000000A; // TPOWERDOWN=10: Delay before power down in stand still
+  stepper.setGconf      (0x00000004);  //SPI send: 0x8000000004; // EN_PWM_MODE=1 enables StealthChop (with default PWMCONF)
+  stepper.setTPwmThrs   (500);  //SPI send: 0x93000001F4; // TPWM_THRS=500 yields a switching velocity about 35000 = ca. 30RPM
   stepper.setPwmconf    (0x000401C8);  //SPI send: 0xF0000401C8;
 
   stepper.setFirstAcceleration  (1000);                   //writeReg(A1,          0x000003E8);  //SPI send: 0xA4000003E8; // A1 = 1000 First acceleration
@@ -241,14 +250,15 @@ void TMC5130_Init_01(TMC5130 &stepper){
 }
 
 void TMC5130_Init_02(TMC5130 &stepper, bool Start){
-  stepper.writeReg((TMC5130::Reg)0x00, 0x00000000);	// writing GCONF @ address 0=0x00 with 0x00000000=0=0.0
+  stepper.setGconf(0);	// writing GCONF @ address 0=0x00 with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x03, 0x00000000);	// writing SLAVECONF @ address 1=0x03 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x05, 0x00000000);	// writing X_COMPARE @ address 2=0x05 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x10, 0x00071703);	// writing IHOLD_IRUN @ address 3=0x10 with 0x00071703=464643=0.0
-  stepper.setTPowerDown(0x00000000);	              // writing TPOWERDOWN @ address 4=0x11 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x13, 0x00000000);	// writing TPWMTHRS @ address 5=0x13 with 0x00000000=0=0.0
+  stepper.setXCompare(0);	// writing X_COMPARE @ address 2=0x05 with 0x00000000=0=0.0
+  stepper.setCurrent(3, 23, 7);//stepper.writeReg((TMC5130::Reg)0x10, 0x00071703);	// writing IHOLD_IRUN @ address 3=0x10 with 0x00071703=464643=0.0
+
+  stepper.setTPowerDown(0);	              // writing TPOWERDOWN @ address 4=0x11 with 0x00000000=0=0.0
+  stepper.setTPwmThrs(0);	                // writing TPWMTHRS @ address 5=0x13 with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x14, 0x00000000);	// writing TCOOLTHRS @ address 6=0x14 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x15, 0x00000000);	// writing THIGH @ address 7=0x15 with 0x00000000=0=0.0
+  stepper.setTHigh  (0);	// writing THIGH @ address 7=0x15 with 0x00000000=0=0.0
 
   if(Start){
     stepper.setRampMode(TMC5130::VelocityPositiveMode); //    stepper.writeReg((TMC5130::Reg)0x20, 0x00000001);	// writing RAMPMODE @ address 8=0x20 with 0x00000001=1=0.0
@@ -260,12 +270,12 @@ void TMC5130_Init_02(TMC5130 &stepper, bool Start){
     stepper.writeReg((TMC5130::Reg)0x27, 0x00000000);	// writing VMAX     @ address 14=0x27 with 0x00000000=0=0.0
   }
   stepper.writeReg((TMC5130::Reg)0x23, 0x00000000);	// writing VSTART @ address 10=0x23 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x24, 0x00000000);	// writing A1 @ address 11=0x24 with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x25, 0x00000000);	// writing V1 @ address 12=0x25 with 0x00000000=0=0.0
-  stepper.setSecondAcceleration(100); // stepper.writeReg((TMC5130::Reg)0x26, 0x00000064);	// writing AMAX @ address 13=0x26 with 0x00000064=100=0.0
-  stepper.setFirstDeceleration(100);  //stepper.writeReg((TMC5130::Reg)0x28, 0x00000064);	// writing DMAX @ address 15=0x28 with 0x00000064=100=0.0
-  stepper.writeReg((TMC5130::Reg)0x2A, 0x00000000);	// writing D1 @ address 16=0x2A with 0x00000000=0=0.0
-  stepper.writeReg((TMC5130::Reg)0x2B, 0x00000000);	// writing VSTOP @ address 17=0x2B with 0x00000000=0=0.0
+  stepper.setFirstAcceleration  (0);	// writing A1 @ address 11=0x24 with 0x00000000=0=0.0
+  stepper.setFirstVelocity      (0);	// writing V1 @ address 12=0x25 with 0x00000000=0=0.0
+  stepper.setSecondAcceleration (100); // stepper.writeReg((TMC5130::Reg)0x26, 0x00000064);	// writing AMAX @ address 13=0x26 with 0x00000064=100=0.0
+  stepper.setFirstDeceleration  (100);  //stepper.writeReg((TMC5130::Reg)0x28, 0x00000064);	// writing DMAX @ address 15=0x28 with 0x00000064=100=0.0
+  stepper.setSecondDeceleration (0);	// writing D1 @ address 16=0x2A with 0x00000000=0=0.0
+  stepper.setStopVelocity       (0);	// writing VSTOP @ address 17=0x2B with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x2C, 0x00000000);	// writing TZEROWAIT @ address 18=0x2C with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x2D, 0x00000000);	// writing XTARGET @ address 19=0x2D with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x33, 0x00000000);	// writing VDCMIN @ address 20=0x33 with 0x00000000=0=0.0
@@ -283,7 +293,7 @@ void TMC5130_Init_02(TMC5130 &stepper, bool Start){
   stepper.writeReg((TMC5130::Reg)0x67, 0x00404222);	// writing MSLUT_7 @ address 32=0x67 with 0x00404222=4211234=0.0
   stepper.writeReg((TMC5130::Reg)0x68, 0xFFFF8056);	// writing MSLUTSEL @ address 33=0x68 with 0xFFFF8056=0=0.0
   stepper.writeReg((TMC5130::Reg)0x69, 0x00F70000);	// writing MSLUTSTART @ address 34=0x69 with 0x00F70000=16187392=0.0
-  stepper.writeReg((TMC5130::Reg)0x6C, 0x000101D5);	// writing CHOPCONF @ address 35=0x6C with 0x000101D5=66005=0.0
+  stepper.setChopconf( 0x000101D5);	// writing CHOPCONF @ address 35=0x6C with 0x000101D5=66005=0.0
   stepper.setCoolconf(0);           //writeReg((TMC5130::Reg)0x6D, 0x00000000);	// writing COOLCONF @ address 36=0x6D with 0x00000000=0=0.0
   stepper.setDcctrl(0x00000000);	  // writing DCCTRL @ address 37=0x6E with 0x00000000=0=0.0
   stepper.writeReg((TMC5130::Reg)0x70, 0x000500C8);	// writing PWMCONF @ address 38=0x70 with 0x000500C8=327880=0.0
@@ -308,61 +318,7 @@ void SetPositional(TMC5130 &stepper, uint8_t SpeedFor1RPS, uint8_t mres){ //
   stepper.setMaxVelocity        ( (uint32_t)(53687*SpeedFor1RPS)>>(stepper.getMicrosteps()));
   stepper.setRampMode           (TMC5130::PositionMode);
   stepper.setPosition           (0);
-  stepper.moveTo                (0);  //Include setRampMode
-}
-
-
-
-void Sethold_delay(TMC5130 &stepper, uint32_t hold_delay){
-  uint32_t reg = stepper.readReg(TMC5130::IHOLD_IRUN) & (~0xF0000);
-  reg |= (hold_delay<<16) & 0xF0000;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, reg);
-/*
-  TMC5130::IholdIrun X;
-  X.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  X.iholddelay = hold_delay;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, X.bytes);
-*/
-}
-
-void SetIhold(TMC5130 &stepper, uint32_t ihold){
-  uint32_t reg = stepper.readReg(TMC5130::IHOLD_IRUN) & (~0x1F);
-  reg |= (ihold) & 0x1F;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, reg);
-/*
-  TMC5130::IholdIrun X;
-  X.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  X.ihold = ihold;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, X.bytes);
-*/
-}
-
-
-void SetIrun(TMC5130 &stepper, uint32_t irun){
-  uint32_t reg = stepper.readReg(TMC5130::IHOLD_IRUN) & (~0x1F00);
-  reg |= (irun<<8) & 0x1F00;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, reg);
-/*
-  TMC5130::IholdIrun X;
-  X.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  X.irun = irun;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, X.bytes);
-*/
-}
-
-void writeChopperMode(TMC5130 &stepper, TMC5130::ChopperMode chopper_mode) {  //CHOPCONF
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.chm = chopper_mode;
-  stepper.writeReg(TMC5130::CHOPCONF, chopconf.bytes);
-}
-
-
-void writeMotorDirection(TMC5130 &stepper, TMC5130::MotorDirection motor_direction) {  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
-  TMC5130::Gconf gconf;
-  gconf.bytes = stepper.readReg(TMC5130::GCONF);
-  gconf.shaft = motor_direction;
-  stepper.writeReg(TMC5130::GCONF, gconf.bytes);
+  stepper.setTarget             (0);  //Include setRampMode
 }
 
 void enableStealthChop(TMC5130 &stepper, bool En) {  //GCONF  //True=enable, False=disable
@@ -370,49 +326,6 @@ void enableStealthChop(TMC5130 &stepper, bool En) {  //GCONF  //True=enable, Fal
   gconf.bytes = stepper.readReg(TMC5130::GCONF);
   gconf.en_pwm_mode = En?1:0;
   stepper.writeReg(TMC5130::GCONF, gconf.bytes);
-}
-
-void enableHighVelocityFullstep(TMC5130 &stepper, bool En) { //CHOPCONF //True=enable, False=disable
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.vhighfs = En?1:0;
-  stepper.writeReg(TMC5130::GCONF, chopconf.bytes);
-}
-
-void enableHighVelocityChopperSwitch(TMC5130 &stepper, bool En) {  //CHOPCONF //True=enable, False=disable
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.vhighchm = En?1:0;
-  stepper.writeReg(TMC5130::GCONF, chopconf.bytes);
-}
-
-void enableShortToGroundProtection(TMC5130 &stepper, bool En) {  //CHOPCONF  //True=enable=0, False=disable=1
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.diss2g = En?0:1; //Note: Inverted
-  stepper.writeReg(TMC5130::GCONF, chopconf.bytes);
-}
-
-void writeComparatorBlankTime(TMC5130 &stepper, TMC5130::ComparatorBlankTime tbl) {  //CHOPCONF
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.tbl = tbl;
-  stepper.writeReg(TMC5130::GCONF, chopconf.bytes);
-}
-
-void writeEnabledToff(TMC5130 &stepper, uint8_t toff) { //CHOPCONF
-//  const static uint8_t DISABLE_TOFF = 0b0;
-//  const static uint8_t ENABLED_TOFF_MIN = 1;
-//  const static uint8_t ENABLED_TOFF_MAX = 15;
-//  const static uint8_t ENABLED_TOFF_DEFAULT = 3;
-
-  if (toff <  1)  toff =  1;
-  if (toff > 15)  toff = 15;
-  //enabled_toff_ = toff;
-  TMC5130::Chopconf chopconf;
-  chopconf.bytes = stepper.readReg(TMC5130::CHOPCONF);
-  chopconf.toff = toff;
-  stepper.writeReg(TMC5130::GCONF, chopconf.bytes);
 }
 
 void enableStallGuardFilter(TMC5130 &stepper, bool En) {  //COOLCONF  //True=enable, False=disable
@@ -456,27 +369,6 @@ void writeDcStallGuardThreshold(TMC5130 &stepper, uint8_t dc_stall_guard_thresho
   dcctrl.bytes = stepper.getDcctrl();
   dcctrl.dc_sg = dc_stall_guard_threshold;
   stepper.setDcctrl(dcctrl.bytes);
-}
-
-void writeRunCurrent(TMC5130 &stepper, uint8_t run_current) { //IHOLD_IRUN
-  TMC5130::IholdIrun ihold_irun;
-  ihold_irun.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  ihold_irun.irun = run_current;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, ihold_irun.bytes);
-}
-
-void writeHoldCurrent(TMC5130 &stepper, uint8_t hold_current) { //IHOLD_IRUN
-  TMC5130::IholdIrun ihold_irun;
-  ihold_irun.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  ihold_irun.ihold = hold_current;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, ihold_irun.bytes);
-}
-
-void writeHoldDelay(TMC5130 &stepper, uint8_t hold_delay) {
-  TMC5130::IholdIrun ihold_irun;
-  ihold_irun.bytes = stepper.readReg(TMC5130::IHOLD_IRUN);
-  ihold_irun.iholddelay = hold_delay;
-  stepper.writeReg(TMC5130::IHOLD_IRUN, ihold_irun.bytes);
 }
 
 void writeStandstillMode(TMC5130 &stepper, TMC5130::StandstillMode mode) { //PWMCONF
@@ -559,10 +451,7 @@ DriverParameters Converter::driverParametersRealToChip(DriverParameters paramete
 
   //--driver_parameters_chip:--
   //registers_ptr_->write(Registers::GlobalScalerAddress, scaler);  //global_current_scaler................: 0
-  stepper.setCurrent(15, 3, 0); //IHOLD_IRUN
-    //SetIrun(stepper, 0x0F);  //15  //run_current..........................: 15  //IHOLD_IRUN
-    //SetIhold(stepper, 0x3);        //hold_current.........................: 3   //IHOLD_IRUN
-    //Sethold_delay(stepper,0x0);   //hold_delay............................: 0   //IHOLD_IRUN
+  stepper.setCurrent(15, 3, 0); //IHOLD_IRUN  //run, hold, delay
 
   TMC5130::Pwmconf x;
     x.bytes = stepper.getPwmconf();
@@ -571,23 +460,23 @@ DriverParameters Converter::driverParametersRealToChip(DriverParameters paramete
     x.pwm_autoscale = 0;      //automatic_current_control_enabled....: 0   //PWMCONF
     stepper.setPwmconf(x.bytes);
 
-  writeMotorDirection(stepper, TMC5130::ForwardDirection);  //motor_direction......................: 0  //GCONF
+  stepper.setMotorDirection(TMC5130::ForwardDirection);     //motor_direction......................: 0  //GCONF
   writeStandstillMode(stepper, TMC5130::NormalMode);        //standstill_mode......................: 0  //PWMCONF
-  writeChopperMode   (stepper, TMC5130::SpreadCycleMode);   //chopper_mode.........................: 0  //CHOPCONF
-  stepper.writeReg   (TMC5130::TPWMTHRS, 0xE);              //stealth_chop_threshold...............: 14 //TPWMTHRS
+  stepper.writeChopperMode   (TMC5130::SpreadCycleMode);    //chopper_mode.........................: 0  //CHOPCONF
+  stepper.setTPwmThrs   (14);              //stealth_chop_threshold...............: 14 //TPWMTHRS
   enableStealthChop  (stepper, true);                       //stealth_chop_enabled.................: 1  //GCONF
   stepper.writeReg   (TMC5130::TCOOLTHRS, 0x9);             //cool_step_threshold..................: 9  //TCOOLTHRS
   enableCoolStep     (stepper, 1, 0);                       //cool_step_min........................: 1  //COOLCONF
                                                             //cool_step_max........................: 0  //COOLCONF
                                                             //cool_step_enabled....................: 0  ???
-  stepper.writeReg                (TMC5130::THIGH, 0x7);    //high_velocity_threshold..............: 7  //THIGH
-  enableHighVelocityFullstep      (stepper, false);         //high_velocity_fullstep_enabled.......: 0  //CHOPCONF
-  enableHighVelocityChopperSwitch (stepper, false);         //high_velocity_chopper_switch_enabled.: 0  //CHOPCONF
+  stepper.setTHigh                    (7);    //high_velocity_threshold..............: 7  //THIGH
+  stepper.enableHighVelocityFullstep  (false);         //high_velocity_fullstep_enabled.......: 0  //CHOPCONF
+  stepper.enableHighVelocityChopperSwitch (false);         //high_velocity_chopper_switch_enabled.: 0  //CHOPCONF
   writeStallGuardThreshold        (stepper, 0);             //stall_guard_threshold................: 0  //COOLCONF
   enableStallGuardFilter          (stepper, false);         //stall_guard_filter_enabled...........: 0  //COOLCONF
-  enableShortToGroundProtection   (stepper, false);         //short_to_ground_protection_enabled...: 1 (Inverted) //CHOPCONF  //True=enable=0, False=disable=1
-  writeEnabledToff                (stepper, 3);             //enabled_toff.........................: 3  //CHOPCONF
-  writeComparatorBlankTime        (stepper, TMC5130::ClockCycles36);   //comparator_blank_time................: 2 //CHOPCONF
+  stepper.enableShortToGroundProtection   (false);         //short_to_ground_protection_enabled...: 1 (Inverted) //CHOPCONF  //True=enable=0, False=disable=1
+  stepper.writeEnabledToff                (3);             //enabled_toff.........................: 3  //CHOPCONF
+  stepper.writeComparatorBlankTime(TMC5130::ClockCycles36);   //comparator_blank_time................: 2 //CHOPCONF
   writeDcTime                     (stepper, 0);             //dc_time..............................: 0  //DCCTRL
   writeDcStallGuardThreshold      (stepper, 0);             //dc_stall_guard_threshold.............: 0  //DCCTRL
 
@@ -597,16 +486,16 @@ DriverParameters Converter::driverParametersRealToChip(DriverParameters paramete
   max_velocity.....:20 radians/s                                                  
   max_acceleration.:2 radians/s)/s                                                
 */
-  stepper.writeReg                (TMC5130::RAMPMODE, TMC5130::PositionMode);    //ramp_mode............: 0        //RAMPMODE
+  stepper.setRampMode             (TMC5130::PositionMode);    //ramp_mode............: 0        //RAMPMODE
   stepper.writeStopMode           (TMC5130::HardMode);                                    //stop_mode............: 0        //SW_MODE
-  stepper.writeReg                (TMC5130::VMAX,       0x37A16);                         //max_velocity.........: 227862   //VMAX
-  stepper.writeReg                (TMC5130::AMAX,       0xF8);                            //max_acceleration.....: 248      //AMAX
+  stepper.setMaxVelocity          (227862);                         //max_velocity.........: 227862   //VMAX
+  stepper.setSecondAcceleration   (248);                            //max_acceleration.....: 248      //AMAX
   stepper.writeReg                (TMC5130::VSTART,     0x2C81);                          //start_velocity.......: 11393    //VSTART
-  stepper.writeReg                (TMC5130::VSTOP,      0x1BD0B);                         //stop_velocity........: 113931   //VSTOP
-  stepper.writeReg                (TMC5130::V1,         0x0);                             //first_velocity.......: 0        //V1
-  stepper.writeReg                (TMC5130::A1,         0x0);                             //first_acceleration...: 0        //A1
-  stepper.writeReg                (TMC5130::DMAX,       0x0);                             //max_deceleration.....: 0        //DMAX
-  stepper.writeReg                (TMC5130::D1,         0x4DC);                           //first_deceleration...: 1244     //D1
+  stepper.setStopVelocity         (113931);                         //stop_velocity........: 113931   //VSTOP
+  stepper.setFirstVelocity        (0);                             //first_velocity.......: 0        //V1
+  stepper.setFirstAcceleration    (0);                             //first_acceleration...: 0        //A1
+  stepper.setFirstDeceleration    (0);                             //max_deceleration.....: 0        //DMAX
+  stepper.setSecondDeceleration   (1244);                           //first_deceleration...: 1244     //D1
   stepper.writeReg                (TMC5130::TZEROWAIT,  0);                               //zero_wait_duration...: 0        //TZEROWAIT
   stepper.enableStallStop         (false);                                                //stall_stop_enabled...: 0        //SW_MODE
   stepper.writeReg                (TMC5130::VDCMIN,     0);                               //min_dc_step_velocity.: 0        //VDCMIN
@@ -619,8 +508,10 @@ target_position.: -100 radians
 velocity........: 20 radians/s
 acceleration....: 2 radians/s)/s
 */
-  writeRunCurrent                 (stepper, 7);                                         //run_current.........: 7         //IHOLD_IRUN
-  writeHoldCurrent                (stepper, 3);                                         //hold_current........: 3         //IHOLD_IRUN
+//  stepper.setCurrent(7, 3, ????); //IHOLD_IRUN  //run, hold, delay
+  stepper.SetIrun(7);                                         //run_current.........: 7         //IHOLD_IRUN
+  stepper.SetIhold(3);                                         //hold_current........: 3         //IHOLD_IRUN
+
   stepper.writeReg                (TMC5130::XTARGET,   0xFFFFFFFFFFF390CC);             //target_position.....: -814900    //XTARGET
 
   stepper.setFirstVelocity        (0x37A16);                                            //velocity............: 227862  //??????????????????????
@@ -648,45 +539,43 @@ bool communicating(TMC5130 &stepper) {
 
 void writeDriverParameters(TMC5130 &stepper, TMC5130::DriverParameters parameters) { //stepper.driver.setup(driver_parameters_chip);
   //Non esiste  writeGlobalCurrentScaler(parameters.global_current_scaler);
-  writeRunCurrent               (stepper, parameters.run_current);  //IHOLD_IRUN
-  writeHoldCurrent              (stepper, parameters.hold_current); //IHOLD_IRUN
-  writeHoldDelay                (stepper, parameters.hold_delay);   //IHOLD_IRUN
+  stepper.setCurrent(parameters.run_current, parameters.hold_current, parameters.hold_delay); //IHOLD_IRUN  //run, hold, delay
   writePwmOffset                (stepper, parameters.pwm_offset);   //PWMCONF
   writePwmGradient              (stepper, parameters.pwm_gradient); //PWMCONF
   enableAutomaticCurrentControl (stepper, parameters.automatic_current_control_enabled);  //PWMCONF
-  writeMotorDirection           (stepper, parameters.motor_direction);  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
+  stepper.setMotorDirection     (parameters.motor_direction);  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
   writeStandstillMode           (stepper, parameters.standstill_mode); //PWMCONF
-  writeChopperMode              (stepper, parameters.chopper_mode);  //CHOPCONF
-  stepper.writeReg              (TMC5130::TPWMTHRS,   parameters.stealth_chop_threshold);  //TPWMTHRS  writeStealthChopThreshold
+  stepper.writeChopperMode      (parameters.chopper_mode);  //CHOPCONF
+  stepper.setTPwmThrs           (parameters.stealth_chop_threshold);  //TPWMTHRS  writeStealthChopThreshold
   enableStealthChop             (stepper, parameters.stealth_chop_enabled);  //GCONF  //True=enable, False=disable
   stepper.writeReg              (TMC5130::TCOOLTHRS,  parameters.cool_step_threshold);  //TCOOLTHRS  writeCoolStepThreshold
   if (parameters.cool_step_enabled)
     enableCoolStep(stepper, parameters.cool_step_min, parameters.cool_step_max); //COOLCONF
   else
     disableCoolStep(stepper);  //COOLCONF
-  stepper.writeReg                (TMC5130::THIGH,   parameters.high_velocity_threshold);     //THIGH  writeHighVelocityThreshold
-  enableHighVelocityFullstep      (stepper, parameters.high_velocity_fullstep_enabled);       //CHOPCONF //True=enable, False=disable
-  enableHighVelocityChopperSwitch (stepper, parameters.high_velocity_chopper_switch_enabled); //CHOPCONF //True=enable, False=disable
+  stepper.setTHigh                    (parameters.high_velocity_threshold);     //THIGH  writeHighVelocityThreshold
+  stepper.enableHighVelocityFullstep  (parameters.high_velocity_fullstep_enabled);       //CHOPCONF //True=enable, False=disable
+  stepper.enableHighVelocityChopperSwitch (parameters.high_velocity_chopper_switch_enabled); //CHOPCONF //True=enable, False=disable
   writeStallGuardThreshold        (stepper, parameters.stall_guard_threshold);                //COOLCONF
   enableStallGuardFilter          (stepper, parameters.stall_guard_filter_enabled);           //COOLCONF  //True=enable, False=disable
-  enableShortToGroundProtection   (stepper, parameters.short_to_ground_protection_enabled);   //CHOPCONF  //True=enable=0, False=disable=1
-  writeEnabledToff                (stepper, parameters.enabled_toff);                         //CHOPCONF
-  writeComparatorBlankTime        (stepper, parameters.comparator_blank_time);                //CHOPCONF
+  stepper.enableShortToGroundProtection   (parameters.short_to_ground_protection_enabled);   //CHOPCONF  //True=enable=0, False=disable=1
+  stepper.writeEnabledToff                (parameters.enabled_toff);                         //CHOPCONF
+  stepper.writeComparatorBlankTime(parameters.comparator_blank_time);                //CHOPCONF
   writeDcTime                     (stepper, parameters.dc_time);                              //DCCTRL
   writeDcStallGuardThreshold      (stepper, parameters.dc_stall_guard_threshold);             //DCCTRL
 }
 
 void writeControllerParameters(TMC5130 &stepper, TMC5130::ControllerParameters parameters) {
-  stepper.writeReg              (TMC5130::RAMPMODE,   parameters.ramp_mode);            //RAMPMODE
-  stepper.writeStopMode         (                     parameters.stop_mode);            //SW_MODE
-  stepper.writeReg              (TMC5130::VMAX,       parameters.max_velocity);         //VMAX
-  stepper.writeReg              (TMC5130::AMAX,       parameters.max_acceleration);     //AMAX
+  stepper.setRampMode           (parameters.ramp_mode);            //RAMPMODE
+  stepper.writeStopMode         (parameters.stop_mode);            //SW_MODE
+  stepper.setMaxVelocity        (parameters.max_velocity);         //VMAX
+  stepper.setSecondAcceleration (parameters.max_acceleration);     //AMAX
   stepper.writeReg              (TMC5130::VSTART,     parameters.start_velocity);       //VSTART
-  stepper.writeReg              (TMC5130::VSTOP,      parameters.stop_velocity);        //VSTOP
-  stepper.writeReg              (TMC5130::V1,         parameters.first_velocity);       //V1
-  stepper.writeReg              (TMC5130::A1,         parameters.first_acceleration);   //A1
-  stepper.writeReg              (TMC5130::DMAX,       parameters.max_deceleration);     //DMAX
-  stepper.writeReg              (TMC5130::D1,         parameters.first_deceleration);   //D1
+  stepper.setStopVelocity       (parameters.stop_velocity);        //VSTOP
+  stepper.setFirstVelocity      (parameters.first_velocity);       //V1
+  stepper.setFirstAcceleration  (parameters.first_acceleration);   //A1
+  stepper.setFirstDeceleration  (parameters.max_deceleration);     //DMAX
+  stepper.setSecondDeceleration (parameters.first_deceleration);   //D1
   stepper.writeReg              (TMC5130::TZEROWAIT,  parameters.zero_wait_duration);   //TZEROWAIT
   stepper.enableStallStop       (                     parameters.stall_stop_enabled);   //SW_MODE
   stepper.writeReg              (TMC5130::VDCMIN,     parameters.min_dc_step_velocity); //TZEROWAIT
@@ -773,11 +662,8 @@ void InitTestStall_Setup(TMC5130 &stepper){
 void cacheDriverSettings(TMC5130::DriverParameters cached_driver_settings_) { //ToDo
 /*
   cached_driver_settings_.global_current_scaler = registers_ptr_->getStored(Registers::GlobalScalerAddress);
-  Registers::IholdIrun ihold_irun;
-    ihold_irun.bytes = registers_ptr_->getStored(Registers::IholdIrunAddress);
-    cached_driver_settings_.run_current   = ihold_irun.irun;
-    cached_driver_settings_.hold_current  = ihold_irun.ihold;
-    cached_driver_settings_.hold_delay    = ihold_irun.iholddelay;
+
+  stepper.setCurrent(ihold_irun.irun, ihold_irun.ihold, ihold_irun.iholddelay); //IHOLD_IRUN  //run, hold, delay
 
   Registers::Pwmconf pwmconf;
     pwmconf.bytes = registers_ptr_->getStored(Registers::PwmconfAddress); //AAA readonly!!!!
@@ -869,29 +755,28 @@ void beginHomeToStall(TMC5130 &stepper, TMC5130::HomeParameters home_parameters,
   stepper.enableStallStop         (true);                                       //controller.enableStallStop();
   enableStallGuardFilter    (stepper, false);                                   //driver.disableStallGuardFilter();
   writeStallGuardThreshold  (stepper, stall_parameters.stall_guard_threshold);  //driver.writeStallGuardThreshold(stall_parameters.stall_guard_threshold);
-  writeRunCurrent           (stepper, home_parameters.run_current);             //driver.writeRunCurrent(home_parameters.run_current);
-  writeHoldCurrent          (stepper, home_parameters.hold_current);            //driver.writeHoldCurrent(home_parameters.hold_current);
-  writeHoldDelay            (stepper, 0);                                       //driver.writeHoldDelay(0);
+
+  stepper.setCurrent(home_parameters.run_current, home_parameters.hold_current, 0); //IHOLD_IRUN  //run, hold, delay
   writeStandstillMode       (stepper, TMC5130::NormalMode);                     //driver.writeStandstillMode(NormalMode);
-  stepper.writeReg(TMC5130::RAMPMODE,    TMC5130::HoldMode);                    //controller.writeRampMode(HoldMode);
+  stepper.setRampMode       (TMC5130::HoldMode);                    //RAMPMODE  controller.writeRampMode(HoldMode);
   enableStealthChop         (stepper, false);                                   //driver.disableStealthChop();
   disableCoolStep           (stepper);                                          //driver.disableCoolStep();
   stepper.writeReg(TMC5130::TCOOLTHRS,  stall_parameters.cool_step_threshold);  //driver.writeCoolStepThreshold(stall_parameters.cool_step_threshold);
-  writeChopperMode          (stepper, TMC5130::SpreadCycleMode);                //driver.writeChopperMode(SpreadCycleMode);
+  stepper.writeChopperMode          (TMC5130::SpreadCycleMode);                //driver.writeChopperMode(SpreadCycleMode);
   stepper.writeReg(TMC5130::XACTUAL,  0);                                       //controller.zeroActualPosition();
   stepper.writeReg(TMC5130::XTARGET,  home_parameters.target_position);         //controller.writeTargetPosition();
-  stepper.writeReg(TMC5130::VMAX,     home_parameters.velocity);                //controller.writeMaxVelocity(home_parameters.velocity);
-  stepper.writeReg(TMC5130::AMAX,     home_parameters.acceleration);            //controller.writeMaxAcceleration(home_parameters.acceleration);
+  stepper.setMaxVelocity(home_parameters.velocity);                //VMAX   controller.writeMaxVelocity(home_parameters.velocity);
+  stepper.setSecondAcceleration(home_parameters.acceleration);            //AMAX  controller.writeMaxAcceleration(home_parameters.acceleration);
   stepper.writeReg(TMC5130::TZEROWAIT,home_parameters.zero_wait_duration);      //controller.writeZeroWaitDuration(home_parameters.zero_wait_duration);
-  stepper.writeReg(TMC5130::RAMPMODE,    TMC5130::PositionMode);                //controller.writeRampMode(PositionMode);
+  stepper.setRampMode(TMC5130::PositionMode);                //RAMPMODE   controller.writeRampMode(PositionMode);
 }
 
 void InitGoto(TMC5130 &stepper){
-    stepper.setRampMode(TMC5130::PositionMode); //RAMPMODE: set position
+  stepper.setRampMode(TMC5130::PositionMode); //RAMPMODE: set position
   //Stop
   stepper.setMaxVelocity(0);  //To Stop
   stepper.setPosition(0);
-  stepper.moveTo(0);
+  stepper.setTarget(0);
 
   stepper.setStartVelocity      (   0);  //Set VSTART=0. Higher velcoity for abrupt start (limited by motor).
   stepper.setStopVelocity       (  10);  //Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.

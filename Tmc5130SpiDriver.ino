@@ -27,6 +27,7 @@ Done:
 #include "TCA9555.h"          //https://github.com/RobTillaart/TCA9555
 #include "TMC5130_Inits.h"
 #include "StringSplitter.h" //https://github.com/aharshac/StringSplitter
+#include "TMC5130_Menu.h"
 
 #define I2C_SDA         16     //pin21 i2c serial data
 #define I2C_SCK         17     //pin47 i2c serial clock
@@ -142,7 +143,9 @@ void setup_Basic() {
 void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for each run
   Serial.print(ms);  Serial.print(":");
   unsigned long time = millis();
-  stp->moveTo(Steps);
+  //stp->moveTo(Steps);
+  stp->setTarget(Steps);
+  stp->setRampMode(TMC5130::PositionMode);
   do{
     stp->genSpiFunct(TMC5130::GCONF, 0, true);  //dummy reading
   }while( !(stp->GetSpiStatus() & 0x20));
@@ -166,9 +169,9 @@ uint8_t loop_Gen(struct Fsa &f){
     case 0:   //Start Stepper
       f.Steps =  f.stepper->Init_MicroSteps(f.ms);
       if(f.Laps)
-        f.stepper->moveTo((f.dir ? -f.Steps : f.Steps));
+        f.stepper->setTarget((f.dir ? -f.Steps : f.Steps));
       else
-        f.stepper->moveTo((f.dir ? 0        : f.Steps));
+        f.stepper->setTarget((f.dir ? 0        : f.Steps));
       f.fsa++;
       break;
 
@@ -368,37 +371,11 @@ long GetANumber(char* Prompt){
   return Serial.parseInt();
 }
 
-void ClearScreen(void){
-  Serial.print("\n\n\n\n\n\n\n\n\n");
-}
 
-int ShowMenu(char* Menu[], uint8_t Size){
-  uint8_t Hg = 5; //Items per columns
-  for(int i=0; i<Size; i++){
-    bool x=false;
-    for(int Col=0; Col<(6); Col++){
-      if(Size>(Hg*Col) && (i+Hg*Col)<Size && (i+Hg*Col)<(Hg*(Col+1))){
-        Serial.printf("%2d) %-25s", i+Hg*Col, Menu[i+Hg*Col]);
-        x=true;
-      }
-    }
-    if(x) Serial.printf("\n");
-  }
-  Serial.print("\nYour choice:");
-  while (Serial.available() < 2) ;
-  int menuChoice = Serial.parseInt();
-  Serial.print(menuChoice);
-  if(menuChoice < Size){
-    Serial.print(": ");
-    Serial.println(Menu[menuChoice]);
-  }else{
-    Serial.println(" Invalid choice");
-    return -1;
-  }
-  return menuChoice;
-}
 
-void ChangeMotor(){
+
+
+void ChangeMotor(void){
   ClearScreen();
   Serial.print("\n\nCurrent Motor is: "); Serial.println(Steppers[StepperInTest].GetName());
 
@@ -418,6 +395,8 @@ void ChangeMotor(){
     }
   }while(menuChoice!=0);
 }
+
+
 
 void ChangeMicroSteps(void) {
   char* Menu[] = {"Exit", "ms_256",      "ms_128",    "ms_64",    "ms_32",    "ms_16",    "ms_8",    "ms_4",   "ms_2",     "Full Step"};
@@ -492,6 +471,7 @@ void SearchTime(TMC5130 &stepper){
    stepper.setMicrosteps(ms); 
   }
 }
+
 void Test_Goto(){
   InitGoto(Steppers[StepperInTest]);
 
@@ -510,48 +490,62 @@ void Test_Goto(){
       S *= Mult;
     }
     Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-    Steppers[StepperInTest].setMotorDirection((TMC5130::MotorDirection) ((S>0)?1:0));
-    Serial.print("Go...");
-    Steppers[StepperInTest].moveTo                (abs(S));
+    //Steppers[StepperInTest].setMotorDirection((TMC5130::MotorDirection) ((S>0)?1:0));
+    Serial.printf("Go from %d to ...", Steppers[StepperInTest].getPosition());
+    //Steppers[StepperInTest].moveTo                (abs(S));
+    Steppers[StepperInTest].setTarget(S); 
+    Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
+
     Serial.printf("Acc=%d, Vel=%d, Steps=%d (Mul=%d)\n\n", A, V, S, Mult );
   }
 }
 
-void MainMenu(){
-  static char* Menu[]={ "Change Motor",   
-                        "Hard Stop (1000)",          "Soft Stop(1)",
-                        "Neutral",        "Parking",
-                        "Free running",   "Positional",
-                        "Reverse",        "Change MicroSteps",  "Change MaxVelocity", "Zero and GoTo",  "GoTo",     "Show Registers",
-                        "Init DS 0",      "Init DS 1",          "Stand still Mode",   "ShowMotorForce",
-                      };
-  int menuChoice = ShowMenu(Menu, wxSIZEOF(Menu));
-  switch(menuChoice){
-    case 0: ChangeMotor();                            break;
-    case 1: Steppers[StepperInTest].StopMotor(1000);  break;
-    case 2: Steppers[StepperInTest].StopMotor(1);     break;
-    case 3: Steppers[StepperInTest].setNeutral();     break;
-    case 4: Steppers[StepperInTest].setParking();     break;
-    case 5: Steppers[StepperInTest].setCurrent(7, 1, 1);
-            SetFreeRunning(Steppers[StepperInTest], 2,8);  break;
-    case 6: SetPositional(Steppers[StepperInTest], 2,8); break;
-    case 7: Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode); break;
-    case 8: ChangeMicroSteps();                       break;
-    case 9: ChangeMaxVelocity();                      break;
-    case 10:  Steppers[StepperInTest].StopMotor(1000);  //Stop Motor
-              Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
-              Steppers[StepperInTest].setPosition(0);
-              Steppers[StepperInTest].moveTo(-200000);
-            //Steppers[StepperInTest].moveTo(GetANumber("Get number of steps:"));
-            break;
-    case 11:  Test_Goto();                                break;
-    case 12: ShowReadableRegistersAll();                  break;
-    case 13: TMC5130_Init_DS0(Steppers[StepperInTest]);   break;
-    case 14: TMC5130_Init_DS1(Steppers[StepperInTest]);   break;
-    case 15: ChangeStandStillMode();                      break;
-    case 16: ShowMotorForce();                            break;
+void mnuHardStop        ()  {Steppers[StepperInTest].StopMotor(1000);}
+void mnuSoftStop        ()  {Steppers[StepperInTest].StopMotor(1);}
+void mnuSetNeutral      ()  {/*Steppers[StepperInTest].setNeutral();*/Steppers[StepperInTest].setCurrent(0, 0, 0);}
+void mnuSetParking      ()  {Steppers[StepperInTest].setParking();}
+void mnuSetFreeRunning  ()  {Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
+void mnuSetPositional   ()  {SetPositional(Steppers[StepperInTest], 2,8);}
+void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode);}
+void mnuZeroGoto        ()  {Steppers[StepperInTest].StopMotor(1000);  //Stop Motor
+                              Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
+                              Steppers[StepperInTest].setPosition(0);
+                              //Steppers[StepperInTest].moveTo(-200000);
+                              Steppers[StepperInTest].setTarget(-200000); 
+                              Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
+                              
+                              //Steppers[StepperInTest].moveTo(GetANumber("Get number of steps:"));
+                            }
+void mnuInitDS0         ()  {TMC5130_Init_DS0(Steppers[StepperInTest]);}
+void mnuInitDS1         ()  {TMC5130_Init_DS1(Steppers[StepperInTest]);}
 
-    default: Serial.println("Please choose a valid selection, "); Serial.print(menuChoice); Serial.println(" is invalid!"); return;
+
+void MainMenu(){
+  sMenu MainMenu[] = {  {"Change Motor",        ChangeMotor },
+                        {"Hard Stop (1000)",    mnuHardStop },
+                        {"Soft Stop (1)",       mnuSoftStop },
+                        {"Neutral",             mnuSetNeutral },
+                        {"Parking",             mnuSetParking },
+                        {"Free running",        mnuSetFreeRunning },
+                        {"Positional",          mnuSetPositional },
+                        {"Reverse",             mnuSetDirection },
+                        {"Change MicroSteps",   ChangeMicroSteps },
+                        {"Change MaxVelocity",  ChangeMaxVelocity  },
+                        {"Zero and GoTo",       mnuZeroGoto  },
+                        {"GoTo",                Test_Goto },
+                        {"Show Registers",      ShowReadableRegistersAll },
+                        {"Init DS 0",           mnuInitDS0 },
+                        {"Init DS 1",           mnuInitDS1 },
+                        {"Stand still Mode",    ChangeStandStillMode },
+//                        {"Show Motor Force",      ShowMotorForce },
+  };
+
+  int menuChoice = ShowMenu(MainMenu, wxSIZEOF(MainMenu));
+  if(menuChoice>=0)
+    MainMenu[menuChoice].MenuFunc();
+  else{
+    Serial.println("Please choose a valid selection, "); Serial.print(menuChoice); Serial.println(" is invalid!"); 
+    return;
   }
 }
 

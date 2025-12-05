@@ -192,7 +192,7 @@ public:
   }Mscuract;
 
 
-  typedef union { //SLAVECONF
+  typedef union { //SLAVECONF or NODECONF
     struct {
       uint32_t nodeaddr   : 8;  //0x0FF
       uint32_t senddelay  : 4;  //0xF00
@@ -494,24 +494,24 @@ struct DriverParameters { // global_current_scaler only available on TMC5160
 
 
 struct {
-//    SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
-//    X_COMPARE   = 0x05,   //0xFFFF FFFF           W
+  Nodeconf NODECONF;        //SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
+  int32_t X_COMPARE;        //= 0x05,   //0xFFFF FFFF           W
 
   IholdIrun Ihold_Irun;     //IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
   uint32_t  TPowerDown;     //TPOWERDOWN  = 0x11,   //0x00FF                W
-/*
-    TPWMTHRS    = 0x13,   //0xFFFFF               W
-    TCOOLTHRS   = 0x14,   //0xFFFFF               W
-    THIGH       = 0x15,   //0xFFFFF               W   
-    VSTART      = 0x23,   //0x0003 FFFF           W
-    A1          = 0x24,   //0xFFFF                W
-    V1          = 0x25,   //0x000F FFFF           W
-    AMAX        = 0x26,   //0xFFFF                W
-    VMAX        = 0x27,   //0x7F FFFF             W
-    DMAX        = 0x28,   //0xFFFF                W
-    D1          = 0x2A,   //0xFFFF                W
-    VSTOP       = 0x2B,   //0x0003 FFFF           W
-    TZEROWAIT   = 0x2C,   //0xFFFF                W
+  uint32_t  TPwmThrs;
+
+//    TCOOLTHRS     = 0x14,   //0xFFFFF               W
+  uint32_t  THIGH;  //= 0x15,   //0xFFFFF               W   
+//    VSTART        = 0x23,   //0x0003 FFFF           W
+  uint32_t  A1;     //= 0x24,   //0xFFFF                W
+  uint32_t  V1;     //= 0x25,   //0x000F FFFF           W
+  uint32_t  AMAX;   //= 0x26,   //0xFFFF                W
+  uint32_t  VMAX;   //= 0x27,   //0x7F FFFF             W
+  uint32_t  DMAX;   //= 0x28,   //0xFFFF                W
+  uint32_t  D1;     //= 0x2A,   //0xFFFF                W
+  uint32_t  VSTOP;  //= 0x2B,   //0x0003 FFFF           W
+/*    TZEROWAIT   = 0x2C,   //0xFFFF                W
     VDCMIN      = 0x33,   //0x007F FFFF           W
     ENC_CONST   = 0x3A,   // EncConst             W
     MSLUT_0     = 0x60,   //0sf[0...31]           W
@@ -529,8 +529,6 @@ struct {
     Dcctrl      DcCtrl;     //DCCTRL      = 0x6E,   // Dcctrl               W
     Pwmconf     PwmConf;    //PWMCONF     = 0x70,   // Pwmconf              W
 //    ENCM_CTRL   = 0x72,   // EncmCrtl             W
-
-  uint32_t  MaxVelocity;
 }ShadowRegs;
 
 
@@ -551,40 +549,70 @@ struct {
   uint32_t readRegUART(uint8_t slave, Reg reg);               // UART diretto
 
   // ====== High level Configs ======
-  void setCurrent       (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
-  inline void setNeutral       (void)  {
+ void Sethold_delay     (uint8_t hold_delay);
+ void SetIhold          (uint8_t ihold);
+ void SetIrun           (uint8_t irun);
+
+
+          void setCurrent        (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
+  inline  void setNeutral       (void)  {
       setCurrent(0, 0, 0);                      //IHOLD_IRUN
       SetGconfBit(GCONF_en_pwm_mode, false);     //GCONF     en_pwm_mode = 1; //Enable StealthChop
       writeStandstillMode( FreewheelingMode );  //PWMCONF
     };
-  inline void setParking       (void)           { setCurrent(31, 31, 15); };   //IHOLD_IRUN
-  void        setMicrosteps    (uint8_t mres);
+  inline void     setParking        (void)           { setCurrent(31, 31, 15); };               //IHOLD_IRUN
+  
+  void            setMicrosteps     (uint8_t mres);                                             //CHOPCONF
+  inline uint8_t  getMicrosteps     (void)           {return (readReg(CHOPCONF)>>24) & 0x0F;}   //CHOPCONF
 
-  inline uint8_t getMicrosteps  (void)  {return (readReg(CHOPCONF)>>24) & 0x0F;}
-  void softwareEnable           (void);  //CHOPCONF
+  void            setNodeConf     (uint8_t naddr, uint8_t sdelay); //SLAVECONF or NODECONF WriteOnly
+  inline uint8_t  getNodeConf     (void)        { return ShadowRegs.NODECONF.bytes; }
 
-  void            SetGconfBit               (GconfBits b, bool en); //GCONF
-  inline void     StopEnable                (bool en) { SetGconfBit(GCONF_stop_enable, en); }
-  inline void     enableInverseDirection    (bool en) { enableRegBit(en, GCONF, 0x00010); }
+
+  void            softwareEnable    (void);                                                     //CHOPCONF
+  inline void     setChopconf       (uint32_t chopconf) { writeReg(CHOPCONF, chopconf); }       //CHOPCONF
+  void            writeChopperMode  (ChopperMode chopper_mode);                                 //CHOPCONF
+  void            enableHighVelocityFullstep      (bool En);                  //CHOPCONF //True=enable, False=disable
+  void            enableHighVelocityChopperSwitch (bool En);                  //CHOPCONF //True=enable, False=disable
+  void            enableShortToGroundProtection   (bool En);                  //CHOPCONF  //True=enable=0, False=disable=1
+  void            writeComparatorBlankTime        (ComparatorBlankTime tbl);  //CHOPCONF
+  void            writeEnabledToff                (uint8_t toff);             //CHOPCONF
+
+  void            setGconf                  (uint32_t gconf);                                   //GCONF
+  void            SetGconfBit               (GconfBits b, bool en);                             //GCONF
+  inline  void    StopEnable                (bool en) { SetGconfBit(GCONF_stop_enable, en); }   //GCONF.stop_enable
+  inline void     enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }     //GCONF.direct_mode
+          void    setMotorDirection         (MotorDirection motor_direction);                   //GCONF.shaft  True=1=ReverseDirection, false=0=ForwardDirection
+
   inline void     enableStopEnable          (bool en) { enableRegBit(en, GCONF, 0x08000); }
-  inline void     enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }
   inline uint8_t  GetSpiStatus              (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
       //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
       readReg(reg);
       return SPI_Status;
     };
-  inline void     setGconf                  (uint32_t gconf) { writeReg(GCONF, gconf); }
 
-  inline void     setChopconf       (uint32_t chopconf) { writeReg(CHOPCONF, chopconf); }
 
   inline void     setPwmconf        (uint32_t pwmconf)  { writeReg(PWMCONF, pwmconf); ShadowRegs.PwmConf.bytes = pwmconf; }
   inline uint32_t getPwmconf        (void)              { return ShadowRegs.PwmConf.bytes; }
 
+
+  void     setTHigh        (uint32_t v);
+  inline uint32_t getTHigh        (void)              { return ShadowRegs.THIGH; }
+
+  void      setXCompare(int32_t xcomp); //X_COMPARE WriteOnly
+  inline int32_t getXCompare (void)  { return ShadowRegs.X_COMPARE; }
+
+
+  void writeStandstillMode           (StandstillMode mode);    //PWMCONF
+  void writePwmOffset                (uint8_t pwm_amplitude);  //PWMCONF
+  void writePwmGradient              (uint8_t pwm_amplitude);  //PWMCONF
+  void enableAutomaticCurrentControl (bool en);                //PWMCONF
+
   inline void     setCoolconf       (uint32_t coolconf) { writeReg(COOLCONF, coolconf); ShadowRegs.CoolConf.bytes = coolconf; }
   inline uint32_t getCoolconf       (void)              { return ShadowRegs.CoolConf.bytes; }
 
-  inline void     setTPowerDown     (uint32_t tpwdwn)   { writeReg(TPOWERDOWN, tpwdwn); ShadowRegs.TPowerDown = tpwdwn; } //TPOWERDOWN
-  inline uint32_t getTPowerDown     (void)              { return ShadowRegs.TPowerDown; }                                 //TPOWERDOWN
+  inline void     setTPowerDown     (uint8_t tpwdwn)   { writeReg(TPOWERDOWN, tpwdwn); ShadowRegs.TPowerDown = (uint32_t)tpwdwn; }; //TPOWERDOWN
+  inline uint32_t getTPowerDown     (void)              { return ShadowRegs.TPowerDown; };                                          //TPOWERDOWN
 
 
   inline void     setDcctrl         (uint32_t dcctrl) { writeReg(DCCTRL, dcctrl); ShadowRegs.DcCtrl.bytes = dcctrl; }
@@ -599,30 +627,42 @@ struct {
   void setRampMode        (RampMode m);
   inline RampMode getRampMode (void)  { return (RampMode)(readReg(RAMPMODE) & 0x3); };
 
+  void setTPwmThrs            (uint32_t TPwmThrs);
+  inline uint32_t getTPwmThrs (void)              { return ShadowRegs.TPwmThrs; }
 
-
-  void setMaxVelocity             (uint32_t v);  //0...8388096=7FFE00
-  inline uint32_t getMaxVelocity  (void)  {  return ShadowRegs.MaxVelocity; };
+  void      setMaxVelocity   (uint32_t v);  //VMAX 0...8388096=7FFE00
+  inline uint32_t getMaxVelocity  (void)  {  return ShadowRegs.VMAX; };
 
   void setStartVelocity  (uint32_t v);  //0...262143=3FFFF  //Motor start velocity
-  void setFirstVelocity  (uint32_t v);  //0...1048575=FFFFF
-  void setStopVelocity   (uint32_t v);  //1...262143=3FFFF  //Motor stop velocity (unsigned)
+
+  void      setFirstVelocity  (uint32_t v);  //V1:  0...1048575=FFFFF
+  inline  uint32_t  getFirstVelocity  (void)  {return ShadowRegs.V1;};  //V1:  0...1048575=FFFFF
+
+  void setStopVelocity   (uint32_t v);  //VSTOP 1...262143=3FFFF  //Motor stop velocity (unsigned)
+  inline uint32_t getStopVelocity   (void)  {return ShadowRegs.VSTOP; };  //VSTOP 1...262143=3FFFF  //Motor stop velocity (unsigned)
 
   inline int32_t getVelocity    (void)            {return ((int32_t)readReg(VACTUAL  )<<8)>>8;}
   bool zeroVelocity             (void);
   bool positionReached          (void);
   void beginRampToZeroVelocity  (void);
   bool homed                    (void);
-  void setFirstAcceleration   (uint16_t a);  //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
-  void setSecondAcceleration  (uint16_t a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+          void      setFirstAcceleration   (uint16_t a);  //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
+  inline  uint16_t  getFirstAcceleration   (void)       {return ShadowRegs.A1;};  //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
+          void      setSecondAcceleration  (uint16_t a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+  inline  uint16_t  getSecondAcceleration  (void) {return ShadowRegs.AMAX;};  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+
   void setFirstDeceleration   (uint16_t d);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+  inline uint16_t getFirstDeceleration   (void) { return ShadowRegs.DMAX; };
   void setSecondDeceleration  (uint16_t d);  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
+  inline uint16_t getSecondDeceleration  (void) {return ShadowRegs.D1; };  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
 
   inline void     setPosition (int32_t x)       { writeReg(XACTUAL, x); }
   inline int32_t  getPosition (void)            { return (int32_t)readReg(XACTUAL); }
 
-  inline void     moveTo      (int32_t xTarget) { writeReg(XTARGET, (uint32_t)xTarget); setRampMode(PositionMode); }
-  inline void     moveBy      (int32_t dx)      { moveTo(getPosition() + dx); }
+  inline void     setTarget   (int32_t xTarget) { writeReg(XTARGET, xTarget);}
+  inline int32_t  getTarget   (void)            { return (int32_t)readReg(XTARGET);}
+
+  inline void     moveBy      (int32_t dx)      { setTarget(getPosition() + dx); }
 
   inline void     StopMotor   (uint16_t a=10) { //Method A
       setRampMode(VelocityPositiveMode);  //RAMPMODE
@@ -637,7 +677,7 @@ struct {
     writeReg(TZEROWAIT, 0);
   }
 
-  inline void     StopMotorB   (void) { writeReg(VSTART, 0); writeReg(VMAX, 0); } //Method B
+  inline void     StopMotorB   (void) { writeReg(VSTART, 0); setMaxVelocity(0); } //Method B
 
   inline uint8_t  getIcVersion  (void)          { return (readReg(IOIN)>>24) & 0xFF; }
   uint8_t         stepAndDirectionMode  (void);    //IOIN
@@ -663,17 +703,7 @@ struct {
   char*     GetName         (void)  {return StepName;}
   void      SetName         (char* n)  {StepName=n;}
 
-  void writeStandstillMode           (StandstillMode mode);    //PWMCONF
-  void writePwmOffset                (uint8_t pwm_amplitude);  //PWMCONF
-  void writePwmGradient              (uint8_t pwm_amplitude);  //PWMCONF
-  void enableAutomaticCurrentControl (bool en);                //PWMCONF
 
-  void setMotorDirection(MotorDirection motor_direction) {  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
-    Gconf gconf;
-    gconf.bytes = readReg(GCONF);
-    gconf.shaft = motor_direction;
-    setGconf(gconf.bytes);
-  }
 
 private:
 
