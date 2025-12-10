@@ -27,7 +27,7 @@ void  EnableSpiOnChip(uint8_t csPin, bool en)     { digitalWrite(csPin, en?LOW:H
 uint32_t TMC5130::genSpiFunct(Reg reg, uint32_t value, bool Read){
   spi->beginTransaction(SPISettings(spiFreq, MSBFIRST, SPI_MODE3));
   cbEnableChipSelect(csPinAddress, true);
-  SPI_Status = spi->transfer( Read ? ((uint8_t)reg & 0x7F) : ((uint8_t)reg | 0x80) );
+  SPI_Status.bytes = spi->transfer( Read ? ((uint8_t)reg & 0x7F) : ((uint8_t)reg | 0x80) );
   // Successivi 4 byte: dati MSB → LSB
   uint8_t b3 = spi->transfer((value >> 24) & 0xFF);
   uint8_t b2 = spi->transfer((value >> 16) & 0xFF);
@@ -334,29 +334,19 @@ void TMC5130::writeEnabledToff(uint8_t toff) { //CHOPCONF
   writeReg(CHOPCONF, chopconf.bytes);
 }
 
-
-void TMC5130::SetGconfBit(GconfBits b, bool en){
-  uint32_t gconf = readReg(GCONF);
-  if (en) gconf |= b;
-  else    gconf &= ~b;
-  writeReg(GCONF, gconf);
-}
-
 void TMC5130::setGconf(uint32_t gconf){
   assert(gconf>=0 && gconf <= 0x1FFFF);
   writeReg(GCONF, gconf);
 }
 
 void TMC5130::setMotorDirection(MotorDirection motor_direction) {  //GCONF  True=1=ReverseDirection, false=0=ForwardDirection
-    Gconf gconf;
-    gconf.bytes = readReg(GCONF);
+    Gconf gconf = getGconf();
     gconf.shaft = motor_direction;
     setGconf(gconf.bytes);
 }
 
 void TMC5130::setDcStep(uint16_t dcTime, uint16_t dcSG) {
   assert(dcTime>=0 && dcTime<=0x1FF  &&  dcSG>=0 && dcSG<=0xFF);
-  
   uint32_t v = ((uint32_t)dcTime << 16) | dcSG;
   setDcctrl(v);
 }
@@ -454,9 +444,9 @@ uint16_t TMC5130::readStallGuardResult(void) { //DRV_STATUS
 
 void TMC5130::writeStopMode(StopMode stop_mode) { //SW_MODE
   SwMode sw_mode;
-  sw_mode.bytes = readReg(TMC5130::SW_MODE);
+  sw_mode.bytes = readReg(SW_MODE);
   sw_mode.en_softstop = stop_mode;
-  writeReg(TMC5130::SW_MODE, sw_mode.bytes);
+  writeReg(SW_MODE, sw_mode.bytes);
 }
 
 void TMC5130::enableStallStop(bool En) { //SW_MODE //True=enable, False=disable

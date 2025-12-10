@@ -23,7 +23,7 @@ void      ShowGStatus    (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true
 uint16_t  ShowSwitchMode (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void      ShowSwitchMode2(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void      ShowActuals    (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
-void      ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
+//void      ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void      ShowCurrents   (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 void      ShowDrvStatus  (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true);
 

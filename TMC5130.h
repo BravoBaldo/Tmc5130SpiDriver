@@ -1,4 +1,4 @@
-/**
+/*
  * TMC5130.h - Libreria Arduino super-commentata per Trinamic TMC5130A
  *
  * Supporta le 3 modalità documentate dal datasheet:
@@ -26,13 +26,6 @@ extern void EnableSpiOnChip(uint8_t csPin, bool en);
 //extern SPI_ENABLER_CB EnableSpiOnChip;
 
 class TMC5130 {
-public:
-  // ====== Modalità operative ======
-  enum InterfaceMode {
-    MODE_SPI,
-    MODE_UART,    //NOT TESTED
-    MODE_STEPDIR  //NOT TESTED
-  };
 
   // ====== Registers ======
   typedef enum : uint8_t {
@@ -98,30 +91,36 @@ public:
     LOST_STEPS  = 0x73,   //                      R
   }Reg;
 
+
+public:
+  // ====== Modalità operative ======
+  enum InterfaceMode {
+    MODE_SPI,
+    MODE_UART,    //NOT TESTED
+    MODE_STEPDIR  //NOT TESTED
+  };
+
  static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
                                             RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
                                             CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
                                         };
 
-  typedef enum : uint32_t { //GCONF
-    GCONF_I_scale_analog		    = 0x00000001, //0000 0000 0000 0000 0000 0001
-    GCONF_internal_Rsense		    = 0x00000002, //0000 0000 0000 0000 0000 0010
-    GCONF_en_pwm_mode			      = 0x00000004, //0000 0000 0000 0000 0000 0100
-    GCONF_enc_commutation		    = 0x00000008, //0000 0000 0000 0000 0000 1000
-    GCONF_shaft					        = 0x00000010, //0000 0000 0000 0000 0001 0000
-    //                                                               XX                                          
-    GCONF_diag0_step			      = 0x00000080, //0000 0000 0000 0000 1000 0000
-    GCONF_diag1_dir	            = 0x00000100, //0000 0000 0000 0001 0000 0000
-    //                                                         XXX
-    GCONF_diag0_int_pushpull	  = 0x00001000, //0000 0000 0001 0000 0000 0000
-    GCONF_diag1_poscomp_pushpull= 0x00002000, //0000 0000 0010 0000 0000 0000
-    GCONF_small_hysteresis		  = 0x00004000, //0000 0000 0100 0000 0000 0000
-    GCONF_stop_enable			      = 0x00008000, //0000 0000 1000 0000 0000 0000
-    GCONF_direct_mode			      = 0x00010000, //0000 0001 0000 0000 0000 0000
-    GCONF_test_mode				      = 0x00020000, //0000 0010 0000 0000 0000 0000
-    //                                XXXX XXXX XXXX XX
-  }GconfBits; //  SetGconfBit, StopEnable
- 
+
+  typedef union { //Spi Status, SPI_Status
+    struct {
+      boolean reset_flag        : 1;  //0x01
+      boolean driver_error      : 1;  //0x02
+      boolean StallGuard2       : 1;  //0x04
+      boolean standstill        : 1;  //0x08
+      boolean velocity_reached  : 1;  //0x10
+      boolean position_reached  : 1;  //0x20
+      boolean status_stop_l     : 1;  //0x40
+      boolean status_stop_r     : 1;  //0x80
+    };
+    uint8_t bytes;
+  }SpiStatus;
+
+
 
   typedef union  {    //GCONF
     struct {
@@ -305,6 +304,7 @@ public:
       uint32_t reserved         : 20;
     };
     uint32_t bytes;
+    // operator uint32_t () const { return bytes; }
   }SwMode;
 
 
@@ -504,17 +504,18 @@ struct {
 //    TCOOLTHRS     = 0x14,   //0xFFFFF               W
   uint32_t  THIGH;  //= 0x15,   //0xFFFFF               W   
 //    VSTART        = 0x23,   //0x0003 FFFF           W
-  uint32_t  A1;     //= 0x24,   //0xFFFF                W
-  uint32_t  V1;     //= 0x25,   //0x000F FFFF           W
-  uint32_t  AMAX;   //= 0x26,   //0xFFFF                W
-  uint32_t  VMAX;   //= 0x27,   //0x7F FFFF             W
-  uint32_t  DMAX;   //= 0x28,   //0xFFFF                W
-  uint32_t  D1;     //= 0x2A,   //0xFFFF                W
-  uint32_t  VSTOP;  //= 0x2B,   //0x0003 FFFF           W
-/*    TZEROWAIT   = 0x2C,   //0xFFFF                W
-    VDCMIN      = 0x33,   //0x007F FFFF           W
-    ENC_CONST   = 0x3A,   // EncConst             W
-    MSLUT_0     = 0x60,   //0sf[0...31]           W
+  uint32_t  A1;         //= 0x24,   //0xFFFF                W
+  uint32_t  V1;         //= 0x25,   //0x000F FFFF           W
+  uint32_t  AMAX;       //= 0x26,   //0xFFFF                W
+  uint32_t  VMAX;       //= 0x27,   //0x7F FFFF             W
+  uint32_t  DMAX;       //= 0x28,   //0xFFFF                W
+  uint32_t  D1;         //= 0x2A,   //0xFFFF                W
+  uint32_t  VSTOP;      //= 0x2B,   //0x0003 FFFF           W
+  uint32_t  TZEROWAIT;  //= 0x2C,   //0xFFFF                W
+  uint32_t  VDCMIN;     //= 0x33,   //0x007F FFFF           W
+  EncConst  ENC_CONST;  //= 0x3A,   // EncConst             W
+
+/*    MSLUT_0     = 0x60,   //0sf[0...31]           W
     MSLUT_1     = 0x61,   //0sf[32...63]          W
     MSLUT_2     = 0x62,   //0sf[64...95]          W
     MSLUT_3     = 0x63,   //0sf[96...127]         W
@@ -528,7 +529,7 @@ struct {
     Coolconf    CoolConf;   //COOLCONF    = 0x6D,   // Coolconf             W
     Dcctrl      DcCtrl;     //DCCTRL      = 0x6E,   // Dcctrl               W
     Pwmconf     PwmConf;    //PWMCONF     = 0x70,   // Pwmconf              W
-//    ENCM_CTRL   = 0x72,   // EncmCrtl             W
+    EncmCrtl    ENCM_CTRL;  //= 0x72,   // EncmCrtl             W
 }ShadowRegs;
 
 
@@ -553,19 +554,30 @@ struct {
  void SetIhold          (uint8_t ihold);
  void SetIrun           (uint8_t irun);
 
+inline void enablePwmMode(bool en) {  //GCONF
+  Gconf gconf = getGconf();
+  gconf.en_pwm_mode = (en?1:0);
+  setGconf(gconf.bytes);
+} 
+
+  inline void     enableStopEnable                (bool en) {
+    Gconf gconf = getGconf();
+    gconf.stop_enable = (en?1:0);
+    setGconf(gconf.bytes);
+  }   //GCONF.stop_enable
 
           void setCurrent        (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
   inline  void setNeutral       (void)  {
-      setCurrent(0, 0, 0);                      //IHOLD_IRUN
-      SetGconfBit(GCONF_en_pwm_mode, false);     //GCONF     en_pwm_mode = 1; //Enable StealthChop
-      writeStandstillMode( FreewheelingMode );  //PWMCONF
-    };
-  inline void     setParking        (void)           { setCurrent(31, 31, 15); };               //IHOLD_IRUN
-  
+                                          setCurrent(0, 0, 0);                      //IHOLD_IRUN
+                                          enablePwmMode(false);                     //GCONF en_pwm_mode = 1; //Enable StealthChop
+                                          writeStandstillMode( FreewheelingMode );  //PWMCONF
+                                        };
+                                       
+  inline void     setParking        (void)           { setCurrent(31, 31, 15); };               //IHOLD_IRUN  
   void            setMicrosteps     (uint8_t mres);                                             //CHOPCONF
   inline uint8_t  getMicrosteps     (void)           {return (readReg(CHOPCONF)>>24) & 0x0F;}   //CHOPCONF
 
-  void            setNodeConf     (uint8_t naddr, uint8_t sdelay); //SLAVECONF or NODECONF WriteOnly
+  void            setNodeConf     (uint8_t naddr, uint8_t sdelay); //ToDo: Review       SLAVECONF or NODECONF WriteOnly
   inline uint8_t  getNodeConf     (void)        { return ShadowRegs.NODECONF.bytes; }
 
 
@@ -579,17 +591,15 @@ struct {
   void            writeEnabledToff                (uint8_t toff);             //CHOPCONF
 
   void            setGconf                  (uint32_t gconf);                                   //GCONF
-  void            SetGconfBit               (GconfBits b, bool en);                             //GCONF
-  inline  void    StopEnable                (bool en) { SetGconfBit(GCONF_stop_enable, en); }   //GCONF.stop_enable
   inline void     enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }     //GCONF.direct_mode
           void    setMotorDirection         (MotorDirection motor_direction);                   //GCONF.shaft  True=1=ReverseDirection, false=0=ForwardDirection
 
-  inline void     enableStopEnable          (bool en) { enableRegBit(en, GCONF, 0x08000); }
-  inline uint8_t  GetSpiStatus              (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
-      //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
-      readReg(reg);
-      return SPI_Status;
-    };
+//SpiStatus
+  inline SpiStatus  GetSpiStatus              (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
+    //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
+    readReg(reg);
+    return SPI_Status;
+  };
 
 
   inline void     setPwmconf        (uint32_t pwmconf)  { writeReg(PWMCONF, pwmconf); ShadowRegs.PwmConf.bytes = pwmconf; }
@@ -603,13 +613,19 @@ struct {
   inline int32_t getXCompare (void)  { return ShadowRegs.X_COMPARE; }
 
 
-  void writeStandstillMode           (StandstillMode mode);    //PWMCONF
+  void writeStandstillMode    (StandstillMode mode);    //PWMCONF
+  inline void writeStandstill_Normal            (void)  {writeStandstillMode(NormalMode           );};
+  inline void writeStandstill_Freewheeling      (void)  {writeStandstillMode(FreewheelingMode     );};
+  inline void writeStandstill_PassiveBrakingLs  (void)  {writeStandstillMode(PassiveBrakingLsMode );};
+  inline void writeStandstill_PassiveBrakingHs  (void)  {writeStandstillMode(PassiveBrakingHsMode );};
+
   void writePwmOffset                (uint8_t pwm_amplitude);  //PWMCONF
   void writePwmGradient              (uint8_t pwm_amplitude);  //PWMCONF
   void enableAutomaticCurrentControl (bool en);                //PWMCONF
 
   inline void     setCoolconf       (uint32_t coolconf) { writeReg(COOLCONF, coolconf); ShadowRegs.CoolConf.bytes = coolconf; }
-  inline uint32_t getCoolconf       (void)              { return ShadowRegs.CoolConf.bytes; }
+  inline uint32_t getCoolconf       (void)              { return ShadowRegs.CoolConf.bytes; } //COOLCONF AAA WriteOnly
+//  inline Coolconf getCoolconf       (void)              { return ShadowRegs.CoolConf; };        //COOLCONF AAA WriteOnly
 
   inline void     setTPowerDown     (uint8_t tpwdwn)   { writeReg(TPOWERDOWN, tpwdwn); ShadowRegs.TPowerDown = (uint32_t)tpwdwn; }; //TPOWERDOWN
   inline uint32_t getTPowerDown     (void)              { return ShadowRegs.TPowerDown; };                                          //TPOWERDOWN
@@ -633,7 +649,7 @@ struct {
   void      setMaxVelocity   (uint32_t v);  //VMAX 0...8388096=7FFE00
   inline uint32_t getMaxVelocity  (void)  {  return ShadowRegs.VMAX; };
 
-  void setStartVelocity  (uint32_t v);  //0...262143=3FFFF  //Motor start velocity
+  void setStartVelocity  (uint32_t v);  //VSTART    0...262143=3FFFF  //Motor start velocity
 
   void      setFirstVelocity  (uint32_t v);  //V1:  0...1048575=FFFFF
   inline  uint32_t  getFirstVelocity  (void)  {return ShadowRegs.V1;};  //V1:  0...1048575=FFFFF
@@ -653,6 +669,14 @@ struct {
 
   void setFirstDeceleration   (uint16_t d);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
   inline uint16_t getFirstDeceleration   (void) { return ShadowRegs.DMAX; };
+
+  inline void setTZeroWait (uint16_t t)        { writeReg(TZEROWAIT, t); };  //0…(2^16)-1 * 512 tCLK
+  inline uint16_t getTZeroWait   (void) { return ShadowRegs.TZEROWAIT; };
+  
+  inline void setVDCMin (uint32_t v)        { writeReg(VDCMIN, v); };  //0…(2^16)-1 * 512 tCLK
+  inline uint32_t getVDCMin   (void) { return ShadowRegs.VDCMIN; };
+
+
   void setSecondDeceleration  (uint16_t d);  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
   inline uint16_t getSecondDeceleration  (void) {return ShadowRegs.D1; };  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
 
@@ -683,8 +707,33 @@ struct {
   uint8_t         stepAndDirectionMode  (void);    //IOIN
   inline bool     IsConnected   (void)          { return getIcVersion()==0x11;}
 
+  inline RampStat   getRampStat (void) {return RampStat   {.bytes = readReg(RAMP_STAT   ) };}; 
+  inline Ioin       getIoin     (void) {return Ioin       {.bytes = readReg(IOIN        ) };}; 
+  inline Gstat      getGstat    (void) {return Gstat      {.bytes = readReg(GSTAT       ) };}; 
+  inline Mscuract   getMscuract (void) {return Mscuract   {.bytes = readReg(MSCURACT    ) };}; 
+  inline DrvStatus  getDrvStatus(void) {return DrvStatus  {.bytes = readReg(DRV_STATUS  ) };}; 
+  inline Chopconf   getChopconf (void) {return Chopconf   {.bytes = readReg(CHOPCONF    ) };}; //CHOPCONF 
+  inline Gconf      getGconf    (void) {return Gconf      {.bytes = readReg(GCONF       ) };}; //GCONF 
+  inline PwmScale   getPwmScale (void) {return PwmScale   {.bytes = readReg(PWM_SCALE   ) };}; //PWM_SCALE 
+  inline SwMode     getSwMode   (void) {return SwMode     {.bytes = readReg(SW_MODE     ) };}; //SW_MODE 
+  inline EncConst   getEncConst (void) {return EncConst   {.bytes = readReg(ENC_CONST   ) };}; //ENC_CONST
+
+  inline void     setEncConst (EncConst m){ writeReg(ENC_CONST, m.bytes);} //ENC_CONST
+  inline void     setSwMode   (SwMode m)  { writeReg(SW_MODE, m.bytes);} //SW_MODE
+  inline void     setEncMode  (Encmode m) { writeReg(ENCMODE, m.bytes);} //ENCMODE
+
+  inline void     setEncmCrtl  (EncmCrtl m) { writeReg(ENCM_CTRL, m.bytes);} //ENCM_CTRL
+
+  inline void     setXEnc     (int32_t e) { writeReg(X_ENC, e);} //X_ENC
+  inline int32_t  getXEnc     (void)      { return (int32_t)readReg(X_ENC);}  //X_ENC
+
+//---------------------------
+  inline uint32_t   getTStep  (void) {return readReg(TSTEP)&0xFFFFF; }; 
+  inline uint32_t   getXLatch (void) {return readReg(XLATCH); }; 
+
   void writeStopMode            (StopMode stop_mode); //SW_MODE
   void enableStallStop          (bool En);            //SW_MODE //True=enable, False=disable
+
   void endHome                  (void);
 
   // ====== Utilities Step/Dir ======
@@ -693,7 +742,7 @@ struct {
   void enableDriver       (bool en);
 
   int32_t   Init_MicroSteps (uint8_t ms);
-  inline uint8_t   GetLastSpiStatus   (void)                                            {return SPI_Status;}
+  inline SpiStatus   GetLastSpiStatus   (void)                                            {return SPI_Status;}
 
   uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);
 
@@ -708,7 +757,7 @@ struct {
 private:
 
   // SPI
-  uint8_t       SPI_Status;       //Last SPI status register
+  SpiStatus     SPI_Status;       //Last SPI status register
   InterfaceMode mode = MODE_SPI;
   uint8_t       csPinAddress;
   SPIClass      *spi = nullptr;

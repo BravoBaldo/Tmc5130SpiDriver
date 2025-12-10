@@ -123,34 +123,34 @@ void GenShowReg(ShowAsTyp Typ, uint32_t Val, uint8_t Col, uint8_t Row, bool Vert
   GenShow(Col, Row, Vert, ShowTitle, Val, Vnames, Hnames, Xnames, Size);
 }
 
-uint16_t ShowSwitchMode(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  uint16_t Val = stp->readReg(TMC5130::SW_MODE);
+uint16_t ShowSwitchMode(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){  //SW_MODE
+  uint16_t Val = stp->getSwMode().bytes;
   GenShow(Col, Row, Vert, ShowTitle, Val, SwitchMode_v, SwitchMode_h, SwitchMode_x, wxSIZEOF(SwitchMode_v));
   return Val;
 }
 
-void ShowRampStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::RAMP_STAT), RampStatus_v, RampStatus_h, RampStatus_x, wxSIZEOF(RampStatus_v));
+void ShowRampStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){ //RAMP_STAT
+  GenShow(Col, Row, Vert, ShowTitle, stp->getRampStat().bytes, RampStatus_v, RampStatus_h, RampStatus_x, wxSIZEOF(RampStatus_v));
 }
 
 uint8_t ShowSpiStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  uint8_t Val = stp->GetSpiStatus();
+  uint8_t Val = stp->GetSpiStatus().bytes;
   GenShow(Col, Row, Vert, ShowTitle, Val, SpiStatus_v, SpiStatus_h, SpiStatus_x, wxSIZEOF(SpiStatus_v));
   return Val;
 }
 
-uint8_t ShowInputs(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  uint8_t Val = stp->readReg(TMC5130::IOIN);
+uint8_t ShowInputs(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){  //IOIN
+  uint8_t Val = stp->getIoin().bytes;
   GenShow(Col, Row, Vert, ShowTitle, Val, Inputs_v, Inputs_h, Inputs_x, wxSIZEOF(Inputs_v));
   return Val;
 }
 
-void ShowGStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  GenShow(Col, Row, Vert, ShowTitle, stp->readReg(TMC5130::GSTAT), GStatus_v, GStatus_h, GStatus_x, wxSIZEOF(GStatus_v));
+void ShowGStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){  //GSTAT
+  GenShow(Col, Row, Vert, ShowTitle, stp->getGstat().bytes, GStatus_v, GStatus_h, GStatus_x, wxSIZEOF(GStatus_v));
 }
 
-void ShowCurrents(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  uint32_t act = stp->readReg(TMC5130::MSCURACT);
+void ShowCurrents(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){ //MSCURACT
+  uint32_t act = stp->getMscuract().bytes;
 
   if(ShowTitle){
     ansi.gotoXY(Col, Row++);  ansi.print("==== CURRENTS ====");
@@ -160,8 +160,8 @@ void ShowCurrents(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTi
   ansi.gotoXY(Col, Row++);  ansi.print("CUR_A...: ");  ansi.print( (int8_t)((act>>16) & 0x1FF));        ansi.print("    ");
 }
 
-void ShowDrvStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){
-  uint32_t drv = stp->readReg(TMC5130::DRV_STATUS);
+void ShowDrvStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle){  //DRV_STATUS
+  uint32_t drv = stp->getDrvStatus().bytes;
   if(ShowTitle){
     ansi.gotoXY(Col, Row++);  ansi.print("==== DRV_STATUS ====");
   }
@@ -184,27 +184,28 @@ void ShowActuals(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTit
     if(ShowTitle){
       ansi.gotoXY(Col, Row++);  ansi.print("===== ACTUALS =====");
     }
-    ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XACTUAL  ));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print( (int32_t)stp->readReg(TMC5130::XTARGET  ));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(          stp->readReg(TMC5130::X_COMPARE));        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->readReg(TMC5130::TSTEP)&0xFFFFF);    ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("VACTUAL...: ");  ansi.print(          stp->getVelocity()              );        ansi.print("       ");
-    ansi.gotoXY(Col, Row++);  ansi.print("RAMP_STAT.: ");  ansi.print(          stp->readReg(TMC5130::RAMP_STAT), HEX);   ansi.print("       ");    
-    ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(          stp->readReg(TMC5130::XLATCH   )     );   ansi.print("       ");
+    ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print( (int32_t)stp->getPosition()            );  ansi.print("       "); //XACTUAL
+    ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print( (int32_t)stp->getTarget()              );  ansi.print("       "); //XTARGET
+    ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(          stp->getXCompare()            );  ansi.print("       "); //AAA X_COMPARE WriteOnly
+    ansi.gotoXY(Col, Row++);  ansi.print("TSTEP.....: ");  ansi.print(          stp->getTStep()               );  ansi.print("       "); //TSTEP
+    ansi.gotoXY(Col, Row++);  ansi.print("VACTUAL...: ");  ansi.print(          stp->getVelocity()            );  ansi.print("       "); //VACTUAL
+    ansi.gotoXY(Col, Row++);  ansi.print("RAMP_STAT.: ");  ansi.print(          stp->getRampStat().bytes, HEX );  ansi.print("       "); //RAMP_STAT
+    ansi.gotoXY(Col, Row++);  ansi.print("XLATCH....: ");  ansi.print(          stp->getXLatch()              );  ansi.print("       "); //XLATCH
 
-    uint32_t MsCurAct =  stp->readReg(TMC5130::MSCURACT);
-    ansi.gotoXY(Col, Row++);  ansi.print("MSCURACT..: ");  ansi.print(MsCurAct,HEX);                          ansi.print("          ");
-    ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print((uint16_t)( MsCurAct      & 0x1FF));    ansi.print("   ");
-    ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print((uint16_t)((MsCurAct>>16) & 0x1FF));    ansi.print("   ");
+    TMC5130::Mscuract CurAct =  stp->getMscuract();  //MSCURACT
+
+    ansi.gotoXY(Col, Row++);  ansi.print("MSCURACT..: ");  ansi.print(CurAct.bytes,HEX);                          ansi.print("          ");
+    ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print(CurAct.cur_a);    ansi.print("   ");
+    ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print(CurAct.cur_b);    ansi.print("   ");
 }
 
-
+/*
 void ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowTitle) {
     if(ShowTitle){
       ansi.gotoXY(Col, Row++);  ansi.print("===== ACTUALS =====");
     }
     uint32_t r = 0;
-        stp->genSpiFunct(TMC5130::XACTUAL, 0, true);  //1) Dummy reading, but prepare next result
+        stp->genSpiFunct(TMC5130::XACTUAL,   0, true);  //1) Dummy reading, but prepare next result
     r = stp->genSpiFunct(TMC5130::XTARGET,   0, true);  ansi.gotoXY(Col, Row++);  ansi.print("XACTUAL...: ");  ansi.print((int32_t)r);        ansi.print("       ");
     r = stp->genSpiFunct(TMC5130::X_COMPARE, 0, true);  ansi.gotoXY(Col, Row++);  ansi.print("XTARGET...: ");  ansi.print((int32_t)r);        ansi.print("       ");
     r = stp->genSpiFunct(TMC5130::TSTEP,     0, true);  ansi.gotoXY(Col, Row++);  ansi.print("X_COMPARE.: ");  ansi.print(r         );        ansi.print("       ");
@@ -216,10 +217,10 @@ void ShowActualsFast(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool Sho
                                                         ansi.gotoXY(Col, Row++);  ansi.print("Cur_A.....: ");  ansi.print((uint16_t)( r      & 0x1FF));    ansi.print("   ");
                                                         ansi.gotoXY(Col, Row++);  ansi.print("Cur_B.....: ");  ansi.print((uint16_t)((r>>16) & 0x1FF));    ansi.print("   ");
 }
-
-
+*/
 void ShowCoolConf(uint8_t Col, uint8_t Row, bool Vert=true, bool ShowTitle=true){
-    uint32_t cf = 0x1234567890;//stp->readReg(TMC5130::COOLCONF);
+  //getCoolconf
+    uint32_t cf = 0x1234567890;//stp->getCoolconf().bytes; //readReg(TMC5130::COOLCONF); //COOLCONF AAA WriteOnly
     if(ShowTitle){
       ansi.gotoXY(Col, Row++);  ansi.print("===== COOLCONF =====");
     }
@@ -233,7 +234,7 @@ void ShowWaiting(TMC5130 *stp, const float waiting, bool WaitStop){
   while (millis() - time < waiting ) {
     ansi.gotoXY(1, 1);
     ansi.print("MicroSteps: "); ansi.print(stp->getMicrosteps());
-    ansi.print(" CHOPCONF: ");  ansi.print(stp->readReg(TMC5130::CHOPCONF), HEX);
+    ansi.print(" CHOPCONF: ");  ansi.print(stp->getChopconf().bytes, HEX);  //CHOPCONF
     ansi.print(" Ic Vers.: ");  ansi.print(stp->getIcVersion(), HEX);
 
 //    ansi.print(" Pos: ");       ansi.print(stp->getPosition());
@@ -246,15 +247,14 @@ void ShowWaiting(TMC5130 *stp, const float waiting, bool WaitStop){
     ShowActuals   (stp, 25, 20);
     ShowCoolConf  (50, 10);
 
-    uint8_t St = stp->GetSpiStatus();
-    ansi.gotoXY(1, 8); ansi.print("Spi Status: ");ansi.print(St, HEX);
-    ansi.gotoXY(1, 9); ansi.print("Is Stopped: ");ansi.print( (St&0x20)?"Yes":"No ");
+    TMC5130::SpiStatus St = stp->GetSpiStatus();
+    ansi.gotoXY(1, 8); ansi.print("Spi Status: ");ansi.print(St.bytes, HEX);
+    ansi.gotoXY(1, 9); ansi.print("Is Stopped: ");ansi.print( (St.position_reached)?"Yes":"No ");
 /*
     //ShowGStatus   (stp, 50,  2);  ShowGStatus   (stp, 1,14,false);  //Note: GSTAT is R+C (Cleared after Readed) 
     //ShowRampStatus(stp, 35, 18);  ShowRampStatus(stp, 1,15,false);  //Note:RAMP_STAT is R+C (Cleared after Readed) 
 */    
-    uint8_t s = stp->GetSpiStatus() & 0x20;
-    if(WaitStop && (stp->GetSpiStatus() & 0x20)) return;
+    if(WaitStop && (stp->GetSpiStatus().position_reached)) return;
   }
 }
 
@@ -270,10 +270,8 @@ void Printer::printRegisterPortion(const char * str, uint32_t value, int base) {
   print_ptr_->println();
 }
 
-void Printer::readAndPrintGconf(TMC5130 &stepper){
-  TMC5130::Gconf gconf;
-  gconf.bytes = stepper.readReg(TMC5130::GCONF);
-  printRegister(gconf);
+void Printer::readAndPrintGconf(TMC5130 &stepper){//GCONF
+  printRegister(stepper.getGconf());
 }
 
 void Printer::printRegister(TMC5130::Gconf gconf){
@@ -309,9 +307,8 @@ void Printer::printRegister(TMC5130::PwmScale & pwm_scale){
   print_ptr_->println("--------------------------");
 }
 
-void Printer::readAndPrintPwmScale(TMC5130 &stepper) {
-  TMC5130::PwmScale pwm_scale;
-  pwm_scale.bytes = stepper.readReg(TMC5130::PWM_SCALE);
+void Printer::readAndPrintPwmScale(TMC5130 &stepper) {  //PWM_SCALE
+  TMC5130::PwmScale pwm_scale = stepper.getPwmScale();
   printRegister(pwm_scale);
 }
 

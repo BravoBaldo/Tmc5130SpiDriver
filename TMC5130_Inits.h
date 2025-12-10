@@ -15,4 +15,4 @@ void SetPositional        (TMC5130 &stepper, uint8_t SpeedFor1RPS, uint8_t mres)
 void InitTestStall        (TMC5130 &stepper);
 void InitTestStall_Setup  (TMC5130 &stepper);
 void beginHomeToStall     (TMC5130 &stepper, TMC5130::HomeParameters home_parameters, TMC5130::StallParameters stall_parameters);
-void InitGoto             (TMC5130 &stepper);
+void InitGoto             (TMC5130 &stepper, bool ResetPosition=true);

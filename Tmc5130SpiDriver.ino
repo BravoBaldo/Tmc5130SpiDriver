@@ -2,9 +2,8 @@
 ToDo:
   Eecute an "HomeToStall"
   Check if to use Polidoro's class printer....
-  unificare Gconf and GconfBits
-  Rendere Regs Private
-  Gli algoritmi descritti nel datasheet
+  Implementare gli algoritmi descritti nel datasheet
+
 Tests
   Seriale
   connessione
@@ -13,11 +12,14 @@ Tests
   In 'Parking'        Ok
   MotorA continuous rotation, MotB two laps forward and two back
   GoTo... steps
+
 Done:
   remove TMC5130_RampMode
   Introduce ShadowRegs (see DriverParameters)
   Le inizializzazioni del Datasheet
   Eliminare StepperNames
+  unificare Gconf and GconfBits
+  Rendere Regs Private
 */
 
 
@@ -44,6 +46,7 @@ TMC5130::StallParameters      stall_parameters_chip;
 
 
 //--- List All expanders ------------------------------------------
+
 enum : uint8_t {
   ExpanderA = 0,
   Expander_Count  //Must be last
@@ -63,7 +66,7 @@ void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(cs
 TMC5130 Steppers[]={TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A"),
                     TMC5130(SPI,  8, SpiEnableSteppers, SPI_FREQ, "Motor B"),
                     TMC5130(SPI, 10, SpiEnableSteppers, SPI_FREQ, "Motor C"),
-//                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
+                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
                 };
 #define STEP_STALL 0 //For Stall experiments
 //---------------------------------------------------------------------------------------
@@ -81,6 +84,7 @@ void setup_Basic() {
 
   //Expanders initializations
   Wire.begin(I2C_SDA, I2C_SCK, 400000);
+  
   EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000);  //per default mette tutti output
   EXPANDERS[ExpanderA].write16(0xFFFF); //1 means OFF!!!!
 
@@ -147,8 +151,8 @@ void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for eac
   stp->setTarget(Steps);
   stp->setRampMode(TMC5130::PositionMode);
   do{
-    stp->genSpiFunct(TMC5130::GCONF, 0, true);  //dummy reading
-  }while( !(stp->GetSpiStatus() & 0x20));
+    //stp->getGconf();//genSpiFunct(TMC5130::GCONF, 0, true);  //dummy reading
+  }while( !(stp->GetSpiStatus().position_reached));
   Serial.println(millis()-time);
 }
 
@@ -176,12 +180,9 @@ uint8_t loop_Gen(struct Fsa &f){
       break;
 
     case 1:   //Wait Target ToDo: Add Timeout
-      {
-        uint8_t St_A = f.stepper->GetSpiStatus();
-        if(St_A&0x20){              //Stepper a destinazione
+        if(f.stepper->GetSpiStatus().position_reached){              //Stepper a destinazione
           f.fsa++;
         }
-      }
       break;
 
     case 2: //Start Timer
@@ -216,9 +217,9 @@ void DisplayMotor(TMC5130 &stp, uint8_t idx){
 //  ansi.print(" CHOPCONF: ");    ansi.print(stp.readReg(TMC5130::CHOPCONF), HEX);
 
     uint8_t Row = 5+idx*16;
-    uint8_t St  = stp.GetSpiStatus();
+    uint8_t St  = stp.GetSpiStatus().bytes;
     GenShowReg(ShowAsSpiStatus, St,  1, Row, true, true);
-    ShowActualsFast(&stp,           22, Row);
+//ToDo    ShowActualsFast(&stp,           22, Row);
 //    ShowSwitchMode(&stp,            51, Row);
 //    ShowCurrents(&stp,            51, Row);
     ShowDrvStatus(&stp,            51, Row);
@@ -300,7 +301,7 @@ void loopWWW(void){
 
   #define MOVE_POSITION  110  // radians
   int32_t target_position_chip = MOVE_POSITION*8149;  //stepper.converter.positionRealToChip(MOVE_POSITION); //110*8149 radians * microsteps_per_real_position_unit
-  Steppers[STEP_STALL].writeReg(TMC5130::XTARGET,  target_position_chip); //stepper.controller.writeTargetPosition(target_position_chip);
+  Steppers[STEP_STALL].setTarget(target_position_chip); //XTARGET stepper.controller.writeTargetPosition(target_position_chip);
   Serial.print("Moving to another position (radians): "); Serial.print(MOVE_POSITION);  Serial.println("...");
 
   while (not Steppers[STEP_STALL].positionReached()) {
@@ -396,10 +397,8 @@ void ChangeMotor(void){
   }while(menuChoice!=0);
 }
 
-
-
 void ChangeMicroSteps(void) {
-  char* Menu[] = {"Exit", "ms_256",      "ms_128",    "ms_64",    "ms_32",    "ms_16",    "ms_8",    "ms_4",   "ms_2",     "Full Step"};
+  char* Menu[] = {"Exit", "ms_256", "ms_128", "ms_64", "ms_32", "ms_16", "ms_8", "ms_4", "ms_2", "Full Step"};
   uint Size = wxSIZEOF(Menu);
   int menuChoice;
   do{
@@ -413,7 +412,6 @@ void ChangeMicroSteps(void) {
     }
   }while(menuChoice!=0);
 }
-
 
 void ChangeMaxVelocity(void){
   char* Menu[] = {"Exit", "+100", "-100", "+1000", "-1000"};
@@ -458,12 +456,12 @@ void ChangeStandStillMode(void) {
 }
 
 void ShowMotorForce(void){
-  Serial.print("FreeWheel..: ");  Serial.println( ((Steppers[StepperInTest].getPwmconf() & 0x00300000)>>20)  );   //PWMCONF
-  Serial.print("StealthChop: ");  Serial.println( (Steppers[StepperInTest].readReg(TMC5130::GCONF) & 0x04)==0  ); //GCONF
-  Serial.print("IHOLD......: ");  Serial.println( Steppers[StepperInTest].ShadowRegs.Ihold_Irun.ihold );          //IHOLD_IRUN
-  Serial.print("TPOWERDOWN.: ");  Serial.println(Steppers[StepperInTest].getTPowerDown() );                       //TPOWERDOWN
-  Serial.print("IHOLD_DELAY: ");  Serial.println( Steppers[StepperInTest].ShadowRegs.Ihold_Irun.iholddelay );     //IHOLD_IRUN
-  Serial.print("PWM_SCALE..: ");  Serial.println(Steppers[StepperInTest].readReg(TMC5130::PWM_SCALE));            //PWM_SCALE
+  Serial.print("FreeWheel..: ");  Serial.println( ((Steppers[StepperInTest].getPwmconf() & 0x00300000)>>20) );  //PWMCONF
+  Serial.print("StealthChop: ");  Serial.println( (Steppers[StepperInTest].getGconf().en_pwm_mode==0)       );  //GCONF
+  Serial.print("IHOLD......: ");  Serial.println( Steppers[StepperInTest].ShadowRegs.Ihold_Irun.ihold       );  //IHOLD_IRUN
+  Serial.print("TPOWERDOWN.: ");  Serial.println(Steppers[StepperInTest].getTPowerDown()                    );  //TPOWERDOWN
+  Serial.print("IHOLD_DELAY: ");  Serial.println( Steppers[StepperInTest].ShadowRegs.Ihold_Irun.iholddelay  );  //IHOLD_IRUN
+  Serial.print("PWM_SCALE..: ");  Serial.println(Steppers[StepperInTest].getPwmScale().bytes                );  //PWM_SCALE
 }
 
 void SearchTime(TMC5130 &stepper){
@@ -473,7 +471,7 @@ void SearchTime(TMC5130 &stepper){
 }
 
 void Test_Goto(){
-  InitGoto(Steppers[StepperInTest]);
+  InitGoto(Steppers[StepperInTest], false);
 
   Serial.println("Acceleration, Speed, Steps");
   while (Serial.available() < 2) ;
@@ -490,9 +488,7 @@ void Test_Goto(){
       S *= Mult;
     }
     Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-    //Steppers[StepperInTest].setMotorDirection((TMC5130::MotorDirection) ((S>0)?1:0));
     Serial.printf("Go from %d to ...", Steppers[StepperInTest].getPosition());
-    //Steppers[StepperInTest].moveTo                (abs(S));
     Steppers[StepperInTest].setTarget(S); 
     Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
 
@@ -510,7 +506,6 @@ void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::Veloci
 void mnuZeroGoto        ()  {Steppers[StepperInTest].StopMotor(1000);  //Stop Motor
                               Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
                               Steppers[StepperInTest].setPosition(0);
-                              //Steppers[StepperInTest].moveTo(-200000);
                               Steppers[StepperInTest].setTarget(-200000); 
                               Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
                               
