@@ -165,10 +165,10 @@ void ShowDrvStatus(TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert, bool ShowT
   if(ShowTitle){
     ansi.gotoXY(Col, Row++);  ansi.print("==== DRV_STATUS ====");
   }
-  ansi.gotoXY(Col, Row++);  ansi.print("DRV_STATUS..: ");  ansi.print(          drv, HEX       );        ansi.print("       ");
-  ansi.gotoXY(Col, Row++);  ansi.print("SG_RESULT...: ");  ansi.print( (uint8_t)((drv) & 0x3FF));        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("DRV_STATUS..: ");  ansi.print(          drv, HEX       );     ansi.print("       ");
+  ansi.gotoXY(Col, Row++);  ansi.print("SG_RESULT...: ");  ansi.print( (uint8_t)((drv) & 0x3FF));     ansi.print("    ");
   ansi.gotoXY(Col, Row++);  ansi.print("fsactive....: ");  ansi.print( (drv&0x00008000)?1:0 );        ansi.print("    ");
-  ansi.gotoXY(Col, Row++);  ansi.print("CS ACTUAL...: ");  ansi.print( (uint8_t)((drv>>16) & 0x1F));        ansi.print("    ");
+  ansi.gotoXY(Col, Row++);  ansi.print("CS ACTUAL...: ");  ansi.print( (uint8_t)((drv>>16) & 0x1F));  ansi.print("    ");
   ansi.gotoXY(Col, Row++);  ansi.print("StallGuard..: ");  ansi.print( (drv&0x01000000)?1:0 );        ansi.print("    ");
   ansi.gotoXY(Col, Row++);  ansi.print("ot..........: ");  ansi.print( (drv&0x02000000)?1:0 );        ansi.print("    ");
   ansi.gotoXY(Col, Row++);  ansi.print("otpw........: ");  ansi.print( (drv&0x04000000)?1:0 );        ansi.print("    ");
@@ -325,4 +325,43 @@ void ShowReadableRegisters(TMC5130 &stepper){
 */
   }
   Serial.println("-------------------------------\n");
+}
+
+TMC5130::Gstat PrintGlobalStatus(TMC5130 &stp, char* Title){
+  TMC5130::Gstat stat = stp.getGstat();
+  Serial.printf("%s│%5s│%5s│%5s│"
+                  , Title         ? Title   : ""   
+                  , stat.reset    ? "Reset" : "     "
+                  , stat.drv_err  ? "DrErr" : "     "
+                  , stat.uv_cp    ? "UVols" : "     "
+  );
+  return stat;
+}
+
+TMC5130::SpiStatus PrintSpiStatus(TMC5130 &stp, char* Title){
+  TMC5130::SpiStatus Status = stp.GetSpiStatus();
+
+  Serial.printf("%s│%5s│%5s│%5s│%5s│%5s│%5s│%5s│%5s│"
+                  , Title                   ? Title: ""   
+                  , Status.reset_flag       ?"Reset":"     "
+                  , Status.driver_error     ?"Error":"     "
+                  , Status.StallGuard2      ?" Sg2 ":"     "
+                  , Status.standstill       ?"Still":"     "
+                  , Status.velocity_reached ?"VelOk":"     "
+                  , Status.position_reached ?"PosOk":"     "
+                  , Status.status_stop_l    ?"StopL":"     "
+                  , Status.status_stop_r    ?"StopR":"     "
+  );
+  return Status;
+}
+
+void PrintStepperInfo(TMC5130 &stp){
+  Serial.printf("│%14s│%10d│%4d│%3d│%3d│%2d│"
+                      , stp.GetName()
+                      , stp.getPosition()
+                      , stp.ShadowRegs.Ihold_Irun.ihold
+                      , stp.ShadowRegs.Ihold_Irun.irun
+                      , stp.ShadowRegs.Ihold_Irun.iholddelay
+                      , stp.getMicrosteps()
+              );
 }

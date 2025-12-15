@@ -1,6 +1,7 @@
 
 #include <Arduino.h>
 #include "TMC5130_Menu.h"
+#include "TMC5130_Display.h"
 
 int mnuGetChoice(uint8_t Size){
   Serial.print("\nYour choice:");
@@ -15,17 +16,20 @@ int mnuGetChoice(uint8_t Size){
 //ToDo Make this a callback
 void ClearScreen(void){
   Serial.print("\n\n\n\n\n\n\n\n\n");
+/*
+┌──────────┬──────────┐
+│ Nome     │ Cognome  │
+├──────────┼──────────┤
+│ Mario    │ Rossi    │
+│ Luigi    │ Verdi    │
+└──────────┴──────────┘
+*/
 
-  TMC5130 *Mot = &Steppers[StepperInTest];
-  Serial.printf("Current Motor | Position |Hold|Run|Dly|\n");
-  Serial.printf("%14s|%10d|%4d|%3d|%3d|\n"
-                      , Mot->GetName()
-                      , Mot->getPosition()
-                      , Mot->ShadowRegs.Ihold_Irun.ihold
-                      , Mot->ShadowRegs.Ihold_Irun.irun
-                      , Mot->ShadowRegs.Ihold_Irun.iholddelay
-  );
-  Serial.printf("--------------|----------|----|---|---|\n\n");
+  Serial.printf("│Current Motor │ Position │Hold│Run│Dly│ms│");Serial.printf("            ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐             ┌─────┬─────┬─────┐\n");
+  PrintStepperInfo(Steppers[StepperInTest]);  Serial.print("   ");
+  PrintSpiStatus(Steppers[StepperInTest]);    Serial.print("   ");
+  PrintGlobalStatus(Steppers[StepperInTest]);
+  Serial.printf("\n└──────────────┴──────────┴────┴───┴───┴──┘            └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┘\n\n");
 }
 
 

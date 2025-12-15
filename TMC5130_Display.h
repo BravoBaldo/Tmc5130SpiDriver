@@ -30,6 +30,9 @@ void      ShowDrvStatus  (TMC5130 *stp, uint8_t Col, uint8_t Row, bool Vert=true
 void      ShowWaiting    (TMC5130 *stp, const float waiting, bool WaitStop=true);
 void      ShowReadableRegisters(TMC5130 &stepper);
 
+TMC5130::Gstat      PrintGlobalStatus (TMC5130 &stp, char* Title = "Glob Stat:");
+TMC5130::SpiStatus  PrintSpiStatus    (TMC5130 &stp, char* Title = "Spi Stat:");
+void                PrintStepperInfo  (TMC5130 &stp);
 
 class Printer {
 public:

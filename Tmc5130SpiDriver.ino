@@ -1,5 +1,6 @@
 /*
 ToDo:
+  GoTo and wait target
   Eecute an "HomeToStall"
   Check if to use Polidoro's class printer....
   Implementare gli algoritmi descritti nel datasheet
@@ -63,10 +64,10 @@ TCA9555 EXPANDERS[]{
 void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
 //AAA: Maybe SPI_FREQ must be unique!!!
-TMC5130 Steppers[]={TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A"),
-                    TMC5130(SPI,  8, SpiEnableSteppers, SPI_FREQ, "Motor B"),
+TMC5130 Steppers[]={TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
+                    TMC5130(SPI,  8, SpiEnableSteppers, SPI_FREQ, "Motor B:"),
                     TMC5130(SPI, 10, SpiEnableSteppers, SPI_FREQ, "Motor C"),
-                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
+//                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
                 };
 #define STEP_STALL 0 //For Stall experiments
 //---------------------------------------------------------------------------------------
@@ -99,49 +100,6 @@ void setup_Basic() {
     TMC5130_Init_00(Steppers[i]);
   }
 
-#ifdef QQQQQQQQQQQQQQQQQQ
-  Steppers[1].writeReg(TMC5130::IHOLD_IRUN,  0x00070101);  //
-//  InitTestStall    (Steppers[0]);
-  //Check Communications
-  bool AllOk;
-  do{
-    AllOk = true;
-     Serial.println("Check Communication...");
-    for(int i=0; i<wxSIZEOF(Steppers); i++){
-      Serial.print(i);  Serial.print(") '"); Serial.print(Steppers[i].GetName());  Serial.print("' ");
-      if(Steppers[i].communicating())
-        Serial.println("is ok");
-      else{
-            Serial.println(Steppers[i].communicating() ? "is ok" : "NOT OK");
-            AllOk = false;
-      }
-    }
-    delay(1000);
-  }while(!AllOk);
-
-  TMC5130::ControllerParameters OldRegs;
-  Steppers[STEP_STALL].cacheControllerSettings(OldRegs);
-  Steppers[STEP_STALL].beginRampToZeroVelocity();
-  while (not Steppers[STEP_STALL].zeroVelocity()) {
-    Serial.println("Waiting for zero velocity.");
-    delay(1000);
-  }
-  Steppers[STEP_STALL].writeControllerParameters(OldRegs);
-
-  InitTestStall_Setup  (Steppers[STEP_STALL]);
-    home_parameters_chip.run_current        = 7;
-    home_parameters_chip.hold_current       = 3;
-    home_parameters_chip.target_position    = 4294152396;
-    home_parameters_chip.velocity           = 227862;
-    home_parameters_chip.acceleration       = 248;
-    home_parameters_chip.zero_wait_duration = 2353;
-
-    stall_parameters_chip.stall_guard_threshold = 3;
-    stall_parameters_chip.cool_step_threshold   = 147;
-
-  //ShowReadableRegisters(Steppers[STEP_STALL]);
-
-#endif
 }
 
 void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for each run
@@ -266,61 +224,6 @@ void loop_Fsa(uint8_t LogTo=0){ //0=None, 1=Serial, 2= Ansi
   }
 }
 
-void loopWWW(void){
-  Serial.println("Waiting...");
-  delay(PAUSE_DELAY);
-
-  Serial.println("Homing to stall...");
-  beginHomeToStall(Steppers[STEP_STALL], home_parameters_chip, stall_parameters_chip);
-  int32_t actual_position_real;
-  while (not Steppers[STEP_STALL].homed()) {
-    // stepper.printer.readAndPrintDrvStatus();
-    int32_t actual_position_chip = Steppers[STEP_STALL].getPosition(); //stepper.controller.readActualPosition();
-    actual_position_real = actual_position_chip;  //ToDo
-/*
-    int32_t Converter::positionChipToReal(int32_t position_chip) {
-      return position_chip / (int32_t)converter_parameters_.microsteps_per_real_position_unit;
-    }
-    actual_position_real = stepper.converter.positionChipToReal(actual_position_chip);
-*/
-    Serial.print("homing...");
-    Serial.print("actual position (radians): ");  Serial.println(actual_position_real);
-    Serial.print("stall guard result: "); Serial.println(Steppers[STEP_STALL].readStallGuardResult());
-    Serial.print("stall guard threshold: ");
-    Serial.println("???");//Serial.println(stall_parameters_real.stall_guard_threshold);  //ToDo
-    delay(LOOP_DELAY);
-  }
-  Steppers[STEP_STALL].endHome();//  stepper.endHome();
-
-  Serial.println("Homed!");
-  Serial.print("actual_position_real: "); Serial.println(actual_position_real);
-  //Serial.print("home target position: "); Serial.println(home_parameters_real.target_position);
-
-  Serial.println("Waiting...");
-  delay(PAUSE_DELAY);
-
-  #define MOVE_POSITION  110  // radians
-  int32_t target_position_chip = MOVE_POSITION*8149;  //stepper.converter.positionRealToChip(MOVE_POSITION); //110*8149 radians * microsteps_per_real_position_unit
-  Steppers[STEP_STALL].setTarget(target_position_chip); //XTARGET stepper.controller.writeTargetPosition(target_position_chip);
-  Serial.print("Moving to another position (radians): "); Serial.print(MOVE_POSITION);  Serial.println("...");
-
-  while (not Steppers[STEP_STALL].positionReached()) {
-    // stepper.printer.readAndPrintRampStat();
-    // stepper.printer.readAndPrintDrvStatus();
-    int32_t actual_position_chip = Steppers[STEP_STALL].getPosition();   //stepper.controller.readActualPosition();
-    int32_t actual_position_real = actual_position_chip/8149;         //stepper.converter.positionChipToReal(actual_position_chip);
-    Serial.print("actual position (radians): ");Serial.println(actual_position_real);
-    Serial.print("stall_guard_result: ");
-    Serial.println(Steppers[STEP_STALL].readStallGuardResult());
-    delay(LOOP_DELAY);
-  }
-  Serial.println("Target position reached!");
-  delay(PAUSE_DELAY);
-
-  Serial.println("--------------------------");
-  delay(LOOP_DELAY);
-}
-
 void ShowReadableRegistersAll(void){
   Serial.println("---Readable Registers---");
   Serial.printf("      : ");
@@ -364,6 +267,158 @@ void setup() {
     SetPositional(Steppers[i], 2,8);
   }
 
+  {
+    //Motore 0: Con valori positivi sale, sopra 0, scende fino a -4040
+  //  Steppers[0].writeSwapRL(true);                          //SW_MODE
+    TMC5130::SwMode sw_mode = Steppers[0].getSwMode();
+    sw_mode.swap_lr       = 1;
+    sw_mode.stop_l_enable = 1;
+    sw_mode.stop_r_enable = 1;
+    sw_mode.pol_stop_l    = 0;
+    sw_mode.pol_stop_r    = 0;
+    sw_mode.en_softstop   = 0;
+    Steppers[0].setSwMode(sw_mode);
+
+    Steppers[0].setMaxSteps(-3840);
+    Steppers[1].setMicrosteps(8); //Full Step
+
+    //Reset: 100,600,3000     100,600,-1
+    //GoEnd: 100,2000,-3840
+    //Prosegue verso numeri negativi
+  }
+
+  {
+  //Stepper 1, torna indietro se positivo
+    TMC5130::SwMode sw_mode = Steppers[1].getSwMode();
+    sw_mode.swap_lr       = 0;  //con 1 si chiude R, con 0 si chiude L
+    sw_mode.stop_l_enable = 1;
+    sw_mode.stop_r_enable = 1;
+    sw_mode.pol_stop_l    = 0;
+    sw_mode.pol_stop_r    = 0;
+    sw_mode.en_softstop   = 0;
+    Steppers[1].setSwMode(sw_mode);
+
+    Steppers[1].setMaxSteps(612);
+    Steppers[1].setMicrosteps(7);
+    
+    //Reset: 100,600,-3000
+    //GoEnd: 100,1000,640
+  }
+
+  {
+  //Stepper 2,  Da Sx a Dx
+    TMC5130::SwMode sw_mode = Steppers[2].getSwMode();
+    sw_mode.swap_lr       = 1;  //
+    sw_mode.stop_l_enable = 0;
+    sw_mode.stop_r_enable = 0;
+    sw_mode.pol_stop_l    = 0;
+    sw_mode.pol_stop_r    = 0;
+    sw_mode.en_softstop   = 0;
+    Steppers[2].setSwMode(sw_mode);
+
+    Steppers[2].setMaxSteps(-550);
+    Steppers[2].setMicrosteps(7);
+    //Reset: 100,300,300
+    //GoEnd: 100,300,-450
+  }
+}
+
+void WaitEndOfSteps(bool ShowInfo=true){
+  TMC5130::SpiStatus  Status;
+  do{
+    if(ShowInfo){
+      Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println(">>");
+    }else
+      Status = Steppers[StepperInTest].GetSpiStatus();
+
+  }while(Status.position_reached==0);
+}
+
+void WaitHome(bool ShowInfo=true){
+  TMC5130::SpiStatus  Status;
+  do{
+    if(ShowInfo){
+      Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println("<<");
+    }else
+      Status = Steppers[StepperInTest].GetSpiStatus();
+  }while(Status.status_stop_l==0 && Status.status_stop_r==0);
+}
+
+void GoEnd() {
+  uint16_t A = 100;
+  uint32_t V = 1000;
+  int32_t Mult = 1<<(Steppers[StepperInTest].getMicrosteps()-8);
+  int32_t Steps = Steppers[StepperInTest].getMaxSteps();//*Mult;
+  Serial.printf("GoToEnd: %d\n", Steps);
+
+  InitGoto(Steppers[StepperInTest], false);
+  Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+  Steppers[StepperInTest].setTarget(Steps);   
+}
+
+void ShowWaiting(ulong TimeOut){
+  ulong timeStart = millis();
+  TMC5130::SpiStatus  Status;
+  do{
+    Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);
+    int32_t  CurrPos = Steppers[StepperInTest].getPosition();
+  	Serial.printf("Pos:%d Tim=%d)\n", CurrPos, millis()-timeStart);
+  }while( ((millis()-timeStart)<TimeOut) && Status.position_reached==0 );
+}
+
+void GoHome(){
+  mnuZeroGoto();  //
+
+  //Vado verso Home
+	InitGoto(Steppers[StepperInTest], false);
+  Steppers[StepperInTest].SetTrapezoidal        (100, 600); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+
+  int32_t Mult = 1<<(8-Steppers[StepperInTest].getMicrosteps());
+  int32_t Steps = Steppers[StepperInTest].getMaxSteps();
+
+  Serial.printf("GoToHome: 2*%d Mult=%d\n", Steps, Mult);
+
+  Steppers[StepperInTest].setFirstDeceleration(1000);
+  Steppers[StepperInTest].setSecondDeceleration(1000);
+
+  if(StepperInTest==2){
+    Steppers[StepperInTest].SetTrapezoidal        (100, 300); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+	  Serial.printf("\n\n\n=========================nSOLO PER QUESTO\n");
+  }
+  int32_t Target = -Steps*2;
+	Steppers[StepperInTest].setPosition(0);
+	Steppers[StepperInTest].setTarget( Target ); 
+	Serial.printf("MaxSteps è %d vado a %d\n", Steps, Target);
+  WaitHome();   //Aspetta fine corsa
+
+  Serial.printf("Esco da Finecorsa...\n");
+  TMC5130::SpiStatus  Status;
+  do{
+    Target = Steppers[StepperInTest].getPosition();
+    Target = Target + ((Steps>0) ? 1 : -1);
+    Serial.printf("...Passetto...\n");
+
+    Steppers[StepperInTest].setTarget( Target );
+    WaitEndOfSteps(false);
+
+    Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println("++");
+    //Status = Steppers[StepperInTest].GetSpiStatus();
+  }while(Status.status_stop_l==1 || Status.status_stop_r==1);
+  Serial.printf("Uscito da Finecorsa\n");
+
+
+//  mnuHardStop();
+      //setRampMode(VelocityPositiveMode);  //RAMPMODE
+      Steppers[StepperInTest].setSecondAcceleration(100);           //AMAX
+      Steppers[StepperInTest].setMaxVelocity(0);                  //VMAX
+
+
+
+  Steppers[StepperInTest].setPosition(0);
+  Steppers[StepperInTest].setCurrent(0, 0, 0);
+  Steppers[StepperInTest].setPosition(0);
+
+  Serial.printf("A)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
 }
 
 long GetANumber(char* Prompt){
@@ -481,18 +536,15 @@ void Test_Goto(){
     uint16_t A = splitter.getItemAtIndex(0).toInt();
     uint32_t V = splitter.getItemAtIndex(1).toInt();
     int32_t  S = splitter.getItemAtIndex(2).toInt();
-    int32_t Mult = 1;
-    if(abs(S)<30){
-      uint8_t ms = Steppers[StepperInTest].getMicrosteps();
-      Mult = 200<<(8-ms);
-      S *= Mult;
-    }
     Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
     Serial.printf("Go from %d to ...", Steppers[StepperInTest].getPosition());
     Steppers[StepperInTest].setTarget(S); 
     Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
 
-    Serial.printf("Acc=%d, Vel=%d, Steps=%d (Mul=%d)\n\n", A, V, S, Mult );
+    Serial.printf("Acc=%d, Vel=%d, Steps=%d\n\n", A, V, S );
+
+    WaitEndOfSteps();
+
   }
 }
 
@@ -533,8 +585,11 @@ void MainMenu(){
                         {"Init DS 1",           mnuInitDS1 },
                         {"Stand still Mode",    ChangeStandStillMode },
 //                        {"Show Motor Force",      ShowMotorForce },
+                        {"Go Home",             GoHome },
+                        {"GoEnd",               GoEnd},
   };
 
+  Serial.printf("B)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
   int menuChoice = ShowMenu(MainMenu, wxSIZEOF(MainMenu));
   if(menuChoice>=0)
     MainMenu[menuChoice].MenuFunc();
@@ -542,6 +597,7 @@ void MainMenu(){
     Serial.println("Please choose a valid selection, "); Serial.print(menuChoice); Serial.println(" is invalid!"); 
     return;
   }
+  Serial.printf("C)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
 }
 
 void loop(void){

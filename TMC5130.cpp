@@ -362,8 +362,8 @@ void TMC5130::setTCOOLTHRS(uint32_t val) {
   writeReg(TCOOLTHRS, val);
 }
 
-TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t spiHz, char* Name): cbEnableChipSelect(cbCS), csPinAddress(csPin), StepName(Name){
-  beginSPI(spiRef, spiHz);  
+TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS, uint32_t spiHz, char* Name, int32_t Max_Steps): cbEnableChipSelect(cbCS), csPinAddress(csPin), StepperName(Name), MaxSteps(Max_Steps) {
+  beginSPI(spiRef, spiHz);
 }
 
 // ====================================================
@@ -440,6 +440,12 @@ uint16_t TMC5130::readStallGuardResult(void) { //DRV_STATUS
   DrvStatus drv_status;
   drv_status.bytes = readReg(DRV_STATUS);
   return drv_status.sg_result;
+}
+
+void TMC5130::writeSwapRL(bool En) { //SW_MODE //swap_lr
+  SwMode sw_mode = getSwMode();
+  sw_mode.swap_lr = En?1:0;
+  writeReg(SW_MODE, sw_mode.bytes);
 }
 
 void TMC5130::writeStopMode(StopMode stop_mode) { //SW_MODE

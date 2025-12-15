@@ -328,30 +328,26 @@ void enableStealthChop(TMC5130 &stepper, bool En) {  //GCONF  //True=enable, Fal
 }
 
 void enableStallGuardFilter(TMC5130 &stepper, bool En) {  //COOLCONF  //True=enable, False=disable
-  TMC5130::Coolconf coolconf;
-  coolconf.bytes = stepper.getCoolconf();
+  TMC5130::Coolconf coolconf = stepper.getCoolconf();
   coolconf.sfilt = En?1:0;
   stepper.setCoolconf(coolconf.bytes);
 }
 
 void enableCoolStep(TMC5130 &stepper, uint8_t min, uint8_t max) { //COOLCONF
-  TMC5130::Coolconf coolconf;
-  coolconf.bytes = stepper.getCoolconf();
+  TMC5130::Coolconf coolconf = stepper.getCoolconf();
   coolconf.semin = min;
   coolconf.semax = max;
   stepper.setCoolconf(coolconf.bytes);
 }
 
 void disableCoolStep(TMC5130 &stepper) {  //COOLCONF
-  TMC5130::Coolconf coolconf;
-  coolconf.bytes = stepper.getCoolconf();
+  TMC5130::Coolconf coolconf = stepper.getCoolconf();
   coolconf.semin = 0; //SEMIN_OFF;
   stepper.setCoolconf(coolconf.bytes);
 }
 
 void writeStallGuardThreshold(TMC5130 &stepper, int8_t threshold) { //COOLCONF
-  TMC5130::Coolconf coolconf;
-  coolconf.bytes = stepper.getCoolconf();
+  TMC5130::Coolconf coolconf = stepper.getCoolconf();
   coolconf.sgt = threshold;
   stepper.setCoolconf(coolconf.bytes);
 }
@@ -773,6 +769,6 @@ void InitGoto(TMC5130 &stepper, bool ResetPosition){
   stepper.setSecondDeceleration (  10);  //D1: Use same value as A1 or higher
   stepper.setFirstVelocity      (   0);  //Determine velocity, where max. motor torque or current sinks appreciably, write to V1
 
-  stepper.setCurrent(15, 15, 7); //setCurrent(31, 31, 15);
+  stepper.setCurrent(15, 31, 7); //setCurrent(31, 31, 15);
 
 }

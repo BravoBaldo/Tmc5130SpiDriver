@@ -120,8 +120,6 @@ public:
     uint8_t bytes;
   }SpiStatus;
 
-
-
   typedef union  {    //GCONF
     struct {
       uint32_t recalibrate_i_scale_analog     : 1;  //0x01  0: Normal operation, use internal reference voltage 1: Use voltage supplied to AIN as current reference
@@ -228,7 +226,6 @@ public:
     uint32_t bytes;
   }EncConst;
 
-
   typedef union { //PWM_SCALE
     struct {
       uint32_t pwm_scale_sum  : 8;  //0x00FF
@@ -245,7 +242,6 @@ public:
     };
     uint32_t bytes;
   }EncmCrtl;
-
 
   typedef union { //RAMP_STAT
     struct {
@@ -307,8 +303,6 @@ public:
     // operator uint32_t () const { return bytes; }
   }SwMode;
 
-
-
   typedef union {   //PWMCONF
     struct {
       uint32_t pwm_ampl       : 8;  //0x0000 00FF    alias pwm_ofs
@@ -323,10 +317,6 @@ public:
     };
     uint32_t bytes;
   }Pwmconf;
-
-
-
-
 
   typedef union { //IHOLD_IRUN
     struct {
@@ -362,7 +352,6 @@ public:
     };
     uint32_t bytes;
   }Chopconf;
-
 
   typedef union { //COOLCONF
     struct {
@@ -433,29 +422,29 @@ public:
     uint32_t min_dc_step_velocity = 0;
   }ControllerParameters;
 
-struct ConverterParameters {
-  uint8_t   clock_frequency_mhz               = 12;
-  uint32_t  microsteps_per_real_position_unit = 1;
-  uint32_t  seconds_per_real_velocity_unit    = 1;
-};
+  struct ConverterParameters {
+    uint8_t   clock_frequency_mhz               = 12;
+    uint32_t  microsteps_per_real_position_unit = 1;
+    uint32_t  seconds_per_real_velocity_unit    = 1;
+  };
 
-struct HomeParameters{
-  uint8_t run_current         = 0;
-  uint8_t hold_current        = 0;
-  int32_t target_position     = 0;
-  uint32_t velocity           = 0;
-  uint32_t acceleration       = 0;
-  uint32_t zero_wait_duration = 100;
-};
+  struct HomeParameters{
+    uint8_t run_current         = 0;
+    uint8_t hold_current        = 0;
+    int32_t target_position     = 0;
+    uint32_t velocity           = 0;
+    uint32_t acceleration       = 0;
+    uint32_t zero_wait_duration = 100;
+  };
 
-struct StallParameters {
-  int8_t stall_guard_threshold = 0;
-  uint32_t cool_step_threshold = 0;
-};
+  struct StallParameters {
+    int8_t stall_guard_threshold = 0;
+    uint32_t cool_step_threshold = 0;
+  };
 
 
-void cacheControllerSettings(ControllerParameters &Ret);
-void writeControllerParameters(ControllerParameters &parameters);
+  void cacheControllerSettings(ControllerParameters &Ret);
+  void writeControllerParameters(ControllerParameters &parameters);
 
   typedef enum { ForwardDirection = 0, ReverseDirection = 1}                                          MotorDirection;
   typedef enum { NormalMode=0, FreewheelingMode=1, PassiveBrakingLsMode=2, PassiveBrakingHsMode=3 }   StandstillMode;
@@ -463,79 +452,76 @@ void writeControllerParameters(ControllerParameters &parameters);
   typedef enum { ClockCycles16 = 0, ClockCycles24 = 1, ClockCycles36 = 2, ClockCycles54 = 3 }         ComparatorBlankTime;
 
 
-//To read Writable only registers
-struct DriverParameters { // global_current_scaler only available on TMC5160
-  uint8_t             run_current                           = 50;               //IHOLD_IRUN
-  uint8_t             hold_current                          = 20;               //IHOLD_IRUN
-  uint8_t             hold_delay                            = 5;                //IHOLD_IRUN
-  uint8_t             pwm_offset                            = 25;               //PWMCONF
-  uint8_t             pwm_gradient                          = 5;                //PWMCONF
-  bool                automatic_current_control_enabled     = false;            //PWMCONF
-  MotorDirection      motor_direction                       = ForwardDirection; //GCONF RW
-  StandstillMode      standstill_mode                       = NormalMode;       //GCONF RW
-  ChopperMode         chopper_mode                          = SpreadCycleMode;  //CHOPCONF RW
-  uint32_t            stealth_chop_threshold                = 100;              //CHOPCONF RW
-  bool                stealth_chop_enabled                  = true;             //CHOPCONF RW
-  uint32_t            cool_step_threshold                   = 150;              //CHOPCONF RW
-  uint8_t             cool_step_min                         = 1;                //COOLCONF
-  uint8_t             cool_step_max                         = 0;                //COOLCONF
-  bool                cool_step_enabled                     = false;            //COOLCONF
-  uint32_t            high_velocity_threshold               = 200;              //COOLCONF
-  bool                high_velocity_fullstep_enabled        = false;            //COOLCONF
-  bool                high_velocity_chopper_switch_enabled  = false;            //COOLCONF
-  int8_t              stall_guard_threshold                 = 0;                //COOLCONF
-  bool                stall_guard_filter_enabled            = false;            //COOLCONF
-  bool                short_to_ground_protection_enabled    = true;             //COOLCONF
-  uint8_t             enabled_toff                          = 3;                //COOLCONF
-  ComparatorBlankTime comparator_blank_time                 = ClockCycles36;    //COOLCONF
-  uint16_t            dc_time                               = 0;                //DCCTRL
-  uint8_t             dc_stall_guard_threshold              = 0;                //DCCTRL
-};
+  //To read Writable only registers
+  struct DriverParameters { // global_current_scaler only available on TMC5160
+    uint8_t             run_current                           = 50;               //IHOLD_IRUN
+    uint8_t             hold_current                          = 20;               //IHOLD_IRUN
+    uint8_t             hold_delay                            = 5;                //IHOLD_IRUN
+    uint8_t             pwm_offset                            = 25;               //PWMCONF
+    uint8_t             pwm_gradient                          = 5;                //PWMCONF
+    bool                automatic_current_control_enabled     = false;            //PWMCONF
+    MotorDirection      motor_direction                       = ForwardDirection; //GCONF RW
+    StandstillMode      standstill_mode                       = NormalMode;       //GCONF RW
+    ChopperMode         chopper_mode                          = SpreadCycleMode;  //CHOPCONF RW
+    uint32_t            stealth_chop_threshold                = 100;              //CHOPCONF RW
+    bool                stealth_chop_enabled                  = true;             //CHOPCONF RW
+    uint32_t            cool_step_threshold                   = 150;              //CHOPCONF RW
+    uint8_t             cool_step_min                         = 1;                //COOLCONF
+    uint8_t             cool_step_max                         = 0;                //COOLCONF
+    bool                cool_step_enabled                     = false;            //COOLCONF
+    uint32_t            high_velocity_threshold               = 200;              //COOLCONF
+    bool                high_velocity_fullstep_enabled        = false;            //COOLCONF
+    bool                high_velocity_chopper_switch_enabled  = false;            //COOLCONF
+    int8_t              stall_guard_threshold                 = 0;                //COOLCONF
+    bool                stall_guard_filter_enabled            = false;            //COOLCONF
+    bool                short_to_ground_protection_enabled    = true;             //COOLCONF
+    uint8_t             enabled_toff                          = 3;                //COOLCONF
+    ComparatorBlankTime comparator_blank_time                 = ClockCycles36;    //COOLCONF
+    uint16_t            dc_time                               = 0;                //DCCTRL
+    uint8_t             dc_stall_guard_threshold              = 0;                //DCCTRL
+  };
 
+  struct {
+    Nodeconf NODECONF;        //SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
+    int32_t X_COMPARE;        //= 0x05,   //0xFFFF FFFF           W
 
-struct {
-  Nodeconf NODECONF;        //SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
-  int32_t X_COMPARE;        //= 0x05,   //0xFFFF FFFF           W
+    IholdIrun Ihold_Irun;     //IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
+    uint32_t  TPowerDown;     //TPOWERDOWN  = 0x11,   //0x00FF                W
+    uint32_t  TPwmThrs;
 
-  IholdIrun Ihold_Irun;     //IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
-  uint32_t  TPowerDown;     //TPOWERDOWN  = 0x11,   //0x00FF                W
-  uint32_t  TPwmThrs;
+  //    TCOOLTHRS     = 0x14,   //0xFFFFF               W
+    uint32_t  THIGH;  //= 0x15,   //0xFFFFF               W   
+  //    VSTART        = 0x23,   //0x0003 FFFF           W
+    uint32_t  A1;         //= 0x24,   //0xFFFF                W
+    uint32_t  V1;         //= 0x25,   //0x000F FFFF           W
+    uint32_t  AMAX;       //= 0x26,   //0xFFFF                W
+    uint32_t  VMAX;       //= 0x27,   //0x7F FFFF             W
+    uint32_t  DMAX;       //= 0x28,   //0xFFFF                W
+    uint32_t  D1;         //= 0x2A,   //0xFFFF                W
+    uint32_t  VSTOP;      //= 0x2B,   //0x0003 FFFF           W
+    uint32_t  TZEROWAIT;  //= 0x2C,   //0xFFFF                W
+    uint32_t  VDCMIN;     //= 0x33,   //0x007F FFFF           W
+    EncConst  ENC_CONST;  //= 0x3A,   // EncConst             W
 
-//    TCOOLTHRS     = 0x14,   //0xFFFFF               W
-  uint32_t  THIGH;  //= 0x15,   //0xFFFFF               W   
-//    VSTART        = 0x23,   //0x0003 FFFF           W
-  uint32_t  A1;         //= 0x24,   //0xFFFF                W
-  uint32_t  V1;         //= 0x25,   //0x000F FFFF           W
-  uint32_t  AMAX;       //= 0x26,   //0xFFFF                W
-  uint32_t  VMAX;       //= 0x27,   //0x7F FFFF             W
-  uint32_t  DMAX;       //= 0x28,   //0xFFFF                W
-  uint32_t  D1;         //= 0x2A,   //0xFFFF                W
-  uint32_t  VSTOP;      //= 0x2B,   //0x0003 FFFF           W
-  uint32_t  TZEROWAIT;  //= 0x2C,   //0xFFFF                W
-  uint32_t  VDCMIN;     //= 0x33,   //0x007F FFFF           W
-  EncConst  ENC_CONST;  //= 0x3A,   // EncConst             W
-
-/*    MSLUT_0     = 0x60,   //0sf[0...31]           W
-    MSLUT_1     = 0x61,   //0sf[32...63]          W
-    MSLUT_2     = 0x62,   //0sf[64...95]          W
-    MSLUT_3     = 0x63,   //0sf[96...127]         W
-    MSLUT_4     = 0x64,   //0sf[128...159]        W
-    MSLUT_5     = 0x65,   //0sf[160...191]        W
-    MSLUT_6     = 0x66,   //0sf[192...223]        W
-    MSLUT_7     = 0x67,   //0sf[224...255]        W
-    MSLUTSEL    = 0x68,   // Mslutsel             W
-    MSLUTSTART  = 0x69,   // Mslutstart           W
-*/
-    Coolconf    CoolConf;   //COOLCONF    = 0x6D,   // Coolconf             W
-    Dcctrl      DcCtrl;     //DCCTRL      = 0x6E,   // Dcctrl               W
-    Pwmconf     PwmConf;    //PWMCONF     = 0x70,   // Pwmconf              W
-    EncmCrtl    ENCM_CTRL;  //= 0x72,   // EncmCrtl             W
-}ShadowRegs;
-
-
+  /*    MSLUT_0     = 0x60,   //0sf[0...31]           W
+      MSLUT_1     = 0x61,   //0sf[32...63]          W
+      MSLUT_2     = 0x62,   //0sf[64...95]          W
+      MSLUT_3     = 0x63,   //0sf[96...127]         W
+      MSLUT_4     = 0x64,   //0sf[128...159]        W
+      MSLUT_5     = 0x65,   //0sf[160...191]        W
+      MSLUT_6     = 0x66,   //0sf[192...223]        W
+      MSLUT_7     = 0x67,   //0sf[224...255]        W
+      MSLUTSEL    = 0x68,   // Mslutsel             W
+      MSLUTSTART  = 0x69,   // Mslutstart           W
+  */
+      Coolconf    CoolConf;   //COOLCONF    = 0x6D,   // Coolconf             W
+      Dcctrl      DcCtrl;     //DCCTRL      = 0x6E,   // Dcctrl               W
+      Pwmconf     PwmConf;    //PWMCONF     = 0x70,   // Pwmconf              W
+      EncmCrtl    ENCM_CTRL;  //= 0x72,   // EncmCrtl             W
+  }ShadowRegs;
 
   // ====== Ctors ======
-  TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr);
+  TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr, int32_t Max_Steps = 0);
 
   // ====== Inits ======
   bool beginSPI     (SPIClass &spiRef = SPI, uint32_t spiHz = 1000000);
@@ -550,15 +536,15 @@ struct {
   uint32_t readRegUART(uint8_t slave, Reg reg);               // UART diretto
 
   // ====== High level Configs ======
- void Sethold_delay     (uint8_t hold_delay);
- void SetIhold          (uint8_t ihold);
- void SetIrun           (uint8_t irun);
+  void Sethold_delay     (uint8_t hold_delay);
+  void SetIhold          (uint8_t ihold);
+  void SetIrun           (uint8_t irun);
 
-inline void enablePwmMode(bool en) {  //GCONF
-  Gconf gconf = getGconf();
-  gconf.en_pwm_mode = (en?1:0);
-  setGconf(gconf.bytes);
-} 
+  inline void enablePwmMode(bool en) {  //GCONF
+    Gconf gconf = getGconf();
+    gconf.en_pwm_mode = (en?1:0);
+    setGconf(gconf.bytes);
+  }
 
   inline void     enableStopEnable                (bool en) {
     Gconf gconf = getGconf();
@@ -566,7 +552,7 @@ inline void enablePwmMode(bool en) {  //GCONF
     setGconf(gconf.bytes);
   }   //GCONF.stop_enable
 
-          void setCurrent        (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
+  void setCurrent        (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
   inline  void setNeutral       (void)  {
                                           setCurrent(0, 0, 0);                      //IHOLD_IRUN
                                           enablePwmMode(false);                     //GCONF en_pwm_mode = 1; //Enable StealthChop
@@ -594,24 +580,20 @@ inline void enablePwmMode(bool en) {  //GCONF
   inline void     enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }     //GCONF.direct_mode
           void    setMotorDirection         (MotorDirection motor_direction);                   //GCONF.shaft  True=1=ReverseDirection, false=0=ForwardDirection
 
-//SpiStatus
   inline SpiStatus  GetSpiStatus              (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
     //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
     readReg(reg);
     return SPI_Status;
   };
 
-
   inline void     setPwmconf        (uint32_t pwmconf)  { writeReg(PWMCONF, pwmconf); ShadowRegs.PwmConf.bytes = pwmconf; }
   inline uint32_t getPwmconf        (void)              { return ShadowRegs.PwmConf.bytes; }
-
 
   void     setTHigh        (uint32_t v);
   inline uint32_t getTHigh        (void)              { return ShadowRegs.THIGH; }
 
   void      setXCompare(int32_t xcomp); //X_COMPARE WriteOnly
   inline int32_t getXCompare (void)  { return ShadowRegs.X_COMPARE; }
-
 
   void writeStandstillMode    (StandstillMode mode);    //PWMCONF
   inline void writeStandstill_Normal            (void)  {writeStandstillMode(NormalMode           );};
@@ -624,14 +606,12 @@ inline void enablePwmMode(bool en) {  //GCONF
   void enableAutomaticCurrentControl (bool en);                //PWMCONF
 
   inline void     setCoolconf       (uint32_t coolconf) { writeReg(COOLCONF, coolconf); ShadowRegs.CoolConf.bytes = coolconf; }
-  inline uint32_t getCoolconf       (void)              { return ShadowRegs.CoolConf.bytes; } //COOLCONF AAA WriteOnly
-//  inline Coolconf getCoolconf       (void)              { return ShadowRegs.CoolConf; };        //COOLCONF AAA WriteOnly
+  inline Coolconf getCoolconf       (void)              { return ShadowRegs.CoolConf; };    //COOLCONF AAA WriteOnly
 
-  inline void     setTPowerDown     (uint8_t tpwdwn)   { writeReg(TPOWERDOWN, tpwdwn); ShadowRegs.TPowerDown = (uint32_t)tpwdwn; }; //TPOWERDOWN
-  inline uint32_t getTPowerDown     (void)              { return ShadowRegs.TPowerDown; };                                          //TPOWERDOWN
+  inline void     setTPowerDown     (uint8_t tpwdwn)    { writeReg(TPOWERDOWN, tpwdwn); ShadowRegs.TPowerDown = (uint32_t)tpwdwn; }; //TPOWERDOWN
+  inline uint32_t getTPowerDown     (void)              { return ShadowRegs.TPowerDown; };                                           //TPOWERDOWN
 
-
-  inline void     setDcctrl         (uint32_t dcctrl) { writeReg(DCCTRL, dcctrl); ShadowRegs.DcCtrl.bytes = dcctrl; }
+  inline void     setDcctrl         (uint32_t dcctrl)   { writeReg(DCCTRL, dcctrl); ShadowRegs.DcCtrl.bytes = dcctrl; }
   inline uint32_t getDcctrl         (void)              { return ShadowRegs.DcCtrl.bytes; }
 
   void setDcStep        (uint16_t dcTime, uint16_t dcSG);
@@ -640,7 +620,7 @@ inline void enablePwmMode(bool en) {  //GCONF
   uint16_t  readStallGuardResult        (void);   //DRV_STATUS
 
   // Motion controller
-  void setRampMode        (RampMode m);
+  void setRampMode        (RampMode m); //RAMPMODE
   inline RampMode getRampMode (void)  { return (RampMode)(readReg(RAMPMODE) & 0x3); };
 
   void setTPwmThrs            (uint32_t TPwmThrs);
@@ -733,6 +713,7 @@ inline void enablePwmMode(bool en) {  //GCONF
 
   void writeStopMode            (StopMode stop_mode); //SW_MODE
   void enableStallStop          (bool En);            //SW_MODE //True=enable, False=disable
+  void writeSwapRL              (bool En);            //SW_MODE //swap_lr
 
   void endHome                  (void);
 
@@ -749,32 +730,35 @@ inline void enablePwmMode(bool en) {  //GCONF
   void      SetPinCSFunct   (SPI_ENABLER_CB callback)                      {cbEnableChipSelect = callback;};
 //void      SetPinCSFunct2  (void (*callback)(uint8_t, bool))              {cbEnableChipSelect2 = callback;};
 
-  char*     GetName         (void)  {return StepName;}
-  void      SetName         (char* n)  {StepName=n;}
+  char*     GetName         (void)    { return StepperName; }
+  void      SetName         (char* n) { StepperName=n; }
 
+  int32_t   getMaxSteps     (void)      { return MaxSteps*((int32_t)1<<(8-getMicrosteps())); };
+  void      setMaxSteps     (int32_t s) { MaxSteps = s; };
 
 
 private:
 
   // SPI
   SpiStatus     SPI_Status;       //Last SPI status register
-  InterfaceMode mode = MODE_SPI;
+  InterfaceMode mode                = MODE_SPI;
   uint8_t       csPinAddress;
-  SPIClass      *spi = nullptr;
-  uint8_t       pinCS = SS;
-  uint32_t      spiFreq = 4000000;
+  SPIClass      *spi                = nullptr;
+  uint8_t       pinCS               = SS;
+  uint32_t      spiFreq             = 4000000;
   SPI_ENABLER_CB cbEnableChipSelect = nullptr/*EnableChip*/;
 //  void (*cbEnableChipSelect2)(uint8_t, bool) = EnableChip;
-  char*         StepName=nullptr;
+  char*         StepperName         = nullptr;
+  int32_t       MaxSteps            = 0;  //Max number of Full Steps. From 0... to
+
   // UART
-  HardwareSerial *uart = nullptr;
-  uint8_t uartAddr = 0;
-  long uartBaud = 115200;
+  HardwareSerial* uart      = nullptr;
+  uint8_t         uartAddr  = 0;
+  long            uartBaud  = 115200;
 
-  // STEP/DIR
-  uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;
+  uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
 
-  // Metodi privati
+  // Private Methods
   void      spiWrite(Reg reg, uint32_t value);
   uint32_t  spiRead(Reg reg);
   void      sendUART(uint8_t addr, bool write, Reg reg, uint32_t data);
