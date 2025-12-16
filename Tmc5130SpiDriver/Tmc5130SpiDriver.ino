@@ -1,5 +1,15 @@
 /*
 ToDo:
+  Fsa's for movements
+    1) una sola FSA per volta da 'attaccare' ad uno stepper al momento e da chiamare continuamente
+    2) Ogni Stepper ha una sua FSA che viene chiamata continuamente
+    Movimenti possibili
+      Stop(Hard, Soft, variable)
+      Stay(Parking, Neutral)
+      Change MicroStep
+      GoTo
+      Reset
+      GoHome
   GoTo and wait target
   Eecute an "HomeToStall"
   Check if to use Polidoro's class printer....
@@ -114,7 +124,7 @@ void CalcTime(TMC5130 *stp, uint8_t ms, int32_t Steps){ //shows the time for eac
   Serial.println(millis()-time);
 }
 
-struct Fsa {  //Finite State Machine for Motors
+struct Fsa {  //Finite State Machine for each Motors
   TMC5130       *stepper = nullptr;
   uint8_t       fsa;      //Finite State Automata
   bool          dir;      //current direction
@@ -279,11 +289,11 @@ void setup() {
     sw_mode.en_softstop   = 0;
     Steppers[0].setSwMode(sw_mode);
 
-    Steppers[0].setMaxSteps(-3840);
-    Steppers[1].setMicrosteps(8); //Full Step
+    Steppers[0].setMaxSteps(-3500);
+    Steppers[0].setMicrosteps(8); //Full Step
 
     //Reset: 100,600,3000     100,600,-1
-    //GoEnd: 100,2000,-3840
+    //GoEnd: 100,2000,-38o0
     //Prosegue verso numeri negativi
   }
 
@@ -323,37 +333,50 @@ void setup() {
   }
 }
 
-void WaitEndOfSteps(bool ShowInfo=true){
-  TMC5130::SpiStatus  Status;
-  do{
-    if(ShowInfo){
-      Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println(">>");
-    }else
-      Status = Steppers[StepperInTest].GetSpiStatus();
-
-  }while(Status.position_reached==0);
-}
-
-void WaitHome(bool ShowInfo=true){
-  TMC5130::SpiStatus  Status;
-  do{
-    if(ShowInfo){
-      Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println("<<");
-    }else
-      Status = Steppers[StepperInTest].GetSpiStatus();
-  }while(Status.status_stop_l==0 && Status.status_stop_r==0);
-}
-
 void GoEnd() {
-  uint16_t A = 100;
-  uint32_t V = 1000;
-  int32_t Mult = 1<<(Steppers[StepperInTest].getMicrosteps()-8);
-  int32_t Steps = Steppers[StepperInTest].getMaxSteps();//*Mult;
-  Serial.printf("GoToEnd: %d\n", Steps);
+  Steppers[StepperInTest].Exec_GoEnd();
+  while (!Steppers[StepperInTest].FSA_loop());
+}
 
-  InitGoto(Steppers[StepperInTest], false);
-  Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-  Steppers[StepperInTest].setTarget(Steps);   
+void GoHome(){
+  Steppers[StepperInTest].Exec_GoHome(StepperInTest);
+  while (!Steppers[StepperInTest].FSA_loop());
+}
+
+void GoHomeAll(){
+  for(int i=0; i<wxSIZEOF(Steppers); i++)
+    Steppers[i].Exec_GoHome(i);
+
+  bool AllOk = true;
+  do{
+    AllOk = true;
+    for(int i=0; i<wxSIZEOF(Steppers); i++){
+      if(Steppers[i].FSA_loop()==false)
+        AllOk = false;
+    }
+  }while (AllOk==false);
+}
+
+void GoEndAll() {
+  for(int i=0; i<wxSIZEOF(Steppers); i++)
+    Steppers[i].Exec_GoEnd();
+
+  bool AllOk = true;
+  do{
+    AllOk = true;
+    for(int i=0; i<wxSIZEOF(Steppers); i++){
+      if(Steppers[i].FSA_loop()==false)
+        AllOk = false;
+    }
+  }while (AllOk==false);
+
+}
+
+
+
+void GoTo(uint16_t A, uint32_t V, int32_t  S){
+    Steppers[StepperInTest].Exec_GoTo(A,V,S);
+    while (!Steppers[StepperInTest].FSA_loop());
 }
 
 void ShowWaiting(ulong TimeOut){
@@ -364,61 +387,6 @@ void ShowWaiting(ulong TimeOut){
     int32_t  CurrPos = Steppers[StepperInTest].getPosition();
   	Serial.printf("Pos:%d Tim=%d)\n", CurrPos, millis()-timeStart);
   }while( ((millis()-timeStart)<TimeOut) && Status.position_reached==0 );
-}
-
-void GoHome(){
-  mnuZeroGoto();  //
-
-  //Vado verso Home
-	InitGoto(Steppers[StepperInTest], false);
-  Steppers[StepperInTest].SetTrapezoidal        (100, 600); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-
-  int32_t Mult = 1<<(8-Steppers[StepperInTest].getMicrosteps());
-  int32_t Steps = Steppers[StepperInTest].getMaxSteps();
-
-  Serial.printf("GoToHome: 2*%d Mult=%d\n", Steps, Mult);
-
-  Steppers[StepperInTest].setFirstDeceleration(1000);
-  Steppers[StepperInTest].setSecondDeceleration(1000);
-
-  if(StepperInTest==2){
-    Steppers[StepperInTest].SetTrapezoidal        (100, 300); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-	  Serial.printf("\n\n\n=========================nSOLO PER QUESTO\n");
-  }
-  int32_t Target = -Steps*2;
-	Steppers[StepperInTest].setPosition(0);
-	Steppers[StepperInTest].setTarget( Target ); 
-	Serial.printf("MaxSteps è %d vado a %d\n", Steps, Target);
-  WaitHome();   //Aspetta fine corsa
-
-  Serial.printf("Esco da Finecorsa...\n");
-  TMC5130::SpiStatus  Status;
-  do{
-    Target = Steppers[StepperInTest].getPosition();
-    Target = Target + ((Steps>0) ? 1 : -1);
-    Serial.printf("...Passetto...\n");
-
-    Steppers[StepperInTest].setTarget( Target );
-    WaitEndOfSteps(false);
-
-    Status = PrintSpiStatus(Steppers[StepperInTest]);  PrintGlobalStatus(Steppers[StepperInTest]);  Serial.println("++");
-    //Status = Steppers[StepperInTest].GetSpiStatus();
-  }while(Status.status_stop_l==1 || Status.status_stop_r==1);
-  Serial.printf("Uscito da Finecorsa\n");
-
-
-//  mnuHardStop();
-      //setRampMode(VelocityPositiveMode);  //RAMPMODE
-      Steppers[StepperInTest].setSecondAcceleration(100);           //AMAX
-      Steppers[StepperInTest].setMaxVelocity(0);                  //VMAX
-
-
-
-  Steppers[StepperInTest].setPosition(0);
-  Steppers[StepperInTest].setCurrent(0, 0, 0);
-  Steppers[StepperInTest].setPosition(0);
-
-  Serial.printf("A)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
 }
 
 long GetANumber(char* Prompt){
@@ -519,15 +487,7 @@ void ShowMotorForce(void){
   Serial.print("PWM_SCALE..: ");  Serial.println(Steppers[StepperInTest].getPwmScale().bytes                );  //PWM_SCALE
 }
 
-void SearchTime(TMC5130 &stepper){
-  for(uint8_t ms=0;ms<=8; ms++){
-   stepper.setMicrosteps(ms); 
-  }
-}
-
 void Test_Goto(){
-  InitGoto(Steppers[StepperInTest], false);
-
   Serial.println("Acceleration, Speed, Steps");
   while (Serial.available() < 2) ;
   StringSplitter splitter(Serial.readString(), ',', 99);
@@ -536,15 +496,7 @@ void Test_Goto(){
     uint16_t A = splitter.getItemAtIndex(0).toInt();
     uint32_t V = splitter.getItemAtIndex(1).toInt();
     int32_t  S = splitter.getItemAtIndex(2).toInt();
-    Steppers[StepperInTest].SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-    Serial.printf("Go from %d to ...", Steppers[StepperInTest].getPosition());
-    Steppers[StepperInTest].setTarget(S); 
-    Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
-
-    Serial.printf("Acc=%d, Vel=%d, Steps=%d\n\n", A, V, S );
-
-    WaitEndOfSteps();
-
+    GoTo(A,V,S);
   }
 }
 
@@ -555,13 +507,10 @@ void mnuSetParking      ()  {Steppers[StepperInTest].setParking();}
 void mnuSetFreeRunning  ()  {Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
 void mnuSetPositional   ()  {SetPositional(Steppers[StepperInTest], 2,8);}
 void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode);}
-void mnuZeroGoto        ()  {Steppers[StepperInTest].StopMotor(1000);  //Stop Motor
-                              Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
-                              Steppers[StepperInTest].setPosition(0);
-                              Steppers[StepperInTest].setTarget(-200000); 
-                              Steppers[StepperInTest].setRampMode(TMC5130::PositionMode);
-                              
-                              //Steppers[StepperInTest].moveTo(GetANumber("Get number of steps:"));
+void mnuZeroGoto        ()  { Steppers[StepperInTest].Exec_StopAndZero();
+                              do{
+                                Serial.printf("In attesa di fermata\n");
+                              }while(Steppers[StepperInTest].FSA_loop());
                             }
 void mnuInitDS0         ()  {TMC5130_Init_DS0(Steppers[StepperInTest]);}
 void mnuInitDS1         ()  {TMC5130_Init_DS1(Steppers[StepperInTest]);}
@@ -587,6 +536,8 @@ void MainMenu(){
 //                        {"Show Motor Force",      ShowMotorForce },
                         {"Go Home",             GoHome },
                         {"GoEnd",               GoEnd},
+                        {"GoHomeAll",           GoHomeAll},
+                        {"GoEndAll",            GoEndAll},
   };
 
   Serial.printf("B)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());

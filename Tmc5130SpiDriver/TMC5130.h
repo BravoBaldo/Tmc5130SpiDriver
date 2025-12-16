@@ -765,5 +765,233 @@ private:
   bool      recvUART(uint8_t addr, Reg reg, uint32_t &data);
   void      enableRegBit(bool en, Reg reg, uint32_t Mask);
 
+public:
+  typedef enum : uint8_t {
+    Nothing,
+    StopAndZero,
+    WaitStop,
+    WaitEndOfSteps,
+    GoEnd,
+    ExitLS,
+    GoHome,
+    GoHome_ExitLS,
+  }FSA_Status;
+
+  struct Fsa {  //Finite State Machine for each Motors
+    FSA_Status      Status;       //Finite State Automata
+    uint16_t        SecondA;      //AMAX
+    uint32_t        StartV;       //VSTART
+    uint32_t        MaxVelocity;  //VMAX
+    uint32_t        StopV;        //VSTOP
+    uint16_t        FirstA;       //A1
+    uint16_t        SecondD;      //D1
+    uint16_t        FirstD;       //DMAX
+    uint32_t        FirstV;       //V1
+    uint8_t         Curr_irun;      //IHOLD_IRUN
+    uint8_t         Curr_ihold;     //IHOLD_IRUN
+    uint8_t         Curr_holdDelay; //IHOLD_IRUN
+    int32_t         xTarget;        ////XTARGET
+  }FSA;
+
+  void Exec_ExitLS(void){
+    FSA_Status_ExitLS = 1;
+    FSA.Status = ExitLS;
+  }
+
+  void Exec_StopAndZero(uint16_t a=1000){
+    FSA.SecondA = a;
+    FSA.Status = StopAndZero;
+  }
+  
+  void Exec_InitGoto(void) {
+    FSA.StartV          =  0;
+    FSA.StopV           = 10;
+    FSA.FirstA          =  0;
+    FSA.SecondD         = 10;
+    FSA.FirstV          =  0;
+    FSA.Curr_irun       = 15; //IHOLD_IRUN
+    FSA.Curr_ihold      = 31; //IHOLD_IRUN
+    FSA.Curr_holdDelay  =  7; //IHOLD_IRUN
+    //Stop
+    setStartVelocity      (FSA.StartV);   //Set VSTART=0. Higher velocity for abrupt start (limited by motor).
+    setStopVelocity       (FSA.StopV);    //Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.
+    setFirstAcceleration  (FSA.FirstA);   //A1 Set acceleration A1 as desired by application
+    setSecondDeceleration (FSA.SecondD);  //D1: Use same value as A1 or higher
+    setFirstVelocity      (FSA.FirstV);   //V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
+    setCurrent(FSA.Curr_irun, FSA.Curr_ihold, FSA.Curr_holdDelay); //IHOLD_IRUN
+    FSA.Status = Nothing;
+  }
+
+  void Exec_GoTo(uint16_t A, uint32_t V, int32_t  S){
+    Exec_InitGoto();
+
+    SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+    setTarget(S); //XTARGET
+    setRampMode(TMC5130::PositionMode);
+    FSA.Status = WaitEndOfSteps;
+  }
+
+  void Exec_GoEnd(uint16_t A = 100, uint32_t V = 1000){
+    //Calc Steps
+    int32_t Steps = getMaxSteps();
+    Exec_InitGoto();
+    SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+    setTarget(Steps);   
+    FSA.Status = WaitEndOfSteps;
+  }
+
+  void Exec_WaitStop(void){
+    FSA.Status = WaitEndOfSteps;
+  }
+
+  bool FSA_WaitStop(void){
+    if(getVelocity()==0) {             //VACTUAL
+      setPosition(0);                  //XACTUAL
+      return true;
+    }
+    return false;
+  }
+
+  bool FSA_WaitEndOfSteps(uint8_t LogTo=0){
+    if(GetSpiStatus().position_reached || getVelocity()==0){
+      if(LogTo!=0)
+        Serial.printf("PosReach=%d, Status = %d\n", (int)GetSpiStatus().position_reached, FSA.Status);
+      return true;
+    }
+    return false;
+  }
+
+  bool IsAtHome(void){
+    SpiStatus  Status = GetSpiStatus();
+    return !(Status.status_stop_l==0 && Status.status_stop_r==0);
+  }
+
+  void Exec_GoHome(uint8_t StepperInTest){
+    //StopAndZero
+    setSecondAcceleration(1000);        //AMAX
+    setMaxVelocity(0);                  //VMAX
+    //Zero
+    setRampMode(TMC5130::PositionMode);
+    setPosition(0);
+
+    //I'm going home
+    Exec_InitGoto();
+
+    SetTrapezoidal        (100, 600); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+
+    int32_t Mult = 1<<(8-getMicrosteps());
+    int32_t Steps = getMaxSteps();
+
+    Serial.printf("GoToHome: 2*%d Mult=%d\n", Steps, Mult);
+
+    setFirstDeceleration(1000);
+    setSecondDeceleration(1000);
+
+    if(StepperInTest==2){
+      SetTrapezoidal(100, 300); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+      Serial.printf("\n\n\n=========================nSOLO PER QUESTO\n");
+    }
+    int32_t Target = -Steps*2;
+    setPosition(0);
+    setTarget( Target ); 
+    Serial.printf("MaxSteps è %d vado a %d\n", Steps, Target);
+
+    FSA.Status = GoHome;
+  }
+
+
+/*
+  uint8_t FSA_Status_StopZero=0;
+  bool FSA_StopAndZero(uint8_t LogTo=0){
+    switch(FSA.Status) {
+      case 0:
+        setSecondAcceleration(FSA.SecondA); //AMAX
+        setMaxVelocity(0);                  //VMAX
+        setRampMode(TMC5130::PositionMode); //RAMPMODE
+        FSA.Status = WaitStop;
+        break;
+
+      case WaitStop:
+        if(FSA_WaitStop())
+          FSA.Status = Nothing;
+        break;
+
+    }
+  }
+
+  bool WaitStop(){ return getVelocity()==0; }
+  */
+
+
+  uint8_t FSA_Status_ExitLS = 0;
+
+  bool FSA_loopExitLS(void) {
+    SpiStatus  Status;
+    switch(FSA_Status_ExitLS){
+      case 1: //_Check:
+          Status = GetSpiStatus();
+          if (Status.status_stop_l==0 && Status.status_stop_r==0)
+            return true;//FSA.Status = Nothing;
+          FSA_Status_ExitLS = 2;//;
+      case 2:
+        setTarget( getPosition() + ((getMaxSteps()>0) ? 1 : -1) );
+        FSA_Status_ExitLS = 3;//_WaitStep;
+      case 3: //_WaitStep:
+        if(FSA_WaitEndOfSteps())
+          FSA_Status_ExitLS = 1;//_Check;
+        break;
+    }
+    return false;
+  }
+
+
+  bool FSA_loop(uint8_t LogTo=0){
+    switch(FSA.Status) {
+      case StopAndZero:
+        setSecondAcceleration(FSA.SecondA); //AMAX
+        setMaxVelocity(0);                  //VMAX
+        setRampMode(TMC5130::PositionMode); //RAMPMODE
+        FSA.Status = WaitStop;
+        break;
+      case WaitStop:
+        if(FSA_WaitStop())
+          FSA.Status = Nothing;
+        break;
+      case WaitEndOfSteps:
+        if(FSA_WaitEndOfSteps(LogTo))
+          FSA.Status = Nothing;
+        break;
+
+      case ExitLS:
+        if(FSA_loopExitLS())
+            FSA.Status = Nothing;
+        break;
+
+      case GoHome:
+        if(IsAtHome()){
+            //Exec_ExitLS();
+            FSA_Status_ExitLS = 1;
+            FSA.Status = GoHome_ExitLS;
+        }
+        break;
+      case GoHome_ExitLS:
+        if(FSA_loopExitLS()){
+          //Stop
+          setSecondAcceleration(100);           //AMAX
+          setMaxVelocity(0);                  //VMAX
+          setCurrent(0, 0, 0);  //Neutral
+          setPosition(0);       //Reset
+
+          FSA.Status = Nothing;
+        }
+        break;
+
+      case Nothing: break;
+      default:      break;
+    }
+
+    return FSA.Status == Nothing;
+  }
+
 };
 

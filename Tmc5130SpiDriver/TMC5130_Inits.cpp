@@ -756,7 +756,7 @@ void beginHomeToStall(TMC5130 &stepper, TMC5130::HomeParameters home_parameters,
   stepper.setRampMode           (TMC5130::PositionMode);                //RAMPMODE   controller.writeRampMode(PositionMode);
 }
 
-void InitGoto(TMC5130 &stepper, bool ResetPosition){
+/*void InitGoto(TMC5130 &stepper, bool ResetPosition){
   stepper.setRampMode(TMC5130::PositionMode); //RAMPMODE: set position
   //Stop
   stepper.setMaxVelocity(0);  //To Stop
@@ -772,3 +772,4 @@ void InitGoto(TMC5130 &stepper, bool ResetPosition){
   stepper.setCurrent(15, 31, 7); //setCurrent(31, 31, 15);
 
 }
+*/
