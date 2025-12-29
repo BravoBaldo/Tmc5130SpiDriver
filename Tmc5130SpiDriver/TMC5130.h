@@ -1,14 +1,5 @@
 /*
  * TMC5130.h - Libreria Arduino super-commentata per Trinamic TMC5130A
- *
- * Supporta le 3 modalità documentate dal datasheet:
- *   1. SPI (registri via interfaccia seriale sincrona)
- *   2. UART single-wire (protocollo Trinamic con CRC8-ATM, indirizzamento fino a 255 dispositivi)
- *   3. STEP/DIR (driver classico, con step generati dal microcontrollore)
- *
- * NOTA:
- *  - Il pin SW_SEL del chip sceglie la modalità (SPI o UART).
- *  - STEP/DIR può essere usato insieme a SPI/UART (per configurazione + movimento via pin).
  */
 
 #pragma once
@@ -26,86 +17,7 @@ extern void EnableSpiOnChip(uint8_t csPin, bool en);
 //extern SPI_ENABLER_CB EnableSpiOnChip;
 
 class TMC5130 {
-
-  // ====== Registers ======
-  typedef enum : uint8_t {
-    GCONF       = 0x00,   // Gconf and GconfBits  RW
-    GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
-    IFCNT       = 0x02,   // 0xFF                 R      Interface counter
-    NODECONF    = 0x03,   // Nodeconf             W      Slave config (UART)
-    IOIN        = 0x04,   // Ioin                 RD      Input pins
-    X_COMPARE   = 0x05,   //0xFFFF FFFF           W
-
-    IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
-    TPOWERDOWN  = 0x11,   //0x00FF                W
-    TSTEP       = 0x12,   //0xFFFFF               R
-    TPWMTHRS    = 0x13,   //0xFFFFF               W
-    TCOOLTHRS   = 0x14,   //0xFFFFF               W
-    THIGH       = 0x15,   //0xFFFFF               W
-   
-    RAMPMODE    = 0x20,   //0x03                  RW
-    XACTUAL     = 0x21,   //0xFFFF FFFF           RW
-    VACTUAL     = 0x22,   //0x00FF FFFF           R
-    VSTART      = 0x23,   //0x0003 FFFF           W
-    A1          = 0x24,   //0xFFFF                W
-    V1          = 0x25,   //0x000F FFFF           W
-    AMAX        = 0x26,   //0xFFFF                W
-    VMAX        = 0x27,   //0x7F FFFF             W
-    DMAX        = 0x28,   //0xFFFF                W
-
-    D1          = 0x2A,   //0xFFFF                W
-    VSTOP       = 0x2B,   //0x0003 FFFF           W
-    TZEROWAIT   = 0x2C,   //0xFFFF                W
-    XTARGET     = 0x2D,   //0xFFFF FFFF           RW
-
-    VDCMIN      = 0x33,   //0x007F FFFF           W    Ramp Generator Driver Feature Control Register Set
-    SW_MODE     = 0x34,   // SwMode               RW
-    RAMP_STAT   = 0x35,   // RampStat             RC
-    XLATCH      = 0x36,   //0xFFFF FFFF           R
-    ENCMODE     = 0x38,   // Encmode              RW    Encoder Registers 
-    X_ENC       = 0x39,   //0xFFFF FFFF           RW
-    ENC_CONST   = 0x3A,   // EncConst             W
-    ENC_STATUS  = 0x3B,   //0x0001                RC
-    ENC_LATCH   = 0x3C,   //0xFFFF FFFF           R
-
-    MSLUT_0     = 0x60,   //0sf[0...31]           W    Motor Driver Registers  - MICROSTEPPING CONTROL REGISTER SET
-    MSLUT_1     = 0x61,   //0sf[32...63]          W
-    MSLUT_2     = 0x62,   //0sf[64...95]          W
-    MSLUT_3     = 0x63,   //0sf[96...127]         W
-    MSLUT_4     = 0x64,   //0sf[128...159]        W
-    MSLUT_5     = 0x65,   //0sf[160...191]        W
-    MSLUT_6     = 0x66,   //0sf[192...223]        W
-    MSLUT_7     = 0x67,   //0sf[224...255]        W
-    MSLUTSEL    = 0x68,   // Mslutsel             W
-    MSLUTSTART  = 0x69,   // Mslutstart           W
-    MSCNT       = 0x6A,   //0x3FF                 R
-    MSCURACT    = 0x6B,   // Mscuract             R
-    CHOPCONF    = 0x6C,   // Chopconf             RW    DRIVER REGISTER SET    
-    COOLCONF    = 0x6D,   // Coolconf             W
-    DCCTRL      = 0x6E,   // Dcctrl               W
-    DRV_STATUS  = 0x6F,   // DrvStatus            R
-
-    PWMCONF     = 0x70,   // Pwmconf              W
-    PWM_SCALE   = 0x71,   // PwmScale             R
-    ENCM_CTRL   = 0x72,   // EncmCrtl             W
-    LOST_STEPS  = 0x73,   //                      R
-  }Reg;
-
-
 public:
-  // ====== Modalità operative ======
-  enum InterfaceMode {
-    MODE_SPI,
-    MODE_UART,    //NOT TESTED
-    MODE_STEPDIR  //NOT TESTED
-  };
-
- static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
-                                            RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
-                                            CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
-                                        };
-
-
   typedef union { //Spi Status, SPI_Status
     struct {
       boolean reset_flag        : 1;  //0x01
@@ -355,18 +267,18 @@ public:
 
   typedef union { //COOLCONF
     struct {
-      uint32_t semin      : 4;  //0x0000 000F 00000000000000000000000000001111
-      uint32_t reserved0  : 1;  //            000000000000000000000000000X0000
-      uint32_t seup       : 2;  //0x0000 0060 00000000000000000000000001100000
-      uint32_t reserved1  : 1;  //            000000000000000000000000X0000000
-      uint32_t semax      : 4;  //0x0000 0F00 00000000000000000000111100000000
-      uint32_t reserved2  : 1;  //            0000000000000000000X000000000000
-      uint32_t sedn       : 2;  //0x0000 6000 00000000000000000110000000000000
-      uint32_t seimin     : 1;  //0x0000 8000 00000000000000001000000000000000
-      uint32_t sgt        : 7;  //0x007F 0000 00000000011111110000000000000000
-      uint32_t reserved3  : 1;  //            00000000X00000000000000000000000
-      uint32_t sfilt      : 1;  //0x0100 0000 00000001000000000000000000000000
-      uint32_t reserved4  : 7;  //            XXXXXXX0000000000000000000000000
+      uint32_t semin      : 4;
+      uint32_t reserved0  : 1;
+      uint32_t seup       : 2;
+      uint32_t reserved1  : 1;
+      uint32_t semax      : 4;
+      uint32_t reserved2  : 1;
+      uint32_t sedn       : 2;
+      uint32_t seimin     : 1;
+      uint32_t sgt        : 7;
+      uint32_t reserved3  : 1;
+      uint32_t sfilt      : 1;
+      uint32_t reserved4  : 7;
     };
     uint32_t bytes;
   }Coolconf;
@@ -422,6 +334,91 @@ public:
     uint32_t min_dc_step_velocity = 0;
   }ControllerParameters;
 
+  typedef enum { ForwardDirection = 0, ReverseDirection = 1}                                          MotorDirection;
+  typedef enum { NormalMode=0, FreewheelingMode=1, PassiveBrakingLsMode=2, PassiveBrakingHsMode=3 }   StandstillMode;
+  typedef enum { SpreadCycleMode = 0, ClassicMode = 1 }                                               ChopperMode;
+  typedef enum { ClockCycles16 = 0, ClockCycles24 = 1, ClockCycles36 = 2, ClockCycles54 = 3 }         ComparatorBlankTime;
+
+
+private:
+  // ====== Registers ======
+  typedef enum : uint8_t {
+    GCONF       = 0x00,   // Gconf and GconfBits  RW
+    GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
+    IFCNT       = 0x02,   // 0xFF                 R      Interface counter
+    NODECONF    = 0x03,   // Nodeconf             W      Slave config (UART)
+    IOIN        = 0x04,   // Ioin                 RD      Input pins
+    X_COMPARE   = 0x05,   //0xFFFF FFFF           W
+
+    IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
+    TPOWERDOWN  = 0x11,   //0x00FF                W
+    TSTEP       = 0x12,   //0xFFFFF               R
+    TPWMTHRS    = 0x13,   //0xFFFFF               W
+    TCOOLTHRS   = 0x14,   //0xFFFFF               W
+    THIGH       = 0x15,   //0xFFFFF               W
+   
+    RAMPMODE    = 0x20,   //0x03                  RW
+    XACTUAL     = 0x21,   //0xFFFF FFFF           RW
+    VACTUAL     = 0x22,   //0x00FF FFFF           R
+    VSTART      = 0x23,   //0x0003 FFFF           W
+    A1          = 0x24,   //0xFFFF                W
+    V1          = 0x25,   //0x000F FFFF           W
+    AMAX        = 0x26,   //0xFFFF                W
+    VMAX        = 0x27,   //0x7F FFFF             W
+    DMAX        = 0x28,   //0xFFFF                W
+
+    D1          = 0x2A,   //0xFFFF                W
+    VSTOP       = 0x2B,   //0x0003 FFFF           W
+    TZEROWAIT   = 0x2C,   //0xFFFF                W
+    XTARGET     = 0x2D,   //0xFFFF FFFF           RW
+
+    VDCMIN      = 0x33,   //0x007F FFFF           W    Ramp Generator Driver Feature Control Register Set
+    SW_MODE     = 0x34,   // SwMode               RW
+    RAMP_STAT   = 0x35,   // RampStat             RC
+    XLATCH      = 0x36,   //0xFFFF FFFF           R
+    ENCMODE     = 0x38,   // Encmode              RW    Encoder Registers 
+    X_ENC       = 0x39,   //0xFFFF FFFF           RW
+    ENC_CONST   = 0x3A,   // EncConst             W
+    ENC_STATUS  = 0x3B,   //0x0001                RC
+    ENC_LATCH   = 0x3C,   //0xFFFF FFFF           R
+
+    MSLUT_0     = 0x60,   //0sf[0...31]           W    Motor Driver Registers  - MICROSTEPPING CONTROL REGISTER SET
+    MSLUT_1     = 0x61,   //0sf[32...63]          W
+    MSLUT_2     = 0x62,   //0sf[64...95]          W
+    MSLUT_3     = 0x63,   //0sf[96...127]         W
+    MSLUT_4     = 0x64,   //0sf[128...159]        W
+    MSLUT_5     = 0x65,   //0sf[160...191]        W
+    MSLUT_6     = 0x66,   //0sf[192...223]        W
+    MSLUT_7     = 0x67,   //0sf[224...255]        W
+    MSLUTSEL    = 0x68,   // Mslutsel             W
+    MSLUTSTART  = 0x69,   // Mslutstart           W
+    MSCNT       = 0x6A,   //0x3FF                 R
+    MSCURACT    = 0x6B,   // Mscuract             R
+    CHOPCONF    = 0x6C,   // Chopconf             RW    DRIVER REGISTER SET    
+    COOLCONF    = 0x6D,   // Coolconf             W
+    DCCTRL      = 0x6E,   // Dcctrl               W
+    DRV_STATUS  = 0x6F,   // DrvStatus            R
+
+    PWMCONF     = 0x70,   // Pwmconf              W
+    PWM_SCALE   = 0x71,   // PwmScale             R
+    ENCM_CTRL   = 0x72,   // EncmCrtl             W
+    LOST_STEPS  = 0x73,   //                      R
+  }Reg;
+
+  enum InterfaceMode {
+    MODE_SPI,
+    MODE_UART,    //NOT TESTED
+    MODE_STEPDIR  //NOT TESTED
+  };
+
+
+public:
+
+ static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
+                                            RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
+                                            CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
+                                        };
+
   struct ConverterParameters {
     uint8_t   clock_frequency_mhz               = 12;
     uint32_t  microsteps_per_real_position_unit = 1;
@@ -445,12 +442,6 @@ public:
 
   void cacheControllerSettings(ControllerParameters &Ret);
   void writeControllerParameters(ControllerParameters &parameters);
-
-  typedef enum { ForwardDirection = 0, ReverseDirection = 1}                                          MotorDirection;
-  typedef enum { NormalMode=0, FreewheelingMode=1, PassiveBrakingLsMode=2, PassiveBrakingHsMode=3 }   StandstillMode;
-  typedef enum { SpreadCycleMode = 0, ClassicMode = 1 }                                               ChopperMode;
-  typedef enum { ClockCycles16 = 0, ClockCycles24 = 1, ClockCycles36 = 2, ClockCycles54 = 3 }         ComparatorBlankTime;
-
 
   //To read Writable only registers
   struct DriverParameters { // global_current_scaler only available on TMC5160
@@ -546,11 +537,11 @@ public:
     setGconf(gconf.bytes);
   }
 
-  inline void     enableStopEnable                (bool en) {
+  inline void enableStopEnable(bool en) { //GCONF.stop_enable
     Gconf gconf = getGconf();
     gconf.stop_enable = (en?1:0);
     setGconf(gconf.bytes);
-  }   //GCONF.stop_enable
+  }   
 
   void setCurrent        (uint8_t irun, uint8_t ihold, uint8_t holdDelay); //IHOLD_IRUN
   inline  void setNeutral       (void)  {
@@ -566,10 +557,11 @@ public:
   void            setNodeConf     (uint8_t naddr, uint8_t sdelay); //ToDo: Review       SLAVECONF or NODECONF WriteOnly
   inline uint8_t  getNodeConf     (void)        { return ShadowRegs.NODECONF.bytes; }
 
+  void            softwareEnable                  (void);                                                     //CHOPCONF
+  inline void     setChopconf                     (uint32_t chopconf) { writeReg(CHOPCONF, chopconf); }       //CHOPCONF
+  inline void     setChopconf                     (Chopconf chopconf) { writeReg(CHOPCONF, chopconf.bytes); }       //CHOPCONF
 
-  void            softwareEnable    (void);                                                     //CHOPCONF
-  inline void     setChopconf       (uint32_t chopconf) { writeReg(CHOPCONF, chopconf); }       //CHOPCONF
-  void            writeChopperMode  (ChopperMode chopper_mode);                                 //CHOPCONF
+  void            writeChopperMode                (ChopperMode chopper_mode);                                 //CHOPCONF
   void            enableHighVelocityFullstep      (bool En);                  //CHOPCONF //True=enable, False=disable
   void            enableHighVelocityChopperSwitch (bool En);                  //CHOPCONF //True=enable, False=disable
   void            enableShortToGroundProtection   (bool En);                  //CHOPCONF  //True=enable=0, False=disable=1
@@ -578,29 +570,23 @@ public:
 
   void            setGconf                  (uint32_t gconf);                                   //GCONF
   inline void     enableDirectMode          (bool en) { enableRegBit(en, GCONF, 0x10000); }     //GCONF.direct_mode
-          void    setMotorDirection         (MotorDirection motor_direction);                   //GCONF.shaft  True=1=ReverseDirection, false=0=ForwardDirection
+         void     setMotorDirection         (MotorDirection motor_direction);                   //GCONF.shaft  True=1=ReverseDirection, false=0=ForwardDirection
 
-  inline SpiStatus  GetSpiStatus              (Reg reg=GCONF, uint32_t value=0, bool Read=true) { 
-    //genSpiFunct(reg, value, Read);  //Interferisce col motore!!!!!
-    readReg(reg);
-    return SPI_Status;
-  };
+  inline SpiStatus  GetSpiStatus      (Reg reg=GCONF, uint32_t value=0, bool Read=true) {  readReg(reg); return SPI_Status; };
+  inline void       setPwmconf        (uint32_t pwmconf)  { writeReg(PWMCONF, pwmconf); ShadowRegs.PwmConf.bytes = pwmconf; }
+  inline uint32_t   getPwmconf        (void)              { return ShadowRegs.PwmConf.bytes; }
 
-  inline void     setPwmconf        (uint32_t pwmconf)  { writeReg(PWMCONF, pwmconf); ShadowRegs.PwmConf.bytes = pwmconf; }
-  inline uint32_t getPwmconf        (void)              { return ShadowRegs.PwmConf.bytes; }
-
-  void     setTHigh        (uint32_t v);
-  inline uint32_t getTHigh        (void)              { return ShadowRegs.THIGH; }
+  void     setTHigh                   (uint32_t v);
+  inline uint32_t getTHigh            (void)              { return ShadowRegs.THIGH; }
 
   void      setXCompare(int32_t xcomp); //X_COMPARE WriteOnly
   inline int32_t getXCompare (void)  { return ShadowRegs.X_COMPARE; }
 
   void writeStandstillMode    (StandstillMode mode);    //PWMCONF
-  inline void writeStandstill_Normal            (void)  {writeStandstillMode(NormalMode           );};
-  inline void writeStandstill_Freewheeling      (void)  {writeStandstillMode(FreewheelingMode     );};
-  inline void writeStandstill_PassiveBrakingLs  (void)  {writeStandstillMode(PassiveBrakingLsMode );};
-  inline void writeStandstill_PassiveBrakingHs  (void)  {writeStandstillMode(PassiveBrakingHsMode );};
-
+  inline void writeStandstill_Normal            (void)  {writeStandstillMode(NormalMode           );};  //PWMCONF
+  inline void writeStandstill_Freewheeling      (void)  {writeStandstillMode(FreewheelingMode     );};  //PWMCONF
+  inline void writeStandstill_PassiveBrakingLs  (void)  {writeStandstillMode(PassiveBrakingLsMode );};  //PWMCONF
+  inline void writeStandstill_PassiveBrakingHs  (void)  {writeStandstillMode(PassiveBrakingHsMode );};  //PWMCONF
   void writePwmOffset                (uint8_t pwm_amplitude);  //PWMCONF
   void writePwmGradient              (uint8_t pwm_amplitude);  //PWMCONF
   void enableAutomaticCurrentControl (bool en);                //PWMCONF
@@ -619,7 +605,6 @@ public:
 
   uint16_t  readStallGuardResult        (void);   //DRV_STATUS
 
-  // Motion controller
   void setRampMode        (RampMode m); //RAMPMODE
   inline RampMode getRampMode (void)  { return (RampMode)(readReg(RAMPMODE) & 0x3); };
 
@@ -642,13 +627,12 @@ public:
   bool positionReached          (void);
   void beginRampToZeroVelocity  (void);
   bool homed                    (void);
-          void      setFirstAcceleration   (uint16_t a);  //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
-  inline  uint16_t  getFirstAcceleration   (void)       {return ShadowRegs.A1;};  //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
-          void      setSecondAcceleration  (uint16_t a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-  inline  uint16_t  getSecondAcceleration  (void) {return ShadowRegs.AMAX;};  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-
-  void setFirstDeceleration   (uint16_t d);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
-  inline uint16_t getFirstDeceleration   (void) { return ShadowRegs.DMAX; };
+          void      setFirstAcceleration    (uint16_t a);                         //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
+  inline  uint16_t  getFirstAcceleration    (void)       {return ShadowRegs.A1;}; //A1    [μsteps / ta²]  0...1048575=0xFFFFF First acceleration between VSTART and V1 (unsigned)
+          void      setSecondAcceleration   (uint16_t a);                         //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+  inline  uint16_t  getSecondAcceleration   (void) {return ShadowRegs.AMAX;};     //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+          void setFirstDeceleration         (uint16_t d);                         //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+  inline uint16_t getFirstDeceleration   (void) { return ShadowRegs.DMAX; };      //DMAX
 
   inline void setTZeroWait (uint16_t t)        { writeReg(TZEROWAIT, t); };  //0…(2^16)-1 * 512 tCLK
   inline uint16_t getTZeroWait   (void) { return ShadowRegs.TZEROWAIT; };
@@ -656,15 +640,15 @@ public:
   inline void setVDCMin (uint32_t v)        { writeReg(VDCMIN, v); };  //0…(2^16)-1 * 512 tCLK
   inline uint32_t getVDCMin   (void) { return ShadowRegs.VDCMIN; };
 
-
   void setSecondDeceleration  (uint16_t d);  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
   inline uint16_t getSecondDeceleration  (void) {return ShadowRegs.D1; };  //D1    [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between V1 and VSTOP (unsigned)
 
   inline void     setPosition (int32_t x)       { writeReg(XACTUAL, x); }
   inline int32_t  getPosition (void)            { return (int32_t)readReg(XACTUAL); }
 
-  inline void     setTarget   (int32_t xTarget) { writeReg(XTARGET, xTarget);}
-  inline int32_t  getTarget   (void)            { return (int32_t)readReg(XTARGET);}
+  inline void     setTargetBase   (int32_t xTarget) { writeReg(XTARGET, xTarget);}
+  inline void     setTarget       (int32_t xTarget) { setTargetBase( (getMaxSteps()>0) ? min(xTarget, getMaxSteps()) : max(xTarget, getMaxSteps()) ); }
+  inline int32_t  getTarget       (void)            { return (int32_t)readReg(XTARGET);}
 
   inline void     moveBy      (int32_t dx)      { setTarget(getPosition() + dx); }
 
@@ -736,7 +720,11 @@ public:
   int32_t   getMaxSteps     (void)      { return MaxSteps*((int32_t)1<<(8-getMicrosteps())); };
   void      setMaxSteps     (int32_t s) { MaxSteps = s; };
 
+  uint32_t getGoHomeVelocity  (void)            {return goHomeVelocity;}
+  void     setGoHomeVelocity  (uint32_t v=100)  {goHomeVelocity = v;}
 
+  uint16_t getOverSteps       (void)            {return OverSteps;}
+  void     setOverSteps       (uint16_t s)      {OverSteps = s;}
 private:
 
   // SPI
@@ -749,7 +737,6 @@ private:
   SPI_ENABLER_CB cbEnableChipSelect = nullptr/*EnableChip*/;
 //  void (*cbEnableChipSelect2)(uint8_t, bool) = EnableChip;
   char*         StepperName         = nullptr;
-  int32_t       MaxSteps            = 0;  //Max number of Full Steps. From 0... to
 
   // UART
   HardwareSerial* uart      = nullptr;
@@ -757,15 +744,36 @@ private:
   long            uartBaud  = 115200;
 
   uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
+  uint16_t OverSteps = 0; //Num of steps to exit from Limit Switch
+  bool    Calibrated = false;
 
+
+  //Default Settings
+  SwMode    Default_sw_mode;
+  Chopconf   Default_Chopconf;
+  //uint8_t Default_mres;
+  int32_t MaxSteps        = 0;  //Max number of Full Steps. From 0... to
+  uint32_t goHomeVelocity = 100;
+
+public:
+  void setResets(){ //Read current settings and use them as defaults
+    Default_sw_mode = getSwMode();
+    //Default_mres = getMicrosteps(); //CHOPCONF
+    Default_Chopconf = getChopconf();//CHOPCONF
+  }
+  void Reset(){
+    setSwMode     (Default_sw_mode);
+    //setMicrosteps (Default_mres);
+    setChopconf   (Default_Chopconf);
+  }
+private:
   // Private Methods
   void      spiWrite(Reg reg, uint32_t value);
   uint32_t  spiRead(Reg reg);
   void      sendUART(uint8_t addr, bool write, Reg reg, uint32_t data);
   bool      recvUART(uint8_t addr, Reg reg, uint32_t &data);
   void      enableRegBit(bool en, Reg reg, uint32_t Mask);
-
-public:
+private:
   typedef enum : uint8_t {
     Nothing,
     StopAndZero,
@@ -791,19 +799,50 @@ public:
     uint8_t         Curr_ihold;     //IHOLD_IRUN
     uint8_t         Curr_holdDelay; //IHOLD_IRUN
     int32_t         xTarget;        ////XTARGET
+    ulong           LastCallTime = millis();
+    ulong           MaxTime      = 0;
   }FSA;
 
-  void Exec_ExitLS(void){
-    FSA_Status_ExitLS = 1;
-    FSA.Status = ExitLS;
+public:
+  ulong getFsaMaxTime(void)       {return FSA.MaxTime;};
+  void setFsaMaxTime(ulong t=0)   {FSA.MaxTime = t;};
+
+  bool IsFSAFree(void){ return FSA.Status == Nothing;};
+  bool IsFSABusy(void){ return FSA.Status != Nothing;};
+
+  //This is the only command that should be executed immediately
+  bool Exec_Panic(uint16_t a=1000) {
+    FSA.Status = Nothing;
+    setSecondAcceleration(a);        //AMAX
+    setMaxVelocity(0);               //VMAX
+    setRampMode(TMC5130::PositionMode);
+    return true;
   }
 
-  void Exec_StopAndZero(uint16_t a=1000){
+  bool Exec_setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
+    if(FSA.Status != Nothing) return false;
+    setCurrent(irun, ihold, holdDelay); //IHOLD_IRUN
+    return true;
+  }
+
+  bool Exec_ExitLS(void) {  //Exit from Limit Switch
+    if(FSA.Status != Nothing) return false;
+    OverSteps = 0;
+    FSA_Status_ExitLS = 1;
+    FSA.Status        = ExitLS;
+    return true;
+  }
+
+  bool Exec_StopAndZero(uint16_t a=1000) { //Slow down and reset the position
+    if(FSA.Status != Nothing) return false;
     FSA.SecondA = a;
     FSA.Status = StopAndZero;
+    return true;
   }
   
-  void Exec_InitGoto(void) {
+  bool SubExec_InitGoto(void) {
+    if(FSA.Status != Nothing) return false;
+    if(Calibrated == false){if(Exec_GoHome()==false) return false;}
     FSA.StartV          =  0;
     FSA.StopV           = 10;
     FSA.FirstA          =  0;
@@ -820,42 +859,89 @@ public:
     setFirstVelocity      (FSA.FirstV);   //V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
     setCurrent(FSA.Curr_irun, FSA.Curr_ihold, FSA.Curr_holdDelay); //IHOLD_IRUN
     FSA.Status = Nothing;
+    return true;
   }
 
-  void Exec_GoTo(uint16_t A, uint32_t V, int32_t  S){
-    Exec_InitGoto();
+  bool Exec_GoTo(uint16_t A, uint32_t V, int32_t  S) {
+    if(FSA.Status != Nothing) return false;
+    if(Calibrated == false && Exec_GoHome()==false) return false;
+    if(SubExec_InitGoto()==false)  return false;
 
-    SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
+    SetTrapezoidal(A, V); //setSecondAcceleration=setFirstDeceleration, setMaxVelocity
     setTarget(S); //XTARGET
     setRampMode(TMC5130::PositionMode);
     FSA.Status = WaitEndOfSteps;
+    return true;
   }
 
-  void Exec_GoEnd(uint16_t A = 100, uint32_t V = 1000){
+  bool Exec_MicroSteps(uint8_t mres){
+    if(FSA.Status != Nothing) return false;
+    setMicrosteps(mres);
+    return true;
+  }
+  bool Exec_GoEnd(uint16_t A = 100, uint32_t V = 2000){
     //Calc Steps
-    int32_t Steps = getMaxSteps();
-    Exec_InitGoto();
-    SetTrapezoidal        (A, V); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-    setTarget(Steps);   
+    if(FSA.Status != Nothing) return false;
+    if(Calibrated == false && Exec_GoHome()==false) return false;
+    if(SubExec_InitGoto() == false)  return false;
+    SetTrapezoidal(A, V); //setSecondAcceleration=setFirstDeceleration, setMaxVelocity
+    setTarget( getMaxSteps() );
     FSA.Status = WaitEndOfSteps;
+    return true;
   }
 
-  void Exec_WaitStop(void){
+  bool Exec_WaitOperations(void) {return (FSA.Status == Nothing);}
+
+  bool Exec_WaitStop(void) {
+    if(FSA.Status != Nothing) return false;
     FSA.Status = WaitEndOfSteps;
+    return true;
+  }
+
+  bool Exec_GoHome(void){
+    if(FSA.Status != Nothing) return false;
+    setStartVelocity      (0);    //Set VSTART=0. Higher velocity for abrupt start (limited by motor).
+    setStopVelocity       (1000); //Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.
+    setFirstAcceleration  (1000); //A1 Set acceleration A1 as desired by application
+    setSecondDeceleration (1000); //D1: Use same value as A1 or higher
+    setFirstVelocity      (0);    //V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
+    setCurrent            (15, 31, 7);  //IHOLD_IRUN
+
+
+    SetTrapezoidal(5000, goHomeVelocity);//AMAX, DMAX, VMAX setSecondAcceleration=setFirstDeceleration, setMaxVelocity
+/*
+  void  SetTrapezoidal(uint16_t a, uint32_t v){
+    setSecondAcceleration  (5000);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+    setFirstDeceleration   (4000);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+    setMaxVelocity         (goHomeVelocity);  //VMAX  0...8388096=7FFE00
+    writeReg(TZEROWAIT, 0);
+  }
+*/
+
+    setPosition(0);                     //XACTUAL, from here...
+    setTargetBase( -getMaxSteps()*2 );  //XTARGET Ignore the limitations, they can surely be overcome
+
+    FSA.Status = GoHome;
+    return true;
+  }
+
+  bool Exec_Stop(uint16_t a=10){
+    FSA.Status = Nothing;
+    StopMotor(a);
+    FSA.Status = Nothing;
+    return true;
   }
 
   bool FSA_WaitStop(void){
     if(getVelocity()==0) {             //VACTUAL
-      setPosition(0);                  //XACTUAL
+      //setPosition(0);                  //XACTUAL
       return true;
     }
     return false;
   }
 
-  bool FSA_WaitEndOfSteps(uint8_t LogTo=0){
+  bool FSA_WaitEndOfSteps(void){
     if(GetSpiStatus().position_reached || getVelocity()==0){
-      if(LogTo!=0)
-        Serial.printf("PosReach=%d, Status = %d\n", (int)GetSpiStatus().position_reached, FSA.Status);
       return true;
     }
     return false;
@@ -865,63 +951,6 @@ public:
     SpiStatus  Status = GetSpiStatus();
     return !(Status.status_stop_l==0 && Status.status_stop_r==0);
   }
-
-  void Exec_GoHome(uint8_t StepperInTest){
-    //StopAndZero
-    setSecondAcceleration(1000);        //AMAX
-    setMaxVelocity(0);                  //VMAX
-    //Zero
-    setRampMode(TMC5130::PositionMode);
-    setPosition(0);
-
-    //I'm going home
-    Exec_InitGoto();
-
-    SetTrapezoidal        (100, 600); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-
-    int32_t Mult = 1<<(8-getMicrosteps());
-    int32_t Steps = getMaxSteps();
-
-    Serial.printf("GoToHome: 2*%d Mult=%d\n", Steps, Mult);
-
-    setFirstDeceleration(1000);
-    setSecondDeceleration(1000);
-
-    if(StepperInTest==2){
-      SetTrapezoidal(100, 300); //setSecondAcceleration, setFirstDeceleration, setMaxVelocity
-      Serial.printf("\n\n\n=========================nSOLO PER QUESTO\n");
-    }
-    int32_t Target = -Steps*2;
-    setPosition(0);
-    setTarget( Target ); 
-    Serial.printf("MaxSteps è %d vado a %d\n", Steps, Target);
-
-    FSA.Status = GoHome;
-  }
-
-
-/*
-  uint8_t FSA_Status_StopZero=0;
-  bool FSA_StopAndZero(uint8_t LogTo=0){
-    switch(FSA.Status) {
-      case 0:
-        setSecondAcceleration(FSA.SecondA); //AMAX
-        setMaxVelocity(0);                  //VMAX
-        setRampMode(TMC5130::PositionMode); //RAMPMODE
-        FSA.Status = WaitStop;
-        break;
-
-      case WaitStop:
-        if(FSA_WaitStop())
-          FSA.Status = Nothing;
-        break;
-
-    }
-  }
-
-  bool WaitStop(){ return getVelocity()==0; }
-  */
-
 
   uint8_t FSA_Status_ExitLS = 0;
 
@@ -937,15 +966,20 @@ public:
         setTarget( getPosition() + ((getMaxSteps()>0) ? 1 : -1) );
         FSA_Status_ExitLS = 3;//_WaitStep;
       case 3: //_WaitStep:
-        if(FSA_WaitEndOfSteps())
+        if(FSA_WaitEndOfSteps()){
           FSA_Status_ExitLS = 1;//_Check;
+          OverSteps++;
+        }
         break;
     }
     return false;
   }
 
+  bool FSA_loop(void){
+    ulong DeltaT = millis()-FSA.LastCallTime;
+    if( DeltaT>FSA.MaxTime)  FSA.MaxTime = DeltaT;
+    FSA.LastCallTime = millis();
 
-  bool FSA_loop(uint8_t LogTo=0){
     switch(FSA.Status) {
       case StopAndZero:
         setSecondAcceleration(FSA.SecondA); //AMAX
@@ -954,11 +988,13 @@ public:
         FSA.Status = WaitStop;
         break;
       case WaitStop:
-        if(FSA_WaitStop())
+        if(FSA_WaitStop()){
+          setPosition(0);                  //XACTUAL
           FSA.Status = Nothing;
+        }
         break;
       case WaitEndOfSteps:
-        if(FSA_WaitEndOfSteps(LogTo))
+        if(FSA_WaitEndOfSteps())
           FSA.Status = Nothing;
         break;
 
@@ -969,19 +1005,19 @@ public:
 
       case GoHome:
         if(IsAtHome()){
-            //Exec_ExitLS();
+            OverSteps = 0;
             FSA_Status_ExitLS = 1;
             FSA.Status = GoHome_ExitLS;
         }
         break;
       case GoHome_ExitLS:
         if(FSA_loopExitLS()){
-          //Stop
-          setSecondAcceleration(100);           //AMAX
-          setMaxVelocity(0);                  //VMAX
-          setCurrent(0, 0, 0);  //Neutral
-          setPosition(0);       //Reset
-
+          //Stop and Neutral
+          setSecondAcceleration (100);      //AMAX
+          setMaxVelocity        (0);        //VMAX
+          setCurrent            (0, 0, 0);  //Neutral
+          setPosition           (0);        //Reset
+          Calibrated = true;
           FSA.Status = Nothing;
         }
         break;
@@ -995,3 +1031,10 @@ public:
 
 };
 
+#if defined(AnIdea)
+class TMC5130_FSA : private TMC5130 {
+  TMC5130* Stepper;  
+  //TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr, int32_t Max_Steps = 0);
+
+}
+#endif

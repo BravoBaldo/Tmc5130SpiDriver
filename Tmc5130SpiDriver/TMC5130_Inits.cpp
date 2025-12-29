@@ -104,9 +104,9 @@ void TMC5130_Init_00(TMC5130 &stepper){
   stepper.setTHigh              (0);
   stepper.setRampMode           (TMC5130::VelocityNegativeMode);  //stepper.writeReg(TMC5130::RAMPMODE,    0x00000002);
   stepper.setPosition           (0xFFE38782);        //XACTUAL
-  stepper.setStartVelocity      (0);            //VSTART
-  stepper.setFirstAcceleration  (966);      //A1 0x000003C6
-  stepper.setFirstVelocity      (107374);       //V1  0x0001A36E  
+  stepper.setStartVelocity      (0);      //VSTART
+  stepper.setFirstAcceleration  (966);    //A1 0x000003C6
+  stepper.setFirstVelocity      (107374); //V1  0x0001A36E  
   stepper.setSecondAcceleration (966);    //AMAX 0x000003C6
   stepper.setMaxVelocity        (214748); //VMAX  0x000346DC
   stepper.setFirstDeceleration  (966);    //DMAX //0x000003C6

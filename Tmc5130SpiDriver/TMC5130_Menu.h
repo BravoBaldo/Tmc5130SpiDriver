@@ -5,6 +5,8 @@
 
 extern uint8_t StepperInTest; //TMC5130
 extern TMC5130 Steppers[];
+extern void RunFSA(void);
+typedef std::function<void(void)> RUN_BACKGROUND;
 
 typedef struct {
   char* Label;

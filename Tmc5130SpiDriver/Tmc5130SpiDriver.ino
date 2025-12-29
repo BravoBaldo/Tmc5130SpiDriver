@@ -14,7 +14,7 @@ ToDo:
   Eecute an "HomeToStall"
   Check if to use Polidoro's class printer....
   Implementare gli algoritmi descritti nel datasheet
-
+  Inserire i valori di default per ciascun motore con la possibilità di re-inizializzarlo
 Tests
   Seriale
   connessione
@@ -25,6 +25,7 @@ Tests
   GoTo... steps
 
 Done:
+  https://github.com/khoih-prog/ESP32TimerInterrupt
   remove TMC5130_RampMode
   Introduce ShadowRegs (see DriverParameters)
   Le inizializzazioni del Datasheet
@@ -55,6 +56,18 @@ Done:
 TMC5130::HomeParameters       home_parameters_chip;
 TMC5130::StallParameters      stall_parameters_chip;
 
+//#define TEST_TIMER
+
+#if defined(TEST_TIMER)
+  hw_timer_t *timer = NULL;
+  portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+
+void ARDUINO_ISR_ATTR onTimer() {
+  portENTER_CRITICAL_ISR(&timerMux);    // Increment the counter and set the time of ISR
+      RunFSA();
+  portEXIT_CRITICAL_ISR(&timerMux);
+}
+#endif
 
 //--- List All expanders ------------------------------------------
 
@@ -256,7 +269,7 @@ void setup() {
   setup_Basic();  //Serial, Expander(s), Motor(s)
   delay(2000);
 
-  ShowReadableRegistersAll();
+  //ShowReadableRegistersAll();
   //Init Steppers to default
   for(int i=0; i<wxSIZEOF(Steppers); i++){
     //ShowReadableRegisters(Steppers[i]);
@@ -288,13 +301,14 @@ void setup() {
     sw_mode.pol_stop_r    = 0;
     sw_mode.en_softstop   = 0;
     Steppers[0].setSwMode(sw_mode);
-
     Steppers[0].setMaxSteps(-3500);
     Steppers[0].setMicrosteps(8); //Full Step
-
+    Steppers[0].setGoHomeVelocity(400);
     //Reset: 100,600,3000     100,600,-1
     //GoEnd: 100,2000,-38o0
     //Prosegue verso numeri negativi
+
+    Steppers[0].setResets(); //Read current settings and use them as defaults
   }
 
   {
@@ -307,12 +321,14 @@ void setup() {
     sw_mode.pol_stop_r    = 0;
     sw_mode.en_softstop   = 0;
     Steppers[1].setSwMode(sw_mode);
-
     Steppers[1].setMaxSteps(612);
     Steppers[1].setMicrosteps(7);
+    Steppers[1].setGoHomeVelocity(400);
     
     //Reset: 100,600,-3000
     //GoEnd: 100,1000,640
+
+    Steppers[1].setResets(); //Read current settings and use them as defaults
   }
 
   {
@@ -325,58 +341,63 @@ void setup() {
     sw_mode.pol_stop_r    = 0;
     sw_mode.en_softstop   = 0;
     Steppers[2].setSwMode(sw_mode);
-
     Steppers[2].setMaxSteps(-550);
     Steppers[2].setMicrosteps(7);
+    Steppers[2].setGoHomeVelocity(200);
     //Reset: 100,300,300
     //GoEnd: 100,300,-450
+
+    Steppers[2].setResets(); //Read current settings and use them as defaults
+  }
+
+#if defined(TEST_TIMER)
+  timer = timerBegin(1000000);    // Set timer frequency to 1Mhz
+  timerAttachInterrupt(timer, &onTimer);    // Attach onTimer function to our timer.
+  timerAlarm(timer, 100000, true, 0);     //void TIMER_IRAM timerAlarm(hw_timer_t *timer, uint64_t alarm_value, bool autoreload, uint64_t reload_count)
+#endif
+
+}
+
+void RunResetAllTimers(void){
+  for(int i=0; i<wxSIZEOF(Steppers); i++)
+    Steppers[i].setFsaMaxTime();
+}
+
+void RunFSA(void){
+  for(int i=0; i<wxSIZEOF(Steppers); i++){
+    Steppers[i].FSA_loop();
   }
 }
 
 void GoEnd() {
-  Steppers[StepperInTest].Exec_GoEnd();
-  while (!Steppers[StepperInTest].FSA_loop());
+  while(Steppers[StepperInTest].Exec_GoEnd()==false)  RunFSA();
+}
+
+void GoEndAll() {
+  //AAA Insert a TimeOut
+  uint16_t Executed = (1<<wxSIZEOF(Steppers))-1;  //Put as many ones as there are steppers
+  while(Executed !=0){
+    for(int i=0; i<wxSIZEOF(Steppers); i++){
+      if( (Executed & (1<<i))!= 0 ){              //Check the i-th stepper
+        if(Steppers[i].Exec_GoEnd())
+          Executed &= (~((1<<i)));                //Reset the i-th stepper
+      }
+      RunFSA();
+    }
+  }
 }
 
 void GoHome(){
-  Steppers[StepperInTest].Exec_GoHome(StepperInTest);
-  while (!Steppers[StepperInTest].FSA_loop());
+  Steppers[StepperInTest].Exec_GoHome();
 }
 
 void GoHomeAll(){
   for(int i=0; i<wxSIZEOF(Steppers); i++)
-    Steppers[i].Exec_GoHome(i);
-
-  bool AllOk = true;
-  do{
-    AllOk = true;
-    for(int i=0; i<wxSIZEOF(Steppers); i++){
-      if(Steppers[i].FSA_loop()==false)
-        AllOk = false;
-    }
-  }while (AllOk==false);
+    Steppers[i].Exec_GoHome();
 }
-
-void GoEndAll() {
-  for(int i=0; i<wxSIZEOF(Steppers); i++)
-    Steppers[i].Exec_GoEnd();
-
-  bool AllOk = true;
-  do{
-    AllOk = true;
-    for(int i=0; i<wxSIZEOF(Steppers); i++){
-      if(Steppers[i].FSA_loop()==false)
-        AllOk = false;
-    }
-  }while (AllOk==false);
-
-}
-
-
 
 void GoTo(uint16_t A, uint32_t V, int32_t  S){
     Steppers[StepperInTest].Exec_GoTo(A,V,S);
-    while (!Steppers[StepperInTest].FSA_loop());
 }
 
 void ShowWaiting(ulong TimeOut){
@@ -394,10 +415,6 @@ long GetANumber(char* Prompt){
   while (Serial.available() < 2) ;
   return Serial.parseInt();
 }
-
-
-
-
 
 void ChangeMotor(void){
   ClearScreen();
@@ -421,20 +438,18 @@ void ChangeMotor(void){
 }
 
 void ChangeMicroSteps(void) {
-  char* Menu[] = {"Exit", "ms_256", "ms_128", "ms_64", "ms_32", "ms_16", "ms_8", "ms_4", "ms_2", "Full Step"};
+  char* Menu[] = {"ms_256", "ms_128", "ms_64", "ms_32", "ms_16", "ms_8", "ms_4", "ms_2", "Full Step"};
+  ClearScreen();
+  uint8_t ms = Steppers[StepperInTest].getMicrosteps();
+  Serial.print("Actual Microsteps: "); Serial.println(Menu[ms]);  
   uint Size = wxSIZEOF(Menu);
-  int menuChoice;
-  do{
-    ClearScreen();
-    uint8_t ms = Steppers[StepperInTest].getMicrosteps();
-    Serial.print("Actual Microsteps: "); Serial.println(Menu[ms+1]);  
-    menuChoice = ShowMenu(Menu, Size);
-    if(menuChoice>0 && menuChoice<=Size){
-      Steppers[StepperInTest].setMicrosteps((menuChoice-1));
-      Serial.print("Microsteps: "); Serial.println(Menu[StepperInTest]);
-    }
-  }while(menuChoice!=0);
+  int menuChoice = ShowMenu(Menu, Size);
+  if(menuChoice<Size){
+    Steppers[StepperInTest].setMicrosteps((menuChoice));
+    Serial.print("Microsteps: "); Serial.println(Menu[StepperInTest]);
+  }
 }
+
 
 void ChangeMaxVelocity(void){
   char* Menu[] = {"Exit", "+100", "-100", "+1000", "-1000"};
@@ -487,9 +502,45 @@ void ShowMotorForce(void){
   Serial.print("PWM_SCALE..: ");  Serial.println(Steppers[StepperInTest].getPwmScale().bytes                );  //PWM_SCALE
 }
 
+void mnuHardStop        ()  {Steppers[StepperInTest].Exec_Stop(1000);}
+void mnuPanicAll        ()  {for(int i=0; i<wxSIZEOF(Steppers); i++) Steppers[i].Exec_Panic(5000);}
+
+void mnuSoftStop        ()  {Steppers[StepperInTest].Exec_Stop(1);}
+void mnuSetNeutral      ()  {/*Steppers[StepperInTest].setNeutral();*/Steppers[StepperInTest].setCurrent(0, 0, 0);}
+void mnuSetNeutralAll   ()  { for(int i=0; i<wxSIZEOF(Steppers); i++) {
+                                /*Steppers[StepperInTest].setNeutral();*/
+                                Steppers[i].setCurrent(0, 0, 0);
+                              }
+                            }
+
+void mnuSetParking      ()  {Steppers[StepperInTest].setParking();}
+void mnuSetParkingAll   ()  { for(int i=0; i<wxSIZEOF(Steppers); i++) Steppers[StepperInTest].setParking(); }
+
+void mnuSetFreeRunning  ()  {Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
+void mnuSetPositional   ()  {SetPositional(Steppers[StepperInTest], 2,8);}
+void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode);}
+void mnuZeroGoto        ()  { Steppers[StepperInTest].Exec_StopAndZero(); }
+void mnuInitDS0         ()  {TMC5130_Init_DS0(Steppers[StepperInTest]);}
+void mnuInitDS1         ()  {TMC5130_Init_DS1(Steppers[StepperInTest]);}
+
+void Demo(){
+  ulong DelayDemo = millis();    //Timer
+  while(( (millis()-DelayDemo) < 60000)){
+    for(int i=0; i<wxSIZEOF(Steppers); i++){
+      if(Steppers[i].IsFSAFree()){
+        if(abs(Steppers[i].getPosition()-Steppers[i].getMaxSteps())<50)
+          Steppers[i].Exec_GoHome();
+        else
+          Steppers[i].Exec_GoEnd();
+      }
+      RunFSA();
+    }
+  }
+}
+
 void Test_Goto(){
   Serial.println("Acceleration, Speed, Steps");
-  while (Serial.available() < 2) ;
+  while (Serial.available() < 2) RunFSA();
   StringSplitter splitter(Serial.readString(), ',', 99);
   int itemCount = splitter.getItemCount();
   if(itemCount==3){
@@ -500,21 +551,239 @@ void Test_Goto(){
   }
 }
 
-void mnuHardStop        ()  {Steppers[StepperInTest].StopMotor(1000);}
-void mnuSoftStop        ()  {Steppers[StepperInTest].StopMotor(1);}
-void mnuSetNeutral      ()  {/*Steppers[StepperInTest].setNeutral();*/Steppers[StepperInTest].setCurrent(0, 0, 0);}
-void mnuSetParking      ()  {Steppers[StepperInTest].setParking();}
-void mnuSetFreeRunning  ()  {Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
-void mnuSetPositional   ()  {SetPositional(Steppers[StepperInTest], 2,8);}
-void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode);}
-void mnuZeroGoto        ()  { Steppers[StepperInTest].Exec_StopAndZero();
-                              do{
-                                Serial.printf("In attesa di fermata\n");
-                              }while(Steppers[StepperInTest].FSA_loop());
-                            }
-void mnuInitDS0         ()  {TMC5130_Init_DS0(Steppers[StepperInTest]);}
-void mnuInitDS1         ()  {TMC5130_Init_DS1(Steppers[StepperInTest]);}
+bool Sampler_ParseCommand(const char* strCmd) {
+  if(strCmd==nullptr || strlen(strCmd)==0)  return false;
+  typedef enum : uint8_t {eGoTo, eHome, eLast} eCommands;
 
+  //               Motor, Accel, Veloc, Steps, Command 
+  typedef enum : uint8_t {pMotor, pAccel, pVelocity, pSteps, pCommand, pLast} eParams;
+  bool ParamsF[eParams::pLast] = {false, false, false, false, false};
+  long ParamsV[eParams::pLast];
+
+  StringSplitter splitter(strCmd, ';', 99);
+  int itemCount = splitter.getItemCount();
+  int Motor = -1;
+  int Accel = -1;
+  int Veloc = -1;
+  int GoTo  = 99;
+  Serial.printf("Trovati %d parametri:\n", itemCount);
+  for(int i=0; i<itemCount; i++){
+    String Cmd = splitter.getItemAtIndex(i);
+    if(Cmd.length()==0) continue;
+    char C = Cmd.charAt(0);
+    Serial.printf("%d) %-5s (%d) %c: ", i, Cmd, Cmd.length(), C);
+    int Num = (Cmd.length()>1) ? Cmd.substring(1).toInt() : -1;
+    switch(C){
+      case 'm': //Motor
+        if(Num>=0 && Num <=wxSIZEOF(Steppers)){
+           Motor = Num;  
+          ParamsF[eParams::pMotor] = true;  ParamsV[eParams::pMotor] = Num;
+          Serial.printf("Motor %d",         Num);
+        }
+      break;
+      case 'a':
+        if(Num>0){
+          ParamsF[eParams::pAccel] = true;  ParamsV[eParams::pAccel] = Num;
+          Serial.printf("Acceleration %d",  Num);
+          Accel = Num;
+      }
+      break;
+      case 'v':
+        if(Num>0){
+          ParamsF[eParams::pVelocity] = true;  ParamsV[eParams::pVelocity] = Num;
+          Veloc = Num;  
+          Serial.printf("Velocity %d",      Num);
+        }
+      break;
+      case 'G':
+        ParamsF[eParams::pSteps]   = true;  ParamsV[eParams::pSteps  ] = Num;
+        ParamsF[eParams::pCommand] = true;  ParamsV[eParams::pCommand] = eCommands::eGoTo;
+        Serial.printf("GoTo %d",          Num);
+        GoTo = Num;  
+      break;
+      case 'H':
+        ParamsF[eParams::pCommand] = true;  ParamsV[eParams::pCommand] = eCommands::eHome;
+        Serial.printf("GoHome %d",        Num);
+        break;
+//      case 'M': Serial.printf("MicroStep %d",     Num); break;
+    }
+    Serial.printf("\n");
+
+    Serial.printf("Execute GoTo %d:%d,%d,%d\n", Motor, Accel,Veloc,GoTo);
+    if(Motor>=0 && Accel>0 && Veloc>0 && GoTo!=99){
+      do{
+        RunFSA();
+      }while( Steppers[Motor].Exec_GoTo(Accel,Veloc,GoTo)==false );
+    }
+  }
+  Serial.printf("---------------------\n");
+  return true;
+}
+
+void TestCommands(void){
+  Sampler_ParseCommand("m1;a100;v2000;G400");
+  Sampler_ParseCommand("m2;a100;v2000;G-1000");
+  Sampler_ParseCommand("m0;a100;v2000;G-1000");
+  Sampler_ParseCommand("m2;a100;v2000;G-10");
+  Sampler_ParseCommand("m1;a100;v2000;G200");
+
+  Sampler_ParseCommand("m0;a100;v2000;G0");
+  Sampler_ParseCommand("m1;a100;v2000;G0");
+  Sampler_ParseCommand("m2;a100;v2000;G0");
+
+  Sampler_ParseCommand("m1;a100;v2000;G500");
+  Sampler_ParseCommand("m2;a100;v2000;G-2000");
+  Sampler_ParseCommand("m0;a100;v2000;G-2000");
+  Sampler_ParseCommand("m2;a100;v2000;G-100");
+  Sampler_ParseCommand("m1;a100;v2000;G300");
+}
+
+
+void TestParseCommand(void){
+  while (Serial.available() != 0){ RunFSA(); Serial.read();}  //Flush Input
+  Serial.println("\nEnter Command:");
+  while (Serial.available() < 2){ RunFSA(); }
+  String Cmd = Serial.readStringUntil('\n');  // Read until newline
+  if(Cmd.length()==0) return;
+  Serial.printf("Letto '%s'\n", Cmd.c_str());
+  Sampler_ParseCommand(Cmd.c_str());
+
+}
+
+
+
+struct ParsedParams{
+  const char* Description;
+  long  Min;
+  long  Max;
+  long  Value;
+  bool  IsSet = false;
+};
+
+bool Sampler_ParseCommandNew(const char* strCmd) {
+  if(strCmd==nullptr || strlen(strCmd)==0)  return false;
+  typedef enum : uint8_t {eNone, eGoTo, eHome, eReset, eNeutral, eCurrent, eMicroStep, eGoEnd} eCommands;
+
+  StringSplitter splitter(strCmd, ';', 99);
+  int itemCount = splitter.getItemCount();
+  int Motor = -1;
+  int Accel = -1;
+  int Veloc = -1;
+  int32_t Steps = 0;
+//  int GoTo  = 99;
+  eCommands Command = eNone;
+  Serial.printf("Trovati %d parametri:\n", itemCount);
+  for(int i=0; i<itemCount; i++){
+    String Cmd = splitter.getItemAtIndex(i);
+    if(Cmd.length()==0) continue;
+    char C = Cmd.charAt(0);
+    Serial.printf("%d) %-5s (%d) %c: ", i, Cmd, Cmd.length(), C);
+    int Num = (Cmd.length()>1) ? Cmd.substring(1).toInt() : -1;
+    switch(C){
+      case 'm': //Motor
+        if(Num>=0 && Num <=wxSIZEOF(Steppers)){
+           Motor = Num;  
+          Serial.printf("Motor %d",         Num);
+        }
+      break;
+      case 'a':
+        if(Num>0){
+          Serial.printf("Acceleration %d",  Num);
+          Accel = Num;
+        }
+      break;
+      case 'v':
+        if(Num>0){
+          Veloc = Num;
+          Serial.printf("Velocity %d",        Num);
+        }
+      break;
+      case 'G': Command = eGoTo;        Steps = Num;  break;
+      case 'H': Command = eHome;                      break;
+      case 'E': Command = eGoEnd;                     break;
+      case 'N': Command = eNeutral;                   break;
+      case 'C': Command = eCurrent;
+      //si aspetta 3 numeri separati da virgola
+      break;
+      case 'R': Command = eReset;                     break;
+      case 's': Command = eMicroStep;  Steps = Num;   break;
+    }
+    Serial.printf("\n");
+
+    switch(Command){
+      case eGoTo:
+        Serial.printf("Execute GoTo %d:%d,%d,%d\n", Motor, Accel,Veloc,Steps);
+        if(Motor>=0 && Accel>0 && Veloc>0 && Steps!=99){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_GoTo(Accel,Veloc,Steps)==false );
+        }
+        break;
+      case eHome:
+        Serial.printf("Execute Home\n");
+        if(Motor>=0){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_GoHome()==false );
+        }
+        break;
+      case eMicroStep:
+        Serial.printf("Execute eMicroStep to %d\n", Steps);
+        if(Motor>=0 ){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_MicroSteps(Steps)==false );          
+        }
+        break;
+      case eGoEnd:
+        if(Motor>=0 ){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_GoEnd()==false );          
+        }
+        break;
+      case eNeutral:
+        if(Motor>=0 ){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_setCurrent(0,0,0)==false );          
+        }
+        break;
+      case eReset:
+        if(Motor>=0 ){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_WaitOperations()==false );
+          Steppers[Motor].Reset();
+        }
+        break;
+    }
+  }
+  Serial.printf("---------------------\n");
+  return true;
+}
+
+void TestParserNew(void){
+  Sampler_ParseCommandNew("m2;H");                //Home
+  Sampler_ParseCommandNew("m1;a100;v2000;G400");
+  Sampler_ParseCommandNew("m0;a100;v2000;G-2000");
+  Sampler_ParseCommandNew("m1;H");                //Home
+  Sampler_ParseCommandNew("m1;a100;v2000;G400");  //GoTo
+  Sampler_ParseCommandNew("m1;s4");               //MicroStep
+  Sampler_ParseCommandNew("m1;a100;v2000;G4000");  //GoTo
+
+  Sampler_ParseCommandNew("m0;H");                //Home
+  Sampler_ParseCommandNew("m1;R");                //Reset
+  Sampler_ParseCommandNew("m1;H");                //Home
+
+  Sampler_ParseCommandNew("m2;E");                //GoEnd
+  Sampler_ParseCommandNew("m2;H");                //Home
+
+  Sampler_ParseCommandNew("m0;N");                //Neutral
+  Sampler_ParseCommandNew("m1;N");                //Neutral
+  Sampler_ParseCommandNew("m2;N");                //Neutral
+  //Set Current Ca,b,c
+}
 
 void MainMenu(){
   sMenu MainMenu[] = {  {"Change Motor",        ChangeMotor },
@@ -536,23 +805,27 @@ void MainMenu(){
 //                        {"Show Motor Force",      ShowMotorForce },
                         {"Go Home",             GoHome },
                         {"GoEnd",               GoEnd},
-                        {"GoHomeAll",           GoHomeAll},
-                        {"GoEndAll",            GoEndAll},
+                        {"All GoHome",          GoHomeAll},
+                        {"All GoEnd",           GoEndAll},
+                        {"All Neutral",         mnuSetNeutralAll },
+                        {"All Parking",         mnuSetParkingAll },
+                        {"All PANIC",           mnuPanicAll },
+                        {"All ResetTimers",     RunResetAllTimers},
+                        {"Demo",                Demo},
+                        {"TestCommands",        TestCommands},
+                        {"TestParseCommand",    TestParseCommand},
+                        {"TestParser New",      TestParserNew},
   };
 
-  Serial.printf("B)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
   int menuChoice = ShowMenu(MainMenu, wxSIZEOF(MainMenu));
   if(menuChoice>=0)
     MainMenu[menuChoice].MenuFunc();
   else{
-    Serial.println("Please choose a valid selection, "); Serial.print(menuChoice); Serial.println(" is invalid!"); 
+    Serial.println("\n\tPlease choose a valid selection, "); Serial.print(menuChoice); Serial.println(" is invalid!"); 
     return;
   }
-  Serial.printf("C)Nuova posizione è  %d \n", Steppers[StepperInTest].getPosition());
 }
 
 void loop(void){
   MainMenu();
-
-//  loop_Fsa(0);
 }

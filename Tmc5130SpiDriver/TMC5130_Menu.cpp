@@ -5,8 +5,19 @@
 
 int mnuGetChoice(uint8_t Size){
   Serial.print("\nYour choice:");
-  while (Serial.available() < 2) ;
+
+/* 4012
+  String teststr;
+  do{
+    while (Serial.available() == 0) {RunFSA();}     //wait for data available
+    teststr = Serial.readString().trim();
+  }while(teststr.length()==0);
+  int menuChoice = teststr.toInt();
+*/
+
+  while (Serial.available() < 2){ RunFSA(); }
   int menuChoice = Serial.parseInt();
+
   Serial.print(menuChoice);
   if(menuChoice <0 || menuChoice >= Size )
     return -1;
@@ -30,6 +41,7 @@ void ClearScreen(void){
   PrintSpiStatus(Steppers[StepperInTest]);    Serial.print("   ");
   PrintGlobalStatus(Steppers[StepperInTest]);
   Serial.printf("\n└──────────────┴──────────┴────┴───┴───┴──┘            └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘             └─────┴─────┴─────┘\n\n");
+  RunFSA();
 }
 
 
@@ -39,6 +51,7 @@ int ShowMenu(char* Menu[], uint8_t Size){
   for(int i=0; i<Size; i++){
     bool x=false;
     for(int Col=0; Col<=Hg; Col++){
+      RunFSA();
       if(Size>(Hg*Col) && (i+Hg*Col)<Size && (i+Hg*Col)<(Hg*(Col+1))){
         Serial.printf("%2d) %-25s", i+Hg*Col, Menu[i+Hg*Col]);
         x=true;
@@ -60,6 +73,7 @@ int ShowMenu(sMenu Menu[], uint8_t Size){
   for(int i=0; i<Size; i++){
     bool x = false;
     for(int Col=0; Col<=Hg; Col++){
+      RunFSA();
       if(Size>(Hg*Col) && (i+Hg*Col)<Size && (i+Hg*Col)<(Hg*(Col+1))){
         Serial.printf("%2d) %-25s", i+Hg*Col, Menu[i+Hg*Col].Label);
         x=true;

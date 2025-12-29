@@ -335,6 +335,7 @@ TMC5130::Gstat PrintGlobalStatus(TMC5130 &stp, char* Title){
                   , stat.drv_err  ? "DrErr" : "     "
                   , stat.uv_cp    ? "UVols" : "     "
   );
+  Serial.printf("  Over:%d %ld", stp.getOverSteps(), stp.getFsaMaxTime());
   return stat;
 }
 
