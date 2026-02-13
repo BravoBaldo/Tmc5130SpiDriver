@@ -87,7 +87,8 @@ TCA9555 EXPANDERS[]{
 void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
 //AAA: Maybe SPI_FREQ must be unique!!!
-TMC5130 Steppers[]={TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
+TMC5130 Steppers[]={
+                    TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
                     TMC5130(SPI,  8, SpiEnableSteppers, SPI_FREQ, "Motor B:"),
                     TMC5130(SPI, 10, SpiEnableSteppers, SPI_FREQ, "Motor C"),
 //                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
@@ -551,118 +552,34 @@ void Test_Goto(){
   }
 }
 
-bool Sampler_ParseCommand(const char* strCmd) {
-  if(strCmd==nullptr || strlen(strCmd)==0)  return false;
-  typedef enum : uint8_t {eGoTo, eHome, eLast} eCommands;
-
-  //               Motor, Accel, Veloc, Steps, Command 
-  typedef enum : uint8_t {pMotor, pAccel, pVelocity, pSteps, pCommand, pLast} eParams;
-  bool ParamsF[eParams::pLast] = {false, false, false, false, false};
-  long ParamsV[eParams::pLast];
-
-  StringSplitter splitter(strCmd, ';', 99);
-  int itemCount = splitter.getItemCount();
-  int Motor = -1;
-  int Accel = -1;
-  int Veloc = -1;
-  int GoTo  = 99;
-  Serial.printf("Trovati %d parametri:\n", itemCount);
-  for(int i=0; i<itemCount; i++){
-    String Cmd = splitter.getItemAtIndex(i);
-    if(Cmd.length()==0) continue;
-    char C = Cmd.charAt(0);
-    Serial.printf("%d) %-5s (%d) %c: ", i, Cmd, Cmd.length(), C);
-    int Num = (Cmd.length()>1) ? Cmd.substring(1).toInt() : -1;
-    switch(C){
-      case 'm': //Motor
-        if(Num>=0 && Num <=wxSIZEOF(Steppers)){
-           Motor = Num;  
-          ParamsF[eParams::pMotor] = true;  ParamsV[eParams::pMotor] = Num;
-          Serial.printf("Motor %d",         Num);
-        }
-      break;
-      case 'a':
-        if(Num>0){
-          ParamsF[eParams::pAccel] = true;  ParamsV[eParams::pAccel] = Num;
-          Serial.printf("Acceleration %d",  Num);
-          Accel = Num;
-      }
-      break;
-      case 'v':
-        if(Num>0){
-          ParamsF[eParams::pVelocity] = true;  ParamsV[eParams::pVelocity] = Num;
-          Veloc = Num;  
-          Serial.printf("Velocity %d",      Num);
-        }
-      break;
-      case 'G':
-        ParamsF[eParams::pSteps]   = true;  ParamsV[eParams::pSteps  ] = Num;
-        ParamsF[eParams::pCommand] = true;  ParamsV[eParams::pCommand] = eCommands::eGoTo;
-        Serial.printf("GoTo %d",          Num);
-        GoTo = Num;  
-      break;
-      case 'H':
-        ParamsF[eParams::pCommand] = true;  ParamsV[eParams::pCommand] = eCommands::eHome;
-        Serial.printf("GoHome %d",        Num);
-        break;
-//      case 'M': Serial.printf("MicroStep %d",     Num); break;
-    }
-    Serial.printf("\n");
-
-    Serial.printf("Execute GoTo %d:%d,%d,%d\n", Motor, Accel,Veloc,GoTo);
-    if(Motor>=0 && Accel>0 && Veloc>0 && GoTo!=99){
-      do{
-        RunFSA();
-      }while( Steppers[Motor].Exec_GoTo(Accel,Veloc,GoTo)==false );
-    }
-  }
-  Serial.printf("---------------------\n");
-  return true;
-}
-
-void TestCommands(void){
-  Sampler_ParseCommand("m1;a100;v2000;G400");
-  Sampler_ParseCommand("m2;a100;v2000;G-1000");
-  Sampler_ParseCommand("m0;a100;v2000;G-1000");
-  Sampler_ParseCommand("m2;a100;v2000;G-10");
-  Sampler_ParseCommand("m1;a100;v2000;G200");
-
-  Sampler_ParseCommand("m0;a100;v2000;G0");
-  Sampler_ParseCommand("m1;a100;v2000;G0");
-  Sampler_ParseCommand("m2;a100;v2000;G0");
-
-  Sampler_ParseCommand("m1;a100;v2000;G500");
-  Sampler_ParseCommand("m2;a100;v2000;G-2000");
-  Sampler_ParseCommand("m0;a100;v2000;G-2000");
-  Sampler_ParseCommand("m2;a100;v2000;G-100");
-  Sampler_ParseCommand("m1;a100;v2000;G300");
-}
-
-
-void TestParseCommand(void){
-  while (Serial.available() != 0){ RunFSA(); Serial.read();}  //Flush Input
-  Serial.println("\nEnter Command:");
-  while (Serial.available() < 2){ RunFSA(); }
-  String Cmd = Serial.readStringUntil('\n');  // Read until newline
-  if(Cmd.length()==0) return;
-  Serial.printf("Letto '%s'\n", Cmd.c_str());
-  Sampler_ParseCommand(Cmd.c_str());
-
-}
-
-
-
 struct ParsedParams{
+  char        Tag;
   const char* Description;
-  long  Min;
-  long  Max;
-  long  Value;
-  bool  IsSet = false;
+  long        Min;
+  long        Max;
+  long        Value;
+  bool        IsSet = false;
 };
+/*
+  //Ogni comando richiede l'indicazione del motore [altrimenti l'ultimo utilizzato]
+    //Parametri
+            'm', Motor,         0..wxSIZEOF(Steppers)-1
+            'a', Acceleration,  0...9999999999
+            'v', Velocity,      0...9999999
+    //Comandi
+            'G',  eGoTo,        Motor,Accel,Veloc,Steps   //m%d;G%d,%d,%d
+            'H',  eHome,        --                        //m%d;H
+            'E',  eGoEnd,       --                        //m%d;E
+            'N',  eNeutral,     0,0,0                     //m%d;N
+            'C',  eCurrent,     1,2,3                     //m%d;%d,%d,%d
+            'R',  eReset,       -
+            's',  eMicroStep,   0...8
+            'w',  eWaitOp,    -
 
+*/
 bool Sampler_ParseCommandNew(const char* strCmd) {
   if(strCmd==nullptr || strlen(strCmd)==0)  return false;
-  typedef enum : uint8_t {eNone, eGoTo, eHome, eReset, eNeutral, eCurrent, eMicroStep, eGoEnd} eCommands;
+  typedef enum : uint8_t {eNone, eGoTo, eHome, eReset, eNeutral, eCurrent, eMicroStep, eGoEnd, eWaitOp} eCommands;
 
   StringSplitter splitter(strCmd, ';', 99);
   int itemCount = splitter.getItemCount();
@@ -670,7 +587,6 @@ bool Sampler_ParseCommandNew(const char* strCmd) {
   int Accel = -1;
   int Veloc = -1;
   int32_t Steps = 0;
-//  int GoTo  = 99;
   eCommands Command = eNone;
   Serial.printf("Trovati %d parametri:\n", itemCount);
   for(int i=0; i<itemCount; i++){
@@ -707,12 +623,13 @@ bool Sampler_ParseCommandNew(const char* strCmd) {
       break;
       case 'R': Command = eReset;                     break;
       case 's': Command = eMicroStep;  Steps = Num;   break;
+      case 'w': Command = eWaitOp;                    break;
     }
     Serial.printf("\n");
 
     switch(Command){
       case eGoTo:
-        Serial.printf("Execute GoTo %d:%d,%d,%d\n", Motor, Accel,Veloc,Steps);
+        Serial.printf("Execute GoTo %d:%d,%d,%d\n", Motor, Accel, Veloc, Steps);
         if(Motor>=0 && Accel>0 && Veloc>0 && Steps!=99){
           do{
             RunFSA();
@@ -757,13 +674,50 @@ bool Sampler_ParseCommandNew(const char* strCmd) {
           Steppers[Motor].Reset();
         }
         break;
+
+      case eWaitOp:
+        if(Motor>=0 ){
+          do{
+            RunFSA();
+          }while( Steppers[Motor].Exec_WaitOperations()==false );          
+        }
+        break;
+
     }
   }
   Serial.printf("---------------------\n");
   return true;
 }
 
-void TestParserNew(void){
+void TestCommands(void){
+  Sampler_ParseCommandNew("m1;a100;v2000;G400");
+  Sampler_ParseCommandNew("m2;a100;v2000;G-1000");
+  Sampler_ParseCommandNew("m0;a100;v2000;G-1000");
+  Sampler_ParseCommandNew("m2;a100;v2000;G-10");
+  Sampler_ParseCommandNew("m1;a100;v2000;G200");
+
+  Sampler_ParseCommandNew("m0;a100;v2000;G0");
+  Sampler_ParseCommandNew("m1;a100;v2000;G0");
+  Sampler_ParseCommandNew("m2;a100;v2000;G0");
+
+  Sampler_ParseCommandNew("m1;a100;v2000;G500");
+  Sampler_ParseCommandNew("m2;a100;v2000;G-2000");
+  Sampler_ParseCommandNew("m0;a100;v2000;G-2000");
+  Sampler_ParseCommandNew("m2;a100;v2000;G-100");
+  Sampler_ParseCommandNew("m1;a100;v2000;G300");
+}
+
+void TestParseCommand(void){
+  while (Serial.available() != 0){ RunFSA(); Serial.read();}  //Flush Input
+  Serial.println("\nEnter Command:");
+  while (Serial.available() < 2){ RunFSA(); }
+  String Cmd = Serial.readStringUntil('\n');  // Read until newline
+  if(Cmd.length()==0) return;
+  Serial.printf("Letto '%s'\n", Cmd.c_str());
+  Sampler_ParseCommandNew(Cmd.c_str());
+}
+
+void TestParserNew(void) {
   Sampler_ParseCommandNew("m2;H");                //Home
   Sampler_ParseCommandNew("m1;a100;v2000;G400");
   Sampler_ParseCommandNew("m0;a100;v2000;G-2000");
@@ -812,9 +766,9 @@ void MainMenu(){
                         {"All PANIC",           mnuPanicAll },
                         {"All ResetTimers",     RunResetAllTimers},
                         {"Demo",                Demo},
-                        {"TestCommands",        TestCommands},
-                        {"TestParseCommand",    TestParseCommand},
-                        {"TestParser New",      TestParserNew},
+                        {"TestCommands",        TestCommands},      //Sampler_ParseCommand
+                        {"TestParseCommand",    TestParseCommand},  //Sampler_ParseCommand
+                        {"TestParser New",      TestParserNew},     //Sampler_ParseCommandNew
   };
 
   int menuChoice = ShowMenu(MainMenu, wxSIZEOF(MainMenu));

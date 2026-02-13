@@ -407,8 +407,8 @@ private:
 
   enum InterfaceMode {
     MODE_SPI,
-    MODE_UART,    //NOT TESTED
-    MODE_STEPDIR  //NOT TESTED
+    MODE_UART,    //NOT TESTED/USED
+    MODE_STEPDIR  //NOT TESTED/USED
   };
 
 
@@ -975,7 +975,7 @@ public:
     return false;
   }
 
-  bool FSA_loop(void){
+  void FSA_loop(void){
     ulong DeltaT = millis()-FSA.LastCallTime;
     if( DeltaT>FSA.MaxTime)  FSA.MaxTime = DeltaT;
     FSA.LastCallTime = millis();
@@ -1026,7 +1026,7 @@ public:
       default:      break;
     }
 
-    return FSA.Status == Nothing;
+    //return FSA.Status == Nothing;
   }
 
 };

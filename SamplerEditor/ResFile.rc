@@ -1,0 +1,6 @@
+Minimal_icon	ICON	"./Images/GraphA.ico"
+//evil_eye_512	RCDATA	"./Images/DB_sql_query-128.png"
+MyStepIco		RCDATA	"./Images/MyStep_transparent_2.png"
+
+//#include "wx/msw/wx.rc"
+
