@@ -39,6 +39,7 @@ private:
 	void OnTimer		( wxTimerEvent&		Evt );
 	void OnPaint		( wxPaintEvent&		Evt );
 	void OnListEvent	(wxListEvent& Evt);
+	void OnClearLog		(wxMouseEvent& Evt);
 
 	void OnMenu			( wxCommandEvent&	Evt );
 	void		OnBtnCommands	( wxCommandEvent&	Evt );
@@ -59,23 +60,18 @@ private:
     DECLARE_EVENT_TABLE()
 
 	wxString	m_FrameTitle;
-	wxTimer*	m_timer;
-	wxLocale*	m_locale;
+	wxLocale*	m_locale					= nullptr;
+	wxTimer*	m_timer						= nullptr;
 
-	wxPanel* m_PanEditor = nullptr;
-	wxButton* m_Btn_InsertAfter = nullptr;
-	wxButton* m_Btn_InsertUpdate = nullptr;
-	wxButton* m_Btn_MoveUp = nullptr;
-	wxButton* m_Btn_MoveDn = nullptr;
-	wxButton* m_Btn_Delete = nullptr;
+	wxPanel*			m_PanEditor			= nullptr;
+	wxButton*			m_Btn_InsertAfter	= nullptr;
+	wxButton*			m_Btn_InsertUpdate	= nullptr;
+	wxButton*			m_Btn_MoveUp		= nullptr;
+	wxButton*			m_Btn_MoveDn		= nullptr;
+	wxButton*			m_Btn_Delete		= nullptr;
+	CmdExecutorCtrl*	m_PanExec			= nullptr;
 
-	wxPanel* m_PanExec = nullptr;
-	wxButton* m_Btn_ExecAll = nullptr;
-	wxButton* m_Btn_ExecStep = nullptr;
-	wxButton* m_Btn_Panic = nullptr;
-
-	wxBitmap	m_bitmap;
-//	wxMenu*		m_menuPopUp;
+	wxBitmap			m_bitmap;
 
 	wxTextCtrl*			m_txt_Log		= nullptr;
 	cMainListCtrl*		m_lstPrgMaster	= nullptr;

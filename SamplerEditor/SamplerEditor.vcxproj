@@ -297,7 +297,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\XML;.\SqLite\SqLite;.\SqLite\Xml;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;C:\Program Files (x86)\Visual Leak Detector\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE=1;_CRT_NON_CONFORMING_SWPRINTFS=1;_SCL_SECURE_NO_WARNINGS=1;__WXMSW__;_UNICODE;_WINDOWS;NOPCH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -315,7 +315,7 @@
       <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;$(WXWIN)\samples;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>$(wxToolkitLibNamePrefix)aui.lib;$(wxToolkitLibNamePrefix)html.lib;$(wxToolkitLibNamePrefix)core.lib;$(wxBaseLibNamePrefix)_xml.lib;$(wxBaseLibNamePrefix).lib;wxtiff$(wxSuffixDebug).lib;wxjpeg$(wxSuffixDebug).lib;wxpng$(wxSuffixDebug).lib;wxwebp$(wxSuffixDebug).lib;wxzlib$(wxSuffixDebug).lib;wxregexu$(wxSuffixDebug).lib;wxexpat$(wxSuffixDebug).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(wxToolkitLibNamePrefix)aui.lib;$(wxToolkitLibNamePrefix)html.lib;$(wxToolkitLibNamePrefix)core.lib;$(wxBaseLibNamePrefix)_xml.lib;$(wxBaseLibNamePrefix).lib;wxtiff$(wxSuffixDebug).lib;wxjpeg$(wxSuffixDebug).lib;wxpng$(wxSuffixDebug).lib;wxwebp$(wxSuffixDebug).lib;wxzlib$(wxSuffixDebug).lib;wxregexu$(wxSuffixDebug).lib;wxexpat$(wxSuffixDebug).lib;C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\$(wxOutDirName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -336,7 +336,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;C:\Data\Windows\wxWidgets\Database\SQLite\PureSqLite_00\SqLite;.\Panels\CmdEditor;.\XML;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE=1;_CRT_NON_CONFORMING_SWPRINTFS=1;_SCL_SECURE_NO_WARNINGS=1;__WXMSW__;NDEBUG;_UNICODE;_WINDOWS;NOPCH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -448,13 +448,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DBCmdView.cpp" />
+    <ClCompile Include="HID\cHIDAPI.cpp" />
+    <ClCompile Include="HID\hidapi\hid.c" />
     <ClCompile Include="Master_App.cpp" />
     <ClCompile Include="Master_Frame.cpp" />
     <ClCompile Include="ODBC\SamplerDB.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
-    <ClCompile Include="SamplerCmd.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
     <ClCompile Include="SqLite\SqLite\cDBSampler.cpp" />
     <ClCompile Include="SqLite\SqLite\sqlite3.c" />
     <ClCompile Include="stdwx.cpp" />

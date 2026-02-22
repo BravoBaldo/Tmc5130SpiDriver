@@ -204,6 +204,13 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 								const wxString& name
 							) : wxPanel(parent, winid, pos, size, style, name)
 {
+
+	m_Txt_ProgId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
+	m_Txt_ProgId->SetToolTip(_("m_Txt_ProgId"));
+
+	m_Txt_StepId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
+	m_Txt_StepId->SetToolTip(_("m_Txt_StepId"));
+
 	m_txt_NumOfPars = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
 	m_txt_NumOfPars->SetToolTip(_("m_txt_NumOfPars"));
 
@@ -257,7 +264,12 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 	m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
 
 SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
+
 	SIZER_STATDEBUG3(sizTop, "Master", wxHORIZONTAL);
+		SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
+			sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
+			sizDBInfo->Add(m_Txt_StepId, 0, wxALL, 5);
+
 		SIZER_STATDEBUG(sizCmd, "Command", wxHORIZONTAL);
 			sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
 
@@ -282,10 +294,12 @@ SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
 			for(int i=0; i<WXSIZEOF(m_Params); i++)
 				sizParams2->Add(m_Params[i], 0, wxALL | wxGROW, 0);
 
+		sizTop->Add(sizDBInfo, 0, wxALL | wxGROW, 5);
 		sizTop->Add(sizCmd,		0, wxALL | wxGROW, 5);
 #if defined(SHOW_PARAMS_INFO)
 		sizTop->Add(sizNOfPars,	0, wxALL | wxGROW, 5);
 #endif
+
 		sizTop->Add(sizMotor,	0, wxALL | wxGROW, 5);
 		sizTop->Add(0, 0, 1, wxEXPAND, 6);
 		sizTop->Add(sizParams2, 0, wxALL | wxGROW, 5);
@@ -350,7 +364,6 @@ bool CmdEditorCtrl::Cmd2UI(uint8_t Mot, char Cmd, const std::vector<long>& ParVa
 	if ( !PoseCommand(Cmd, ParValues.size()) )
 		return false;
 	m_cho_Motor->SetSelection(Mot);//Set Motor
-	//Baldo
 	//......................................................................
 	for (int i = 0; i < ParValues.size(); i++) m_Params[i]->Freeze();
 	for (int i = 0; i < ParValues.size(); i++) {

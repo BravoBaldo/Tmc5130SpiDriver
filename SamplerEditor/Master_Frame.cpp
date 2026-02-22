@@ -22,10 +22,6 @@ enum {
 	ID_Btn_MoveUp,
 	ID_Btn_MoveDn,
 
-	ID_Btn_ExecAll,
-	ID_Btn_ExecStep,
-	ID_Btn_Panic,
-
 #ifdef USE_AUI
 	ID_MNU_Perspect,
 	ID_MNU_Perspect_Save,
@@ -51,12 +47,16 @@ enum {
 	ID_MNU_PRGMDET_EXECFROM,
 	ID_MNU_PRGMDET_EXECTO,
 	ID_MNU_PRGMDET_EXECSTEP,
+	ID_TXT_LOG,
 };
 
 
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_MOUSE_EVENTS	(				OnMouseEvent )
 //	EVT_RIGHT_DOWN		(				OnMouseEvent )
+//	EVT_RIGHT_DOWN		(				OnClearLog )
+//	EVT_MIDDLE_DOWN		(OnClearLog)
+
 	EVT_MENU			( ID_MNU_Quit,	OnMenu )
 	EVT_MENU			( ID_MNU_About,	OnMenu )
 #ifdef USE_AUI
@@ -77,6 +77,9 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_MENU			( ID_MNU_PRGMAIN_PRINT,		OnMenu )
 	EVT_MENU			( ID_MNU_PRGMAIN_Export,	OnMenu )
 
+	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP, OnMenu)
+	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM, OnMenu)
+
 	EVT_TIMER			( ID_TMR_TIMER,	OnTimer)
 	EVT_BUTTON			( -1, MyFrame::OnBtnCommands )
 //	EVT_PAINT			(				OnPaint )
@@ -93,6 +96,10 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_LIST_ITEM_DESELECTED	( ID_LST_PRGDETAIL,	OnListEvent )
 
 END_EVENT_TABLE()
+
+void MyFrame::OnClearLog(wxMouseEvent& Evt) {
+	m_txt_Log->SetValue("");
+}
 
 void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	wxButton* btn = static_cast<wxButton*>(event.GetEventObject());
@@ -238,43 +245,16 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 		m_PanEditor->Layout();
 	}
 	//------------------------------------------------------------------
-	m_PanExec = new wxPanel(this);
-	m_Btn_ExecAll = new wxButton(m_PanExec, ID_Btn_ExecAll, _("Exec All"));
-	m_Btn_ExecStep = new wxButton(m_PanExec, ID_Btn_ExecStep, _("Exec Step"));
-	m_Btn_Panic = new wxButton(m_PanExec, ID_Btn_Panic, _("Panic"));
-	{
-		wxBitmap bitmap;
-		if (bitmap.LoadFile("MYSTEPICO", wxBITMAP_TYPE_PNG_RESOURCE))
-			m_Btn_ExecStep->SetBitmap(bitmap, wxLEFT);
-	}
-
-
-	m_Btn_ExecAll->SetBitmap(wxArtProvider::GetIcon(wxART_GO_FORWARD, wxART_BUTTON), wxLEFT);
-	m_Btn_Panic->SetBitmap(wxArtProvider::GetIcon(wxART_WARNING, wxART_BUTTON), wxLEFT);
-
 	m_Btn_InsertAfter->SetToolTip(_("Insert a new record after selected record and renumber"));
 	m_Btn_InsertUpdate->SetToolTip(_("Change data of selected record"));
 	m_Btn_MoveUp->SetToolTip(_("Move selected record before previous"));
 	m_Btn_MoveDn->SetToolTip(_("Move selected record after next"));
 	m_Btn_Delete->SetToolTip(_("Delete selected record and renumber"));
-	m_Btn_ExecAll->SetToolTip(_("Execute entire program (all steps)"));
-	m_Btn_ExecStep->SetToolTip(_("Execute only the selected record"));
-	m_Btn_Panic->SetToolTip(_("STOP ALL"));
 
-
-	{
-		wxBoxSizer* SizButtons = new wxBoxSizer(wxVERTICAL);
-		SizButtons->Add(m_Btn_ExecAll, 1, wxALL | wxGROW, 1);
-		SizButtons->Add(m_Btn_ExecStep, 1, wxALL | wxGROW, 1);
-		SizButtons->Add(m_Btn_Panic, 1, wxALL | wxGROW, 1);
-
-		m_PanExec->SetSizer(SizButtons);
-		m_PanExec->Layout();
-	}
 	//---------------------------------------------------------------------
 
 
-	m_txt_Log		= new wxTextCtrl( this, wxID_ANY,		_("Hello\n"),	wxPoint( 100,  6 ),	wxSize(50, -1 ), wxTE_MULTILINE );
+	m_txt_Log		= new wxTextCtrl( this, ID_TXT_LOG,		_("Hello\n"),	wxPoint( 100,  6 ),	wxSize(50, -1 ), wxTE_MULTILINE );
 
 	m_lstPrgMaster = new cMainListCtrl(this, ID_LST_MASTER, wxDefaultPosition, wxSize(150 + 50, 50), wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES);
 	m_lstPrgMaster->MainPrg_Fill();
@@ -282,6 +262,9 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_lstPrgDetail = new cDetailListCtrl(this, ID_LST_PRGDETAIL, wxDefaultPosition, wxSize(48, 50), wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES);
 
 	m_CmdEditor = new CmdEditorCtrl(this, wxID_ANY);
+
+	m_PanExec = new CmdExecutorCtrl(this);
+	m_PanExec->SetEditorAndDB(m_CmdEditor, m_lstPrgDetail);
 
 	LogMeSet(m_txt_Log);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
@@ -307,7 +290,6 @@ void MyFrame::SetLayouts ( void ) {
 	m_mgr.AddPane(m_PanEditor,		wxAuiPaneInfo().Name(wxT("m_PanEditor"))	.Caption(_("Editor"))		.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_txt_Log,		wxAuiPaneInfo().Name(wxT("m_txt_Log"))		.Caption(_("m_txt_Log"))	.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_PanExec,		wxAuiPaneInfo().Name(wxT("m_PanExec"))		.Caption(_("Execution"))	.Right()		.PaneBorder(false));
-
 
 	m_mgr.SetManagedWindow ( this );
 	AuiRefresh ();
@@ -413,7 +395,18 @@ void MyFrame::OnMenu( wxCommandEvent& event ) {
 				}
 			}
 			break;
-
+		case ID_MNU_PRGMDET_EXECSTEP:
+			{
+				long itemIndex = m_lstPrgDetail->GetFirstSelected();
+				m_PanExec->ExecuteFrom(itemIndex, itemIndex+1);
+			}
+		break;
+		case ID_MNU_PRGMDET_EXECFROM:
+			{
+				long itemIndex = m_lstPrgDetail->GetFirstSelected();
+				m_PanExec->ExecuteFrom(itemIndex, m_lstPrgDetail->GetItemCount());
+			}
+			break;
 
 /*		case ID_MNU_PRGMAIN_SORT:
 			m_lstPrgMaster->ChangeSort();	//m_SortByName = !m_SortByName;
@@ -527,10 +520,14 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 	switch (Id) {
 		case ID_LST_MASTER:
 			if (EvTyp == wxEVT_LIST_ITEM_SELECTED) {
-				m_lstPrgDetail->PrgDetail_Fill((evt.m_itemIndex >= 0) ? wxAtol(evt.GetItem().GetText()) : -1);
+				long MasterId = (evt.m_itemIndex >= 0) ? wxAtol(evt.GetItem().GetText()) : -1;
+				m_CmdEditor->SetDbInfo(MasterId, -1);
+				m_lstPrgDetail->PrgDetail_Fill(MasterId);
 				m_lstPrgDetail->Focus(0);	m_lstPrgDetail->Select(0);
 			
 				m_lstPrgMaster->SetFocus();
+
+
 			} else if (EvTyp == wxEVT_LIST_ITEM_RIGHT_CLICK
 				|| EvTyp == wxEVT_LIST_COL_RIGHT_CLICK) {
 				wxMenu* m_menuPopUp = new wxMenu;
@@ -567,6 +564,8 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				m_CmdEditor->Freeze();
 				//............................................
 				m_CmdEditor->DBData2UI(vStep);
+				m_CmdEditor->SetDbInfo(vStep.m_MasterId, vStep.m_DetailProg);
+
 				//.....................................................
 				m_CmdEditor->Thaw();
 
@@ -591,7 +590,7 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				wxMenu* m_menuPopUp;
 				m_menuPopUp = new wxMenu;
 				//m_menuPopUp->Append( ID_MNU_PRGMDET_EXECTO,		_( "Execute Until here") );
-				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECFROM, _("Restart From here"));
+				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECFROM, _("(Re)Start From here"));
 				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECSTEP, _("Execute Single Step"));
 				//-----------------------------------------------------------------
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());

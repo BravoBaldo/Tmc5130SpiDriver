@@ -24,6 +24,12 @@ class CmdEditorCtrl : public wxPanel {
 
 	wxTextCtrl		*m_Txt_Result		= nullptr;
 
+//	wxStaticText	*m_Lbl_PrgMasterId;
+	wxTextCtrl		*m_Txt_ProgId		= nullptr;
+	wxTextCtrl		*m_Txt_StepId		= nullptr;
+	long			m_ProgId = -1;
+	long			m_StepId = -1;
+
 #if defined(SOLUZIONE_ALTRA)
 	wxVector<cCouple*> m_ValueList;
 #endif
@@ -64,4 +70,11 @@ public:
 	bool		String2UI		(wxString Cmd);
 
 	bool		PoseCommand		(char c, uint8_t NumPar);
+
+	void		SetDbInfo(long MasterId, long DetId) {
+		m_ProgId = MasterId; if (m_Txt_ProgId)	m_Txt_ProgId->SetValue(wxString::Format("%ld", m_ProgId));
+		m_StepId = DetId;	 if (m_Txt_StepId)	m_Txt_StepId->SetValue(wxString::Format("%ld", m_StepId));
+	}
+	long		GetProgId(void) { return m_ProgId; };
+	long		GetStepId(void) { return m_StepId; };
 };

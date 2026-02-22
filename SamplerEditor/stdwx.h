@@ -2,8 +2,18 @@
 #if !defined(WX_STDWX_H)
 #define WX_STDWX_H
 
-	#define PRG_UNIQUE_FIRM					"MasterPrgMinimal"
-	#define PRG_LONG_NAME					"Master Program Minimal"
+/*
+Specify include file as follows:
+#include <C:\Program Files (x86)\Visual Leak Detector\include\vld.h>
+
+Specify link file in C++ project as follows:
+C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
+*/
+//#include "vld.h"
+
+
+	#define PRG_UNIQUE_FIRM					"SamplerProgramEditor"
+	#define PRG_LONG_NAME					"Sampler Program Editor"
 	#define PRG_COPYRIGHT					"(C) Baldassarre Cesarano, 2026"
 
 	#include "wx/wx.h"
@@ -15,6 +25,8 @@
 	#include "wx/cmdline.h"
 	#include "wx/msw/private.h"
 	#include "wx/config.h"
+
+#include "CmdExecutorCtrl.h"
 
 //#define USE_ODBC
 //#if defined(USE_ODBC)

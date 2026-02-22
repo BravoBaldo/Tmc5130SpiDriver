@@ -45,6 +45,7 @@ public:
 	void		SwapItem(bool WithNext);
 
 	void		PrgDetail_FillListItem(cCmdStepper& vStep);
+	bool		PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex);
 	cCmdStepper	GetSelectedItem(void);
 private:
 	void	OnListEvent(wxListEvent& Evt);

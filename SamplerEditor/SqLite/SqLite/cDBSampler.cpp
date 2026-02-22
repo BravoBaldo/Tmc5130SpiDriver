@@ -27,7 +27,9 @@ void cDBSampler::ErrorShow(const char* zErrMsg) {
 }
 
 cDBSampler::cDBSampler(const char* filename) {
-    int rc = sqlite3_open(filename, &m_db);
+    //Check if exists
+    int rc = sqlite3_open_v2(filename, &m_db, SQLITE_OPEN_READWRITE, NULL); //Error if it doesn't exist
+    //int rc = sqlite3_open(filename, &m_db);                               //Create it if it doesn't exist
     if (rc) {
         ErrorShow(sqlite3_errmsg(m_db));
         return;

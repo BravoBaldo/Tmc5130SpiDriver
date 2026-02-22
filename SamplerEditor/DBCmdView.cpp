@@ -211,6 +211,21 @@ void cDetailListCtrl::PrgDetail_Fill(unsigned int Id) {
 		this->ClearAll();
 }
 
+bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) {
+	if (rowIndex < 0 || rowIndex >= this->GetItemCount()) return false;
+
+	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, 0));
+	vStep.m_Motor		= wxAtol(this->GetItemText(rowIndex, 1));
+	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, 2));
+	vStep.m_Pattern		=        this->GetItemText(rowIndex, 3);
+	//4 is the index of the Cnt
+	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
+		vStep.m_Par[i] = wxAtol(this->GetItemText(rowIndex, 5+i));
+	}
+	vStep.m_MasterId = wxAtol(this->GetItemText(rowIndex, 12));
+	return true;
+}
+
 void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 	wxListItem info;
 	vStep.m_DetailProg = -1;
