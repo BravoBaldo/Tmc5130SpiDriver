@@ -511,7 +511,7 @@ bool Next_DB::ProgMaster_Print(unsigned int ProgId, const wxString& ProgName, co
 }
 
 
-bool Next_DB::ProgMaster_Export(unsigned int ProgId, const wxString& FilePathName) {
+bool Next_DB::ProgMaster_Export(unsigned int /*ProgId*/, const wxString& /*FilePathName*/) {
 #ifdef QQQQQQQQQQQQQQ
 	tinyxml2::XMLDocument doc(true, tinyxml2::COLLAPSE_WHITESPACE);			//	TiXmlDocument doc;
 	tinyxml2::XMLDeclaration* decl = doc.NewDeclaration("xml version=\"1.0\" encoding=\"utf-8\"");	//	TiXmlDeclaration * decl	= new TiXmlDeclaration(	"1.0", "", "" );

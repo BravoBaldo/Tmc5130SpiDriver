@@ -1,6 +1,9 @@
 #include "stdwx.h"
 #include "wx/artprov.h"
 #include "CmdExecutorCtrl.h"
+#include <chrono>
+#include <wx/stopwatch.h>
+#include <winsock2.h>
 
 enum {
 	ID_Btn_ExecAll = wxID_HIGHEST,
@@ -14,7 +17,6 @@ BEGIN_EVENT_TABLE(CmdExecutorCtrl, wxPanel)
 	EVT_TIMER(ID_Exec_Timer, OnTimer)
 END_EVENT_TABLE()
 
-#include <chrono>
 void myMilliSleep(long long T){
 	auto inizio = std::chrono::steady_clock::now();
 	std::chrono::milliseconds durata(T); // Imposta la durata qui
@@ -23,30 +25,73 @@ void myMilliSleep(long long T){
 	}
 }
 
+//wxLongLong
+void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long long TimoutMs) {
+	m_HidExec.Write_NoWait(data, length);	// Writing...
+	wxYield();
+	LogMe(wxString::Format("Message sent..."), false);
+
+	// Reading...
+	wxStopWatch sw;
+	int res = 0, cnt=0;
+	while(res==0 && m_Running){
+		cnt++;
+		wxYield();
+		res = m_HidExec.Read();
+	}
+	long DeltaT = sw.Time();
+	LogMe(wxString::Format("Received %d bytes in %d and loops %ld ms: '%s'.\n", res, cnt, DeltaT, m_HidExec.GetBuffAsString()), false);
+}
+
+uint8_t xor_checksum(const uint8_t* data, size_t len) {
+	uint8_t checksum = 0;
+	for (size_t i = 0; i < len; ++i) {
+		checksum ^= data[i];
+	}
+	return checksum;
+}
+
+#define TX_MODE_M
+
 bool CmdExecutorCtrl::ExecuteSteps(long from, long to) {
 	LogMe(wxString::Format("Start Execution from %ld'\n-----------------------------\n", from), false);
 
-#define USEDIRECTADDRESSING
-#if defined(USEDIRECTADDRESSING)
 	cCmdStepper vStep;
-#endif
-	wxString CmdStr;
-
+	wxString CmdStr;			//wxMemoryBuffer
+	unsigned char Msg[100];
 	for (long i = from; i < to; i++) {
 		m_ptrPrgDetail->Select(i, true);
 		wxYield();
-#if defined(USEDIRECTADDRESSING)
+#if defined(TX_MODE_M)
+		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
+		int j = 0;
+		Msg[j++] = '0';
+		Msg[j++] = vStep.m_Motor;
+		Msg[j++] = vStep.m_Cmd;
+		vStep.m_Cnt = vStep.m_Pattern.Length();
+		Msg[j++] = vStep.m_Cnt;// vStep.m_Cnt;
+
+		memcpy(&Msg[j], vStep.m_Pattern.c_str().AsUnsignedChar(), vStep.m_Cnt);
+		j += vStep.m_Cnt;
+
+		std::memcpy(&Msg[j], &vStep.m_Par[0], sizeof(long)*vStep.m_Cnt);
+		j += sizeof(long) * vStep.m_Cnt;
+		//-----------------------------
+		Msg[j] = vStep.m_MasterId;		j += sizeof(vStep.m_MasterId);
+		Msg[j] = vStep.m_DetailProg;	j += sizeof(vStep.m_DetailProg);
+		Msg[j] = xor_checksum(Msg, j);
+
+		SendCommand(Msg, j+1);	//Append XOR Checksum
+#else
 		CmdStr = (m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i)) ? m_ptrEditor->DBData2String(vStep) : "------------";
 		LogMe(wxString::Format("Execute %ld: '%s'\n", i, CmdStr), false);
-#else
 
+		memcpy(Msg, CmdStr.c_str().AsUnsignedChar(), CmdStr.Length());	Msg[CmdStr.Length()] = '\0';
 		if (!m_Running) {
 			LogMe("EXECUTION INTERRUPTED\n", false);
 			return false;
 		}
-		CmdStr = (m_ptrEditor) ? m_ptrEditor->UI2String() : "Unknown";
-
-		LogMe(wxString::Format("Execute %ld: '%s'\n", i, CmdStr), false);
+		SendCommand(CmdStr.c_str().AsUnsignedChar(), CmdStr.Length());
 #endif
 //		myMilliSleep(10);	//wxMilliSleep(100);
 	}
@@ -63,18 +108,25 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 	//wxButton* btn = static_cast<wxButton*>(event.GetEventObject());
 	switch (event.GetId()) {
 		case ID_Btn_ExecStep:
+			m_Btn_ExecStep->Enable(false);
+			m_Btn_ExecAll->Enable(false);
 			{	//Ask the Editor for the current command and send it
-
 				long itemIndex = m_ptrPrgDetail->GetFirstSelected();
 				ExecuteFrom(itemIndex, itemIndex + 1);
 			}
+			m_Btn_ExecStep->Enable(true);
+			m_Btn_ExecAll->Enable(true);
 			break;
 		case ID_Btn_ExecAll:
+			m_Btn_ExecStep->Enable(false);
+			m_Btn_ExecAll->Enable(false);
 			{	// Ask for ProgramId then scan all steps
 				LogMe(wxString::Format("Execute All from = '%ld/%ld'\n", m_ptrEditor->GetProgId(), m_ptrEditor->GetStepId()), true);
 				//Soluzione 1, Senza DB, preleva i dati dalla riga corrente, logga poi passa alla successiva:
 				ExecuteFrom(0, m_ptrPrgDetail->GetItemCount());
 			}
+			m_Btn_ExecStep->Enable(true);
+			m_Btn_ExecAll->Enable(true);
 			break;
 		case ID_Btn_Panic:
 			m_Running = false;

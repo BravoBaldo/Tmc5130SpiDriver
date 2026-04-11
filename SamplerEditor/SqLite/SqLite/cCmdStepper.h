@@ -3,17 +3,16 @@
 
 class cCmdStepper {
 public:
-	long		m_MasterId;
-	long		m_DetailProg;
 	byte		m_Motor;
 	byte		m_Cmd;
-	wxString	m_Pattern;
 	byte		m_Cnt;
+	wxString	m_Pattern;
 	long		m_Par[7];
+	uint16_t	m_MasterId;
+	uint16_t	m_DetailProg;
 
 	void Set(long masterId, long detailProg, byte motor, byte cmd, const wxString& pattern, byte cnt
 		, const long p1 = 0, const long p2 = 0, const long p3 = 0, const long p4 = 0, const long p5 = 0, const long p6 = 0, const long p7 = 0) {
-
 
 		m_MasterId = masterId;
 		m_DetailProg = detailProg;

@@ -20,6 +20,7 @@ class CmdExecutorCtrl : public wxPanel {
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
 	bool		ExecuteSteps	(long from, long to);
+	void		SendCommand		(const unsigned char* data, size_t length, long long TimoutMs = 100);
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,

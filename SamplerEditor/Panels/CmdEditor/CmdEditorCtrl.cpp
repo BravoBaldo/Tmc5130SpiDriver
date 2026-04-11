@@ -36,8 +36,8 @@ cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
 	int Sel = m_cho_StepperCmd->GetSelection();
 	if (Sel >= 0) {
 		const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
-		Cmd.m_MasterId = -1;
-		Cmd.m_DetailProg = -1;
+		Cmd.m_MasterId = 0;
+		Cmd.m_DetailProg = 0;
 
 		Cmd.m_Cmd = c->cmd;
 		Cmd.m_Pattern = c->ParamPattern;

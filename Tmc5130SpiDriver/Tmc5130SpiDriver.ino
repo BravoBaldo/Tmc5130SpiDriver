@@ -11,7 +11,7 @@ ToDo:
       Reset
       GoHome
   GoTo and wait target
-  Eecute an "HomeToStall"
+  Execute an "HomeToStall"
   Check if to use Polidoro's class printer....
   Implementare gli algoritmi descritti nel datasheet
   Inserire i valori di default per ciascun motore con la possibilità di re-inizializzarlo
@@ -83,6 +83,28 @@ TCA9555 EXPANDERS[]{
 
 
 
+String GetVersion(void){
+  String v =  __DATE__ " " __TIME__;
+}
+
+void getIsoDate(const char* date, char* out) {
+  char m[4];
+  int day, year, month = 0;
+  const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+  sscanf(date, "%s %d %d", m, &day, &year); // Extract __DATE__ components
+
+  // Search month index
+  for (int i = 0; i < 12; i++) {
+    if (strcmp(m, months[i]) == 0) {
+      month = i + 1;
+      break;
+    }
+  }
+
+  sprintf(out, "%04d-%02d-%02d", year, month, day); //write the output in ISO format
+}
+
 // --- Setup Steppers -----------------------------------------------------------------
 void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
@@ -102,21 +124,17 @@ uint8_t StepperInTest = 0;
 
 void ShowReadableRegistersAll(void);
 
-
 void setup_Basic() {
   Serial.begin(115200);
   delay(1000);
 
-  //Expanders initializations
-  Wire.begin(I2C_SDA, I2C_SCK, 400000);
-  
-  EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000);  //per default mette tutti output
-  EXPANDERS[ExpanderA].write16(0xFFFF); //1 means OFF!!!!
+  Wire.begin(I2C_SDA, I2C_SCK, 400000);       //Expanders initializations
+
+  EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000); //per default mette tutti output
+  EXPANDERS[ExpanderA].write16(0xFFFF);       //1 means OFF!!!!
 
   //pinMode(SPI_CS, OUTPUT); digitalWrite(SPI_CS, HIGH);  //Init for ChipSelect on board
   
-  Serial.println("Just turned On registers");
-  Serial.println("Just turned On registers");
   Serial.println("Just turned On registers");
   ShowReadableRegistersAll();
 
@@ -575,6 +593,7 @@ struct ParsedParams{
             'R',  eReset,       -
             's',  eMicroStep,   0...8
             'w',  eWaitOp,    -
+---------------------------------------------------------------------------------------------
 
 */
 bool Sampler_ParseCommandNew(const char* strCmd) {
@@ -682,14 +701,24 @@ bool Sampler_ParseCommandNew(const char* strCmd) {
           }while( Steppers[Motor].Exec_WaitOperations()==false );          
         }
         break;
-
     }
   }
   Serial.printf("---------------------\n");
   return true;
 }
 
-void TestCommands(void){
+void TestParseInput(void){
+  while (Serial.available() != 0){ RunFSA(); Serial.read();}  //Flush Input
+  Serial.println("\nEnter Command:");
+  while (Serial.available() < 2){ RunFSA(); }
+  String Cmd = Serial.readStringUntil('\n');  // Read until newline
+  if(Cmd.length()==0) return;
+  Serial.printf("Letto '%s'\n", Cmd.c_str());
+
+  Sampler_ParseCommandNew(Cmd.c_str());
+}
+
+void TestCommands_A(void){
   Sampler_ParseCommandNew("m1;a100;v2000;G400");
   Sampler_ParseCommandNew("m2;a100;v2000;G-1000");
   Sampler_ParseCommandNew("m0;a100;v2000;G-1000");
@@ -707,17 +736,8 @@ void TestCommands(void){
   Sampler_ParseCommandNew("m1;a100;v2000;G300");
 }
 
-void TestParseCommand(void){
-  while (Serial.available() != 0){ RunFSA(); Serial.read();}  //Flush Input
-  Serial.println("\nEnter Command:");
-  while (Serial.available() < 2){ RunFSA(); }
-  String Cmd = Serial.readStringUntil('\n');  // Read until newline
-  if(Cmd.length()==0) return;
-  Serial.printf("Letto '%s'\n", Cmd.c_str());
-  Sampler_ParseCommandNew(Cmd.c_str());
-}
 
-void TestParserNew(void) {
+void TestCommands_B(void) {
   Sampler_ParseCommandNew("m2;H");                //Home
   Sampler_ParseCommandNew("m1;a100;v2000;G400");
   Sampler_ParseCommandNew("m0;a100;v2000;G-2000");
@@ -766,9 +786,9 @@ void MainMenu(){
                         {"All PANIC",           mnuPanicAll },
                         {"All ResetTimers",     RunResetAllTimers},
                         {"Demo",                Demo},
-                        {"TestCommands",        TestCommands},      //Sampler_ParseCommand
-                        {"TestParseCommand",    TestParseCommand},  //Sampler_ParseCommand
-                        {"TestParser New",      TestParserNew},     //Sampler_ParseCommandNew
+                        {"TestCommands_A",      TestCommands_A},  //Sampler_ParseCommand
+                        {"TestCommands_B",      TestCommands_B},  //Sampler_ParseCommandNew
+                        {"TestParseInput",      TestParseInput},  //Sampler_ParseCommand
   };
 
   int menuChoice = ShowMenu(MainMenu, wxSIZEOF(MainMenu));

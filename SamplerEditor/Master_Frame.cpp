@@ -97,7 +97,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 
 END_EVENT_TABLE()
 
-void MyFrame::OnClearLog(wxMouseEvent& Evt) {
+void MyFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
 	m_txt_Log->SetValue("");
 }
 

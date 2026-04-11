@@ -218,7 +218,7 @@ bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) 
 	vStep.m_Motor		= wxAtol(this->GetItemText(rowIndex, 1));
 	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, 2));
 	vStep.m_Pattern		=        this->GetItemText(rowIndex, 3);
-	//4 is the index of the Cnt
+	vStep.m_Cnt			= wxAtol(this->GetItemText(rowIndex, 4));
 	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
 		vStep.m_Par[i] = wxAtol(this->GetItemText(rowIndex, 5+i));
 	}

@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="DBCmdView.cpp" />
+    <ClCompile Include="Master_App.cpp" />
+    <ClCompile Include="Master_Frame.cpp" />
+    <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp" />
+    <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
+    <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
+    <ClCompile Include="stdwx.cpp" />
+    <ClCompile Include="XML\tinyxml2.cpp" />
+    <ClCompile Include="SqLite\SqLite\sqlite3.c">
+      <Filter>Source\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="HID\cHIDAPI.cpp">
+      <Filter>Source\USB</Filter>
+    </ClCompile>
+    <ClCompile Include="HID\hidapi\hid.c">
+      <Filter>Source\USB</Filter>
+    </ClCompile>
+    <ClCompile Include="ODBC\SamplerDB.cpp">
+      <Filter>Source\DB</Filter>
+    </ClCompile>
+    <ClCompile Include="SqLite\SqLite\cDBSampler.cpp">
+      <Filter>Source\DB</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ResFile.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{57612d90-8082-41e5-96b3-aca411727be1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\DB">
+      <UniqueIdentifier>{46cf7254-e878-4b98-8248-d940b9e3294e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\USB">
+      <UniqueIdentifier>{8ec94690-ebc6-486b-918a-7a4193fc4e14}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -10,7 +10,6 @@
 
 #define wxSIZEOF(a) (sizeof(a)/sizeof(a[0]))
 
-
 typedef std::function<void(uint8_t, bool)> SPI_ENABLER_CB;
 
 extern void EnableSpiOnChip(uint8_t csPin, bool en);
@@ -20,14 +19,14 @@ class TMC5130 {
 public:
   typedef union { //Spi Status, SPI_Status
     struct {
-      boolean reset_flag        : 1;  //0x01
-      boolean driver_error      : 1;  //0x02
-      boolean StallGuard2       : 1;  //0x04
-      boolean standstill        : 1;  //0x08
-      boolean velocity_reached  : 1;  //0x10
-      boolean position_reached  : 1;  //0x20
-      boolean status_stop_l     : 1;  //0x40
-      boolean status_stop_r     : 1;  //0x80
+      boolean reset_flag        : 1;  //0x01  GSTAT[0] – 1: Signals, that a reset has occurred (clear by reading GSTAT)
+      boolean driver_error      : 1;  //0x02  GSTAT[1] – 1: Signals driver 1 driver error (clear by reading GSTAT)
+      boolean StallGuard2       : 1;  //0x04  DRV_STATUS[24] – 1: Signals StallGuard flag active
+      boolean standstill        : 1;  //0x08  DRV_STATUS[31] – 1: Signals motor stand still
+      boolean velocity_reached  : 1;  //0x10  RAMP_STAT[8] – 1: Signals target velocity reached (motion controller only)
+      boolean position_reached  : 1;  //0x20  RAMP_STAT[9] – 1: Signals target reached (motion controller only)
+      boolean status_stop_l     : 1;  //0x40  RAMP_STAT[0] – 1: Signals stop left switch status (motion controller only)
+      boolean status_stop_r     : 1;  //0x80  RAMP_STAT[1] – 1: Signals stop right switch status (motion controller only)
     };
     uint8_t bytes;
   }SpiStatus;
