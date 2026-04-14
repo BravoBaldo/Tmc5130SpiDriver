@@ -21,7 +21,9 @@ class CmdEditorCtrl : public wxPanel {
 
 	wxChoice		*m_cho_Motor		= nullptr;
 	CmdParLabel		*m_Params[5];
-
+#if defined(USE_SUBSYSTEM)
+	wxChoice* m_cho_SubSystem = nullptr;
+#endif
 	wxTextCtrl		*m_Txt_Result		= nullptr;
 
 //	wxStaticText	*m_Lbl_PrgMasterId;

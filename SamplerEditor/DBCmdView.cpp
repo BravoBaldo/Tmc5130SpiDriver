@@ -228,7 +228,7 @@ bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) 
 
 void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 	wxListItem info;
-	vStep.m_DetailProg = -1;
+	vStep.m_DetailProg = 0;	//Unused value
 	info.m_itemId = this->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);	//this->GetFocusedItem();
 	if (info.m_itemId >= 0) {
 		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!

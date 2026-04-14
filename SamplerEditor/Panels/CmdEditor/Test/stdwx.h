@@ -32,5 +32,7 @@
 #define SIZER_STATDEBUG(sizName,sizLabel,sizDirection)			wxBoxSizer			*sizName = new wxBoxSizer( sizDirection );
 #define SIZER_STATDEBUG2(Father,sizName,sizLabel,sizDirection)	wxBoxSizer			*sizName = new wxBoxSizer( sizDirection );
 #endif
+#define SIZER_STATDEBUG3(sizName,sizLabel,sizDirection)			wxBoxSizer			*sizName = new wxBoxSizer( sizDirection );
 
 #endif //WX_STDWX_H
+#define USE_SUBSYSTEM

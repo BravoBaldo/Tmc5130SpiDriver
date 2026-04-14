@@ -112,7 +112,7 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 		case wxID_SQLUPDATE:
 			{
 				cCmdStepper	s = m_CmdEditor->UI2DBData();
-				s.m_MasterId = -99;
+				s.m_MasterId = 0;	//Unused Value
 
 				// --- In the Editor there is not the MasterId ------------------------------------------
 				wxString		OldName;

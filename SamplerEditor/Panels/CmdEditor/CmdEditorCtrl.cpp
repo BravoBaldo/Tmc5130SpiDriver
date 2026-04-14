@@ -4,6 +4,9 @@
 enum {
 	ID_cho_Cmd = wxID_HIGHEST,
 	ID_cho_Other,
+#if defined(USE_SUBSYSTEM)
+	ID_cho_SubSys,
+#endif
 	ID_TXT_Result,
 };
 
@@ -247,7 +250,16 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 
 	sSampler_Check();
 
-
+#if defined(USE_SUBSYSTEM)
+	m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+		m_cho_SubSystem->SetToolTip(_("SubSystems List"));
+		m_cho_SubSystem->Append("Motors", (void*)0);
+		m_cho_SubSystem->Append("Barcode", (void*)1);
+		m_cho_SubSystem->Append("StripLine", (void*)2);
+		m_cho_SubSystem->Append("ADC", (void*)3);
+		m_cho_SubSystem->Append("Power", (void*)3);
+		m_cho_SubSystem->SetSelection(0);
+#endif
 	m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SORT*/);
 	m_cho_StepperCmd->SetToolTip(_("Main Command"));
 	size_t nCmd = Commands_Size();
@@ -264,7 +276,10 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 	m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
 
 SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
-
+	#if defined(USE_SUBSYSTEM)
+		SIZER_STATDEBUG(sizComp, "SubSystems", wxHORIZONTAL);
+		sizComp->Add(m_cho_SubSystem, 0, wxALL, 5);
+	#endif
 	SIZER_STATDEBUG3(sizTop, "Master", wxHORIZONTAL);
 		SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
 			sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
@@ -304,7 +319,11 @@ SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
 		sizTop->Add(0, 0, 1, wxEXPAND, 6);
 		sizTop->Add(sizParams2, 0, wxALL | wxGROW, 5);
 
+#if defined(USE_SUBSYSTEM)
+	sizMaster->Add(sizComp,		0, wxALL , 0);
+#endif
 	sizMaster->Add(sizTop,		1, wxALL | wxGROW, 0);
+	
 	sizMaster->Add(m_Txt_Result, 0, wxALL | wxGROW, 0);
 	
 	SetSizer(sizMaster); // use the sizer for layout

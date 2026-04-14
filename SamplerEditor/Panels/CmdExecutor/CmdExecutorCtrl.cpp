@@ -26,7 +26,7 @@ void myMilliSleep(long long T){
 }
 
 //wxLongLong
-void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long long TimoutMs) {
+void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long long /*TimoutMs*/) {
 	m_HidExec.Write_NoWait(data, length);	// Writing...
 	wxYield();
 	LogMe(wxString::Format("Message sent..."), false);

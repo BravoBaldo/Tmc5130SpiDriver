@@ -151,8 +151,8 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	//---------------------------------------------------
 	// Widgets
 	//---------------------------------------------------
-	m_btn_Start		= new wxButton	( this, ID_BTN_Start,	_( "Start" ),	wxPoint( 350,  5 ),	wxDefaultSize );
-	m_btn_Stop		= new wxButton	( this, ID_BTN_Stop,	_( "Stop" ),	wxPoint( 350, 35 ),	wxDefaultSize );
+	m_btn_Start		= new wxButton	( this, ID_BTN_Start,	_( "Sample" ),	wxPoint( 350,  5 ),	wxDefaultSize );
+	m_btn_Stop		= new wxButton	( this, ID_BTN_Stop,	_( "ToDo" ),	wxPoint( 350, 35 ),	wxDefaultSize );
 
 	m_txt_Input		= new wxTextCtrl(this, ID_TXT_Input, _("m3;y,101,102,103"), wxPoint(100, 6), wxSize(50, -1));
 
@@ -179,9 +179,8 @@ void MyFrame::SetLayouts ( void ) {
 	m_mgr.AddPane (m_txt_Input,		 wxAuiPaneInfo ().Name ( wxT ( "m_txt_Input" ) )		.Caption ( _( "m_txt_Input" ) )			.Bottom ()	);
 	m_mgr.AddPane ( m_txt_Log,		 wxAuiPaneInfo ().Name ( wxT ( "m_txt_Log" ) )			.Caption ( _( "m_txt_Log" ) )			.Bottom ()	);
 	m_mgr.AddPane ( m_btn_Start,	 wxAuiPaneInfo ().Name ( wxT ( "m_btn_Start" ) )		.Caption ( _( "m_btn_Start" ) )		.Right ()	);
-	m_mgr.AddPane(m_btn_Stop,		 wxAuiPaneInfo ().Name ( wxT ("m_btn_Stop" ) )          .Caption ( _("m_btn_Stop")).Right());
+	m_mgr.AddPane(m_btn_Stop,		 wxAuiPaneInfo ().Name ( wxT ( "m_btn_Stop" ) )         .Caption ( _("m_btn_Stop")).Right());
 	
-
 	m_mgr.SetManagedWindow ( this );
 	AuiRefresh ();
 	wxCommandEvent Evt; Evt.SetId(ID_MNU_Perspect_Load);OnMenu(Evt);
