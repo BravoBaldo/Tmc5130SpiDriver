@@ -1,52 +1,38 @@
 #pragma once
 #include "wx/wx.h"
+#define NUMOFPARAMS 10
+typedef wxArrayInt ParamsType;
+//typedef wxArrayLong ParamsType;
 
 class cCmdStepper {
 public:
-	byte		m_Motor;
+	byte		m_SubSystem;
 	byte		m_Cmd;
-	byte		m_Cnt;
 	wxString	m_Pattern;
-	long		m_Par[7];
+	long		m_Par[NUMOFPARAMS];		//ToDo To Remove
+	ParamsType	m_ParArr;
+
 	uint16_t	m_MasterId;
 	uint16_t	m_DetailProg;
 
-	void Set(long masterId, long detailProg, byte motor, byte cmd, const wxString& pattern, byte cnt
-		, const long p1 = 0, const long p2 = 0, const long p3 = 0, const long p4 = 0, const long p5 = 0, const long p6 = 0, const long p7 = 0) {
-
-		m_MasterId = masterId;
-		m_DetailProg = detailProg;
-		m_Motor = motor;
-		m_Cmd = cmd;
-		m_Pattern = pattern;
-		m_Cnt = cnt;
-		long params[] = { p1,p2,p3,p4,p5,p6,p7 };
-		for (int i = 0; i < 7; ++i) m_Par[i] = params[i];
-	}
-
-	cCmdStepper(long masterId, long detailProg, byte motor, byte cmd, const wxString& pattern, byte cnt
-		, const long p1 = 0, const long p2 = 0, const long p3 = 0, const long p4 = 0, const long p5 = 0, const long p6 = 0, const long p7 = 0) {
-		Set(masterId, detailProg, motor, cmd, pattern, cnt, p1, p2, p3, p4, p5, p6, p7);
+	cCmdStepper(uint16_t masterId, uint16_t detailProg
+		, byte				SubSystem
+		, byte				cmd
+		, const wxString&	pattern
+		, const ParamsType	params
+	) {
+		m_SubSystem		= SubSystem;
+		m_MasterId		= masterId;
+		m_DetailProg	= detailProg;
+		m_Cmd			= cmd;
+		m_Pattern		= pattern;
+		size_t cnt = wxMin(params.GetCount(), NUMOFPARAMS);
+		m_ParArr.Clear();
+		for (size_t i = 0; i < cnt; ++i) {
+			m_ParArr.Add(params[i]);
+			m_Par[i] = params[i];		//ToDo To Remove
+		}
 	};
 
-	cCmdStepper(long masterId, long detailProg, unsigned char motor, unsigned char cmd,
-		const wxString& pattern, unsigned char cnt, const long* params = nullptr)
-	{
-		m_MasterId = masterId;
-		m_DetailProg = detailProg;
-		m_Motor = motor;
-		m_Cmd = cmd;
-		m_Pattern = pattern;
-		m_Cnt = cnt;
-
-		if (params) {
-			for (int i = 0; i < 7; ++i) m_Par[i] = params[i];
-		}
-		else {
-			for (int i = 0; i < 7; ++i) m_Par[i] = 0;
-		}
-	}
-
-	cCmdStepper() : cCmdStepper(0, 0, 0, 0, wxEmptyString, 0, nullptr) {}
-
+	cCmdStepper() { ParamsType T; cCmdStepper(0, 0, 0, 0, wxEmptyString, T); }
 };

@@ -28,8 +28,8 @@ void cDBSampler::ErrorShow(const char* zErrMsg) {
 
 cDBSampler::cDBSampler(const char* filename) {
     //Check if exists
-    int rc = sqlite3_open_v2(filename, &m_db, SQLITE_OPEN_READWRITE, NULL); //Error if it doesn't exist
-    //int rc = sqlite3_open(filename, &m_db);                               //Create it if it doesn't exist
+    //int rc = sqlite3_open_v2(filename, &m_db, SQLITE_OPEN_READWRITE, NULL); //Error if it doesn't exist
+    int rc = sqlite3_open(filename, &m_db);                               //Create it if it doesn't exist
     if (rc) {
         ErrorShow(sqlite3_errmsg(m_db));
         return;
@@ -107,13 +107,21 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
 
     // 2. Inserimento dei dati
     int rowIndex = 0;
-    wxString	Translation;
+    //wxString	Translation;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         long itemIndex = listCtrl->InsertItem(rowIndex, "");
         for (int col = 0; col < colCount; col++) {
             const char* val = (const char*)sqlite3_column_text(stmt, col);
            // Translation = ((col == Fld2Translate) ? _(val) : val);
             wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            /*if (col > 6) {
+                //listCtrl->SetItemBackgroundColour(itemIndex, *wxLIGHT_GREY);
+                wxListItem item;
+                item.SetId(itemIndex);
+                item.SetColumn(col); // Specifica la colonna
+                item.SetBackgroundColour(*wxYELLOW);
+                listCtrl->SetItem(item);
+            }*/
             listCtrl->SetItem(itemIndex, col, cellValue);
         }
         rowIndex++;
@@ -127,6 +135,63 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
 
     listCtrl->Thaw();
 }
+
+//In Progress!!!!!
+void cDBSampler::DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize) {
+    if (!m_db || !dvCtrl) return;
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, SqlQuery.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        return;
+    }
+
+    int colCount = sqlite3_column_count(stmt);
+    dvCtrl->Freeze();
+
+    // Rimuove tutte le colonne e gli elementi esistenti
+    dvCtrl->ClearColumns();
+    dvCtrl->DeleteAllItems();
+
+    // 1. Creazione delle Colonne
+    for (int i = 0; i < colCount; i++) {
+        wxString colName = wxString::FromUTF8(sqlite3_column_name(stmt, i));
+        const char* declType = sqlite3_column_decltype(stmt, i);
+        wxString typeStr = (declType) ? wxString(declType).Upper() : "";
+
+        // Calcolo larghezza
+        int width = (typeStr.Contains("INT") || typeStr.Contains("REAL") ||
+            typeStr.Contains("DOUBLE") || typeStr.Contains("FLOAT") ||
+            typeStr.Contains("NUMERIC")) ? 60 : 200;
+
+        // In wxDataViewCtrl aggiungiamo renderer di testo
+        dvCtrl->AppendTextColumn(colName, wxDATAVIEW_CELL_INERT, width, wxALIGN_LEFT);
+    }
+
+    // 2. Inserimento dei Dati
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        wxVector<wxVariant> data; // Contenitore per la riga
+        for (int col = 0; col < colCount; col++) {
+            const char* val = (const char*)sqlite3_column_text(stmt, col);
+            wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            data.push_back(wxVariant(cellValue));
+        }
+        dvCtrl->AppendItem(data);
+    }
+
+    sqlite3_finalize(stmt);
+
+    // 3. Resize (Nota: wxDataViewCtrl non ha AUTOSIZE identico a ListCtrl)
+    if (DoResize) {
+        for (unsigned int i = 0; i < dvCtrl->GetColumnCount(); i++) {
+            // Su molte piattaforme bisogna impostare una larghezza fissa o variabile
+            dvCtrl->GetColumn(i)->SetWidth(wxCOL_WIDTH_AUTOSIZE);
+        }
+    }
+
+    dvCtrl->Thaw();
+}
+
 
 void cDBSampler::ProgMaster_Fill2(wxListCtrl* ListCtrl, bool SortByName, bool DoResize, int Fld2Translate, byte Filter) {
     wxString SqlWhere;
@@ -147,19 +212,63 @@ void cDBSampler::ProgMaster_Fill2(wxListCtrl* ListCtrl, bool SortByName, bool Do
     ListCtrl_FillFromSql(ListCtrl, SqlCmd, DoResize, Fld2Translate);
 }
 
+void cDBSampler::ProgDetail_ReadAll(unsigned int ProgId, std::function<void(const wxString&, bool)> logFunc) {
+    wxString SqlQuery = SqlQuery_Detail(ProgId);
+    if (!m_db) return;
+    sqlite3_stmt* stmt;
+
+    // Preparazione della query
+    if (sqlite3_prepare_v2(m_db, SqlQuery.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        return;
+    }
+    int colCount = sqlite3_column_count(stmt);
+    void			LogMe(const wxString & ToLog, bool PrependTime);
+    // 1. Creazione delle intestazioni e dimensionamento colonne
+    for (int i = 0; i < colCount; i++) {
+        wxString colName = wxString::FromUTF8(sqlite3_column_name(stmt, i));
+        logFunc(colName, false);
+        logFunc(" | ", false);
+    }
+    logFunc("\n", false);
+
+    // 2. Inserimento dei dati
+    int rowIndex = 0;
+    wxString	Translation;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        for (int col = 0; col < colCount; col++) {
+            const char* val = (const char*)sqlite3_column_text(stmt, col);
+            wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            logFunc(cellValue, false);
+            logFunc(" | ", false);
+        }
+        logFunc("\n", false);
+        rowIndex++;
+    }
+    sqlite3_finalize(stmt);
+}
+
+
+wxString cDBSampler::SqlQuery_Detail(const unsigned int ProgId) {
+    wxString strParNames;
+    for (byte i = 0; i < NUMOFPARAMS; i++) {
+        strParNames += wxString::Format(", Par%d", i);
+    }
+
+    //ToDo See enum eDetHeaders{ eDetailProg=0, eMotor, eCmd, ePattern, eCnt, eParFirst, eParLast= eParFirst + NUMOFPARAMS, eMasterId=12 };
+
+    wxString SqlQuery = wxString::Format(
+        "SELECT DetailProg AS [%s], SubSys, Cmd, Pattern AS [%s] %s, MasterId"
+        " FROM " PROGDETAIL_TABLENAME
+        " WHERE MasterId = %d ORDER BY DetailProg"
+        , _("N"), _("Command"), strParNames, ProgId);
+    return SqlQuery;
+
+}
+
+
 void cDBSampler::ProgDetail_Fill(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoResize, int Fld2Translate) {
-    ListCtrl_FillFromSql(ListCtrl, wxString::Format(
-                                    // Same order of cDetailListCtrl::PrgDetail_FillListItem
-                                    //		StepId                      	  CmdTyp  SubCmd  [0]   [1]   [2]   [3]   ProgramId I2CAddr
-                         //SELECT MasterId, DetailProg,        Motor, Cmd, Pattern, Cnt, Par1, Par2, Par3, Par4, Par5, Par6, Par7
-                                    "SELECT DetailProg AS [%s], Motor, Cmd, Pattern AS [%s], Cnt, Par1, Par2, Par3, Par4, Par5, Par6, Par7, MasterId "
-                                    " FROM " PROGDETAIL_TABLENAME 
-                                    " WHERE MasterId = %d ORDER BY DetailProg"
-                                    , _("N")
-                                    , _("Command")
-                                    , ProgId
-                                )
-                        , DoResize, Fld2Translate);
+    ListCtrl_FillFromSql(ListCtrl, SqlQuery_Detail(ProgId), DoResize, Fld2Translate);
 }
 
 wxString cDBSampler::SQLStrPrepare(wxString str) {
@@ -232,12 +341,17 @@ bool cDBSampler::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProg
     if (ProgMaster_Insert(NewProgName, ProgIdNew)) {
         //3) Copia i dati dalla vecchia sequenza
 
-        wxString SqlCmd = wxString::Format(
-            "INSERT INTO %s (MasterId, DetailProg, Motor, Cmd, Pattern, Cnt, Par1, Par2, Par3, Par4, Par5, Par6, Par7) "
-                            "SELECT %d, DetailProg, Motor, Cmd, Pattern, Cnt, Par1, Par2, Par3, Par4, Par5, Par6, Par7 "
-            "FROM %s WHERE MasterId = %d;",
-            PROGDETAIL_TABLENAME, ProgIdNew,
-            PROGDETAIL_TABLENAME, ProgIdOld
+        wxString strParNames;
+        for (byte i = 0; i < NUMOFPARAMS; i++) {
+            strParNames += wxString::Format(", Par%d", i);
+        }
+
+        wxString SqlCmd = wxString::Format(//ToDo
+            "INSERT INTO " PROGDETAIL_TABLENAME " (MasterId, DetailProg, Motor, Cmd, Pattern, Cnt %s ) "
+                            "SELECT %d, DetailProg, Motor, Cmd, Pattern, Cnt, %s "
+            "FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d;",
+            strParNames, ProgIdNew,
+            strParNames, ProgIdOld
         );
 
         return ExecuteSQL(SqlCmd, true);
@@ -256,26 +370,28 @@ bool cDBSampler::CreateTable(const char* sql_create) {
     return true;
 }
 
-bool cDBSampler::CreateSlave(void) {
-    const char* sql_create =    "CREATE TABLE IF NOT EXISTS " PROGDETAIL_TABLENAME " ("
-                                    "MasterId      INTEGER NOT NULL,"
-                                    "DetailProg    INTEGER NOT NULL,"
-                                    "Motor         INTEGER NOT NULL,"
-                                    "Cmd           INTEGER NOT NULL,"
-                                    "Pattern       TEXT NOT NULL DEFAULT '',"
-                                    "Cnt           INTEGER NOT NULL DEFAULT 0,"
-                                    "Par1          INTEGER,"
-                                    "Par2          INTEGER,"
-                                    "Par3          INTEGER,"
-                                    "Par4          INTEGER,"
-                                    "Par5          INTEGER,"
-                                    "Par6          INTEGER,"
-                                    "Par7          INTEGER,"
-                                    "PRIMARY KEY (MasterId, DetailProg),"   // Definizione Chiave Primaria Composta
-                                    "FOREIGN KEY (MasterId) REFERENCES " PROGMASTER_TABLENAME " (ProgId) "  // Definizione Foreign Key con DELETE CASCADE
-                                    "ON DELETE CASCADE ON UPDATE CASCADE"
-                                ") WITHOUT ROWID;"; // Ottimizzazione per tabelle con PK composta
-    return CreateTable(sql_create);
+bool cDBSampler::CreateSlave(void) {    //ToDo: sql_create-> wxString & Consider NUMOFPARAMS
+    wxString strParDefs;
+    for (byte i = 0; i < NUMOFPARAMS; i++) {
+        strParDefs += wxString::Format("Par%d          INTEGER,", i);
+    }
+
+    wxString sql_create = wxString::Format(
+        "CREATE TABLE IF NOT EXISTS " PROGDETAIL_TABLENAME " ("
+            "MasterId      INTEGER NOT NULL,"
+            "DetailProg    INTEGER NOT NULL,"
+            "SubSys        INTEGER NOT NULL,"
+            "Cmd           INTEGER NOT NULL,"
+            "Pattern       TEXT NOT NULL DEFAULT '',"
+            "%s"
+            "PRIMARY KEY (MasterId, DetailProg),"
+            "FOREIGN KEY (MasterId) REFERENCES " PROGMASTER_TABLENAME " (ProgId) "
+            "ON DELETE CASCADE ON UPDATE CASCADE"
+        ") WITHOUT ROWID;" // Optimization for table with PK compound
+        , strParDefs
+    );
+
+    return CreateTable(sql_create.c_str());
 }
 
 bool cDBSampler::CreateMaster(void) {
@@ -288,7 +404,7 @@ bool cDBSampler::CreateMaster(void) {
 bool cDBSampler::CreateDB(void) {
     CreateMaster();
     CreateSlave();
-    if (!ProgMaster_Insert("Baldone")) return false;
+    if (!ProgMaster_Insert("BravoBaldo")) return false;
 
     return true;
 }
@@ -496,7 +612,7 @@ bool cDBSampler::ProgMaster_Print(int ProgId, const wxString& /*ProgName*/, cons
 
 
 #define TENTA3
-bool cDBSampler::ProgDetail_Renum(unsigned int ProgId) {
+bool cDBSampler::ProgDetail_Renum(unsigned int ProgId, unsigned int Step) {
 #ifdef TENTA3
     if (!m_db) return false;
     if (sqlite3_exec(m_db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr) != SQLITE_OK) return false;
@@ -504,7 +620,7 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId) {
     wxString sqlTemp = wxString::Format(
         "WITH NewSequence AS ("
         "  SELECT MasterId, DetailProg, "
-        "  (ROW_NUMBER() OVER (PARTITION BY MasterId ORDER BY DetailProg) * 3) AS NewVal "
+        "  (ROW_NUMBER() OVER (PARTITION BY MasterId ORDER BY DetailProg) * %u) AS NewVal "
         "  FROM SAM_ProgDetail "
         "  WHERE MasterId = %u"
         ") "
@@ -512,7 +628,7 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId) {
         "SET DetailProg = -(SELECT NewVal FROM NewSequence "
         "                  WHERE NewSequence.MasterId = SAM_ProgDetail.MasterId "
         "                  AND NewSequence.DetailProg = SAM_ProgDetail.DetailProg) "
-        "WHERE MasterId = %u;", ProgId, ProgId
+        "WHERE MasterId = %u;", Step, ProgId, ProgId
     );
     wxString sqlUpdate = wxString::Format(
         "UPDATE SAM_ProgDetail SET DetailProg = ABS(DetailProg) WHERE MasterId = %u;"// AND DetailProg < 0
@@ -535,45 +651,56 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId) {
 #endif
 }
 
+
 bool cDBSampler::ProgDetail_Insert(const cCmdStepper& item, bool AllowRenum ) {
     if (!m_db) return false;
 
-    // Query SQL con clausola ON CONFLICT per gestire l'aggiornamento automatico
+    wxString strParNames;
+    wxString strParams;
+    wxString strParExc;
+    for (byte i = 0; i < NUMOFPARAMS; i++) {
+        strParNames += wxString::Format(", Par%d", i);
+        strParams += ", ?";
+        strParExc += wxString::Format(", Par%d=excluded.Par%d", i, i);
+    }
     wxString sql = wxString::Format(
-        "INSERT INTO %s (MasterId, DetailProg, Motor, Cmd, Pattern, Cnt, Par1, Par2, Par3, Par4, Par5, Par6, Par7) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        "INSERT INTO %s (MasterId, DetailProg, SubSys, Cmd, Pattern %s) VALUES (?, ?, ?, ?, ?%s) "
         "ON CONFLICT(MasterId, DetailProg) DO UPDATE SET "
-        "Motor=excluded.Motor, Cmd=excluded.Cmd, Pattern=excluded.Pattern, "
-        "Cnt=excluded.Cnt, Par1=excluded.Par1, Par2=excluded.Par2, Par3=excluded.Par3, "
-        "Par4=excluded.Par4, Par5=excluded.Par5, Par6=excluded.Par6, Par7=excluded.Par7;",
-        PROGDETAIL_TABLENAME
+        "SubSys=excluded.SubSys, Cmd=excluded.Cmd, Pattern=excluded.Pattern %s;",
+        PROGDETAIL_TABLENAME, strParNames, strParams, strParExc
     );
 
     sqlite3_stmt* stmt;
     if (sqlite3_prepare_v2(m_db, sql.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
         return false;
     }
 
     // Binding dei parametri dall'oggetto cCmdStepper
     sqlite3_bind_int64(stmt, 1, item.m_MasterId);
     sqlite3_bind_int64(stmt, 2, item.m_DetailProg);
-    sqlite3_bind_int(stmt, 3, item.m_Motor);
-    sqlite3_bind_int(stmt, 4, item.m_Cmd);
-    sqlite3_bind_text(stmt, 5, item.m_Pattern.utf8_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 6, item.m_Cnt);
+    sqlite3_bind_int  (stmt, 3, item.m_SubSystem);
+    sqlite3_bind_int  (stmt, 4, item.m_Cmd);
+    sqlite3_bind_text (stmt, 5, item.m_Pattern.utf8_str(), -1, SQLITE_TRANSIENT);
 
-    for (int i = 0; i < 7; i++) {
-        sqlite3_bind_int64(stmt, 7 + i, item.m_Par[i]);
+    int i;
+    for (i = 0; i < item.m_Pattern.length(); i++) {
+        sqlite3_bind_int64(stmt, 6 + i, item.m_Par[i]);
+    }
+    for (; i < NUMOFPARAMS; i++) {
+        sqlite3_bind_int64(stmt, 6 + i, 0);
     }
 
-    // Esecuzione
-    int rc = sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+    sqlite3_step(stmt); //Execution
 
+    if (sqlite3_finalize(stmt) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        return false;
+    }
     if (AllowRenum)
         ProgDetail_Renum(item.m_MasterId);    //Update don't require renumbering
 
-    return (rc == SQLITE_DONE);
+    return true;
 }
 
 bool cDBSampler::ProgDetail_Swap(unsigned int ProgId, unsigned int iFrom, bool WithNext) {

@@ -9,24 +9,26 @@
 #include "CmdParLabel.h"
 #include "cCmdStepper.h"
 
-//#define SHOW_PARAMS_INFO
+#define SHOW_PARAMS_INFO
 
 class CmdEditorCtrl : public wxPanel {
 	wxChoice		*m_cho_StepperCmd	= nullptr;
 
-	wxTextCtrl		*m_txt_NumOfPars	= nullptr;
-	wxTextCtrl		*m_txt_CmdCode		= nullptr;
-	wxTextCtrl		*m_txt_ParamPattern	= nullptr;
-	wxTextCtrl		*m_txt_ParamNames	= nullptr;
+	wxStaticText	*m_sta_SubSystem	= nullptr;
+	wxTextCtrl		*m_txt_SubSystem	= nullptr;
 
-	wxChoice		*m_cho_Motor		= nullptr;
-	CmdParLabel		*m_Params[5];
-#if defined(USE_SUBSYSTEM)
-	wxChoice* m_cho_SubSystem = nullptr;
-#endif
+	wxStaticText	*m_sta_CmdCode		= nullptr;
+	wxTextCtrl		*m_txt_CmdCode		= nullptr;
+
+	wxStaticText	*m_sta_ParamPattern	= nullptr;
+	wxTextCtrl		*m_txt_ParamPattern	= nullptr;
+
+	CmdParLabel		*m_Params[NUMOFPARAMS];
+
+	wxChoice		*m_cho_SubSystem	= nullptr;
+
 	wxTextCtrl		*m_Txt_Result		= nullptr;
 
-//	wxStaticText	*m_Lbl_PrgMasterId;
 	wxTextCtrl		*m_Txt_ProgId		= nullptr;
 	wxTextCtrl		*m_Txt_StepId		= nullptr;
 	long			m_ProgId = -1;
@@ -41,7 +43,7 @@ class CmdEditorCtrl : public wxPanel {
 	void		OnTimeChanged(wxDateEvent& Evt);
 	void		OnTextInput(wxCommandEvent& Evt);
 
-	int			GetMotor(void);
+	void		Fill_Commands(void);
 
 	DECLARE_EVENT_TABLE()
 protected:
@@ -68,10 +70,10 @@ public:
 	cCmdStepper	UI2DBData		(void);	//From UI to Database
 	void		DBData2UI		(cCmdStepper& vStep);
 	wxString	DBData2String	(cCmdStepper& vStep);
-	bool		Cmd2UI			(uint8_t Mot, char Cmd, const std::vector<long>& ParValues);
+	bool		Cmd2UI			(const char Sys, const char Cmd, const std::vector<long>& ParValues);
 	bool		String2UI		(wxString Cmd);
 
-	bool		PoseCommand		(char c, uint8_t NumPar);
+	bool		PoseCommand(const char SubSys, const char c, uint8_t NumPar);
 
 	void		SetDbInfo(long MasterId, long DetId) {
 		m_ProgId = MasterId; if (m_Txt_ProgId)	m_Txt_ProgId->SetValue(wxString::Format("%ld", m_ProgId));

@@ -144,7 +144,7 @@ bool MyApp::OnInit () {
 	MyFrame *frame = new MyFrame (
 		PRG_LONG_NAME,
 		wxPoint ( 50, 50 ),
-		wxSize ( 900, 814 ),
+		wxSize ( 1400, 814 ),
 		m_locale
 	);
 	frame->CentreOnScreen ();

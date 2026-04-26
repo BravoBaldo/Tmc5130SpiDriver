@@ -4,7 +4,12 @@
 
 #include "wx/wx.h"
 
-#define NUMOFTESTS 5
+#define USE_DATAVIEWCTRL
+#if defined(USE_DATAVIEWCTRL)
+#include <wx/dataview.h>
+#endif
+
+#define NUMOFTESTS 6
 #define USE_AUI
 #ifdef USE_AUI
 	#include "wx/aui/aui.h"
@@ -21,7 +26,6 @@ public:
 					const wxPoint&	pos,
 					const wxSize&	size,
 						  wxLocale*	locale
-
 				);
     ~MyFrame();
 
@@ -31,8 +35,9 @@ private:
 	void OnPaint		( wxPaintEvent&		Evt );
 
 	void OnMenu			( wxCommandEvent&	Evt );
-	void		OnBtnCommands	( wxCommandEvent&	Evt );
-	void		SetLayouts ( void );
+	void OnBtnCommands	( wxCommandEvent&	Evt );
+	void SetLayouts		( void );
+
 
 #ifdef USE_AUI
 	wxString	Perspective_Get	( void )			{ return m_mgr.SavePerspective(); }
@@ -60,6 +65,11 @@ private:
 	wxTextCtrl*	m_txt_Log;
 	wxBitmap	m_bitmap;
 	wxMenu*		m_menuPopUp;
+
+#if defined(USE_DATAVIEWCTRL)
+	wxDataViewListCtrl* m_dvCtrl;
+#endif
+
 };
 
 #endif

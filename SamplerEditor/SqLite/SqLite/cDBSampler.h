@@ -1,9 +1,10 @@
 #pragma once
 #include "wx/wx.h"
 #include "wx/listctrl.h"	//ListCtrl_FillFromSql
-//#include <wx/dataview.h>	//wxDataViewListCtrl, wxmsw31??_adv.lib
-#include "sqlite3.h" // Assicurati che questo file sia nel tuo percorso di inclusione
+#include <wx/dataview.h>	//wxDataViewListCtrl, wxmsw31??_adv.lib
+#include "sqlite3.h"
 #include "cCmdStepper.h"
+#include <functional>
 
 #define PROGMASTER_TABLENAME "SAM_ProgMaster"
 #define PROGDETAIL_TABLENAME "SAM_ProgDetail"
@@ -17,6 +18,7 @@ class cDBSampler {
 	sqlite3* m_db = nullptr; // Database Pointer
 	static void			ErrorShow(const char* zErrMsg);
 	void				ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQuery, bool DoResize = true, int Fld2Translate = -1);
+
 	long				ProgMaster_GetNextId(unsigned int StartIdx);
 	static wxString		SQLStrPrepare(wxString str);
 	bool				RecordExists(const wxString& Query);
@@ -24,6 +26,7 @@ class cDBSampler {
 	bool				CreateTable(const char* sql_create);
 	bool				CreateMaster(void);
 	bool				CreateSlave(void);
+	static wxString		SqlQuery_Detail(const unsigned int ProgId);
 public:
 	cDBSampler(const char* filename = "../Sampler.db");
 	~cDBSampler() {
@@ -38,13 +41,18 @@ public:
 	bool	ProgMaster_Print		(int ProgId, const wxString& ProgName, const wxString& filePath);
 
 	bool	ProgDetail_Insert		(const cCmdStepper& Cmd, bool AllowRenum = true);
-	bool	ProgDetail_Renum		(unsigned int ProgId);
+	bool	ProgDetail_Renum		(unsigned int ProgId, unsigned int Step = 3);
 	void	ProgDetail_Fill			(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoResize = true, int Fld2Translate = 1);
 	bool	ProgDetail_Swap			(unsigned int ProgId, unsigned int iFrom, bool WithNext);
 	bool	ProgDetail_Delete		(unsigned int ProgId, bool DelFather);
 	bool	ProgDetail_Delete2		(unsigned int ProgId, unsigned int DetailId);
 	//--------------------------------------------------
+	void ProgDetail_ReadAll			(unsigned int ProgId, std::function<void(const wxString&, bool)> logFunc);
+
 	void	DBCreateNewProcess(void);
 	void	DBModifyCopyProcess(const wxString& Name, const unsigned int ProgId, bool Modify = true);
+
+	void	DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize);
+
 
 };

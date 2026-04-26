@@ -42,7 +42,7 @@
 
 class Next_DB : public wxObject {
 	DECLARE_CLASS(Next_DB)
-	otl_connect			AriesConn;	 // connect object
+	otl_connect		AriesConn;	 // connect object
 	wxString		m_ConnectionString;
 
 	bool			ExecuteSQL(const wxString& SqlCmd, bool AutoCommit, bool IgnoreError = false);

@@ -2,407 +2,427 @@
 #include "CmdEditorCtrl.h"
 
 enum {
-	ID_cho_Cmd = wxID_HIGHEST,
-	ID_cho_Other,
-#if defined(USE_SUBSYSTEM)
-	ID_cho_SubSys,
-#endif
-	ID_TXT_Result,
+    ID_cho_Cmd = wxID_HIGHEST,
+    ID_cho_SubSys,
+    ID_cho_Other,
+    ID_TXT_Result,
 };
 
 BEGIN_EVENT_TABLE(CmdEditorCtrl, wxPanel)
-	EVT_CHOICE			(wxID_ANY,		CmdEditorCtrl::OnChoice)
-	EVT_SPINCTRL		(wxID_ANY,		CmdEditorCtrl::OnSpin)
-	EVT_TIME_CHANGED	(wxID_ANY,		CmdEditorCtrl::OnTimeChanged)
-	EVT_TEXT			(ID_TXT_Result,	CmdEditorCtrl::OnTextInput)
+    EVT_CHOICE			(wxID_ANY,		CmdEditorCtrl::OnChoice)
+    EVT_SPINCTRL		(wxID_ANY,		CmdEditorCtrl::OnSpin)
+    EVT_TIME_CHANGED	(wxID_ANY,		CmdEditorCtrl::OnTimeChanged)
+    EVT_TEXT			(ID_TXT_Result,	CmdEditorCtrl::OnTextInput)
 END_EVENT_TABLE()
 
 void CmdEditorCtrl::OnSpin			(wxSpinEvent& ) { m_Txt_Result->ChangeValue(UI2String()); }
 void CmdEditorCtrl::OnTimeChanged	(wxDateEvent& ) { m_Txt_Result->ChangeValue(UI2String()); }
 
 void CmdEditorCtrl::OnTextInput(wxCommandEvent&) {
-	wxString s = m_Txt_Result->GetValue();
-	String2UI(s);
-}
-
-int CmdEditorCtrl::GetMotor(void) {
-	int SelMot = m_cho_Motor->GetSelection();
-	if (SelMot < 0)
-		return -1;
-	return (int)(unsigned long long)m_cho_Motor->GetClientData(SelMot);
+    wxString s = m_Txt_Result->GetValue();
+    String2UI(s);
 }
 
 cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
-	cCmdStepper Cmd;
-	Cmd.m_Motor = GetMotor();
+    cCmdStepper Cmd;
+    int Sel = m_cho_StepperCmd->GetSelection();
+    if (Sel >= 0) {
+        const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
+        if (c) {
+            Cmd.m_MasterId   = 0;
+            Cmd.m_DetailProg = 0;
 
-	int Sel = m_cho_StepperCmd->GetSelection();
-	if (Sel >= 0) {
-		const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
-		Cmd.m_MasterId = 0;
-		Cmd.m_DetailProg = 0;
-
-		Cmd.m_Cmd = c->cmd;
-		Cmd.m_Pattern = c->ParamPattern;
-		Cmd.m_Cnt = strlen(c->ParamPattern);
-		for (size_t i = 0; i < c->ParNames.size(); i++) {
-			Cmd.m_Par[i] = m_Params[i]->GetValue();
-		}
-	}
-	return Cmd;
+            Cmd.m_SubSystem = c->SubSys;
+            Cmd.m_Cmd       = c->cmd;
+            Cmd.m_Pattern = c->ParamPattern;
+            //Cmd.m_Cnt = strlen(c->ParamPattern);
+            for (size_t i = 0; i < c->ParNames.size(); i++) {
+                Cmd.m_Par[i] = m_Params[i]->GetValue();
+            }
+        }
+    }
+    return Cmd;
 }
 
 wxString CmdEditorCtrl::DBData2String(cCmdStepper& vStep) {
-	wxString Result = wxEmptyString;
-
-	//Get Motor Info
-	if (vStep.m_Motor < 0)
-		return wxEmptyString;
-	Result += wxString::Format("m%d;", vStep.m_Motor);
-	Result += wxString::Format("%c", vStep.m_Cmd);
-	for (size_t i = 0; i < strlen(vStep.m_Pattern); i++) {
-		Result += wxString::Format(",%ld", vStep.m_Par[i]);
-	}
-	return Result;
+    wxString Result = wxEmptyString;    // ToDo
+    //cM,G,0,100,120,2000
+    //if (vStep.m_Motor < 0)
+    //    return wxEmptyString;
+    Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
+    for (size_t i = 0; i < strlen(vStep.m_Pattern); i++) {
+        Result += wxString::Format(",%ld", vStep.m_Par[i]);
+    }
+    return Result;
 }
-
 
 wxString CmdEditorCtrl::UI2String(void) {
-	wxString Result = wxEmptyString;
+    wxString Result = "c";
+/*
+    char strTyp = '\0';
+    int s = m_cho_SubSystem->GetSelection();
+    if (s < 0)      return wxEmptyString;
 
-	//Get Motor Info
-	int MotIdx = GetMotor();
-	if (MotIdx < 0)	return wxEmptyString;
-	Result += wxString::Format("m%d;", MotIdx);
+    strTyp = ((sSubSystem*)m_cho_SubSystem->GetClientData(s))->Type;
+    Result += wxString::Format("c%c,", strTyp);
+*/
+    //cM,G,0,100,120,2000
 
-	int Sel = m_cho_StepperCmd->GetSelection();
-	if (Sel < 0)	return wxEmptyString;
-	const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
-	if(!c)			return wxEmptyString;
-	char CmdChar = c->cmd;
-	Result += wxString::Format("%c", CmdChar);
+    int Sel = m_cho_StepperCmd->GetSelection();
+    if (Sel < 0)	return wxEmptyString;
+    const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
+    if (!c)			return wxEmptyString;
+    Result += wxString::Format("%c,", c->SubSys);
+    Result += wxString::Format("%c", c->cmd);
 
-	for (size_t i = 0; i < c->ParNames.size(); i++) {
-		Result += wxString::Format(",%ld", m_Params[i]->GetValue());
-	}
-	return Result;
+    for (size_t i = 0; i < c->ParNames.size(); i++) {
+        Result += wxString::Format(",%ld", m_Params[i]->GetValue());
+    }
+    return Result;
 }
 
-
 void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
-	/*
-	La modifica del motore non cambia nulla se non la stringa del risultato
-	*/
-	int	Id = Evt.GetId();
-	if (Id != ID_cho_Cmd) {
-		//this->Freeze();
+    int	Id = Evt.GetId();
+    switch (Id) {
+        case ID_cho_SubSys: Fill_Commands(); break;
+        case ID_cho_Cmd:
+            {
+                this->Freeze();
 
-		wxString r = UI2String();
-		//m_Txt_Result->SetBackgroundColour((r.IsEmpty()) ? wxColor(255, 0, 0) : wxColor(255, 255, 255));
-		m_Txt_Result->ChangeValue(r);
+                int Sel = m_cho_StepperCmd->GetSelection();
+                if (Sel >= 0) {
+                    const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
+                    //.............................................
+                    unsigned int NumOfParams = strlen(c->ParamPattern);
+                    if (NumOfParams > WXSIZEOF(m_Params)) {
+                        wxMessageBox(wxString::Format("Review code in line %d of file '%s'", __LINE__, __FILE__), "Error", wxOK | wxICON_INFORMATION, NULL);
+                        //NumOfParams = WXSIZEOF(m_Params);
+                    }
 
-		//this->Thaw();
-		return;
-	}
-	this->Freeze();
+                    //m_txt_NumOfPars->SetValue(wxString::Format("%d %d", NumOfParams, (int)(c->ParNames.size())));
+                    m_txt_SubSystem->SetValue(c->SubSys);
+                    m_txt_CmdCode->SetValue(c->cmd);					//Command Id
+                    m_txt_ParamPattern->SetValue(c->ParamPattern);		//Params List
+    #ifdef WWWWWWWWWW
+                    //Fills m_txt_ParamNames for DEBUG 
+                    m_txt_ParamNames->SetValue(wxEmptyString);
+                    for (size_t i = 0; i < NumOfParams; i++) {	//For each parameter
+                        int jj = c->ParNames.size();
+                        m_txt_ParamNames->AppendText(wxString::Format("*%s*\n",
+                            (i < jj) ? c->ParNames[i] : "NonSo"
+                        ));	//For debug
+                        const sParams* p = Param_Get(c->ParamPattern[i]);
+                        if (p) {
+                            std::vector<wxString> vvv = p->ParValues;
+                            int nv = p->ParValues.size();
+                            for (int pp = 0; pp < nv; pp++) {	//For each possible value (if applicable)
+                                m_txt_ParamNames->AppendText(wxString::Format("->>>%s\n", p->ParValues[pp]));
+                            }
+                        }
+                        m_txt_ParamNames->AppendText("\n");
+                    }
+    #endif
+                    {
+                        //for (unsigned int i = 0; i < WXSIZEOF(m_Params); i++) m_Params[i]->Freeze();
+                        size_t ParIdx;
 
-	int Sel = m_cho_StepperCmd->GetSelection();
-	if (Sel >= 0) {
-		const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
-		//.............................................
-		unsigned int NumOfParams = strlen(c->ParamPattern);
-		if (NumOfParams > WXSIZEOF(m_Params)) {
-			wxMessageBox(wxString::Format("Review code in line %d of file '%s'", __LINE__, __FILE__), "Error", wxOK | wxICON_INFORMATION, NULL);
-			NumOfParams = WXSIZEOF(m_Params);
-		}
+                        for (ParIdx = 0; ParIdx < NumOfParams; ParIdx++) {	//For each parameter
+                            const sParams* p = Param_Get(c->ParamPattern[ParIdx]);	//Pointer to all possible values for this parameter
+                            if (!p) return;	//There is no parameter type
 
-		m_txt_NumOfPars->SetValue(wxString::Format("%d %d", NumOfParams, (int)(c->ParNames.size())));
+                            int nv = p->ParValues.size();	//Number of possible values
 
-		m_txt_CmdCode->SetValue(c->cmd);					//Command Id
-		m_txt_ParamPattern->SetValue(c->ParamPattern);		//Params List
+                            //Qui deve cambiare il tipo di input
+                            eParType Ty = (eParType)p->ParType;
+                            wxString parName = wxString::Format("%s", (ParIdx < c->ParNames.size()) ? c->ParNames[ParIdx] : "--NoName--");
+                            switch (Ty) {
+                                case eTime:
+                                    m_Params[ParIdx]->ChangeType(parName, wxDateTime(0, 0, 12));
+                                    m_Params[ParIdx]->SetToolTip(wxString::Format("Time"));
+                                    break;
+                                case eNumber:
+                                    m_Params[ParIdx]->ChangeType(parName, p->MinValue, p->MaxValue);
+                                    m_Params[ParIdx]->SetToolTip(wxString::Format("From %d to %d", p->MinValue, p->MaxValue));
+                                    break;
+                                case eChoice:
+                                    {
+                                        wxArrayString Names;	//Names.Clear();
+                                        wxArrayInt Codes;		//Codes.Clear();
+                                        for (int pp = 0; pp < nv; pp++) {	//For each possible value (if applicable)
+                                            Names.Add(p->ParValues[pp]);
+                                            Codes.Add(pp);
+                                        }
+                                        m_Params[ParIdx]->ChangeType(parName, Names, Codes);
+                                    }
+                                    break;
+                            }
 
-		//Fills m_txt_ParamNames for DEBUG 
-		m_txt_ParamNames->SetValue(wxEmptyString);
-		for (size_t i = 0; i < NumOfParams; i++) {	//For each parameter
-			int jj = c->ParNames.size();
-			m_txt_ParamNames->AppendText(wxString::Format("*%s*\n", 
-					(i < jj) ? c->ParNames[i] : "NonSo"
-				));	//For debug
-			const sParams* p = Param_Get(c->ParamPattern[i]);
-			if (p) {
-				std::vector<wxString> vvv = p->ParValues;
-				int nv = p->ParValues.size();
-				for (int pp = 0; pp < nv; pp++) {	//For each possible value (if applicable)
-					m_txt_ParamNames->AppendText(wxString::Format("->>>%s\n", p->ParValues[pp]));
-				}
-			}
-			m_txt_ParamNames->AppendText("\n");
-		}
+                            m_Params[ParIdx]->Show(true);
+                            m_Params[ParIdx]->SetLabel(wxString::Format("%c-%s-%d-", c->ParamPattern[ParIdx], parName, nv));	//Set the name and type
+                            //m_Params[ParIdx]->Thaw();
+                            m_Params[ParIdx]->ReposeSizers();
+                        }
+                        for (; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
+                            m_Params[ParIdx]->Show(false);
+                            m_Params[ParIdx]->SetLabel("---");
+                            m_Params[ParIdx]->ReposeSizers();
+                        }
+                    }
+                }
 
-		{
-//for (unsigned int i = 0; i < WXSIZEOF(m_Params); i++) m_Params[i]->Freeze();
-			size_t ParIdx;
+                m_Txt_Result->SetBackgroundColour(wxColor(255, 255, 255));
+                m_Txt_Result->ChangeValue(UI2String()); //ToDo UI2String 1
 
-			for (ParIdx = 0; ParIdx < NumOfParams; ParIdx++) {	//For each parameter
-				const sParams* p = Param_Get(c->ParamPattern[ParIdx]);	//Pointer to all possible values for this parameter
-				if (!p) return;	//There is no parameter type
+                wxSizer* sizMaster = GetSizer(); // use the sizer for layout
+                sizMaster->Fit(this); // fit the dialog to the contents
+                sizMaster->SetSizeHints(this); // set hints to honor min size
+                GetParent()->Refresh();//	m_mgr.Update(); //Thaw();
+                GetParent()->Layout();
 
-				int nv = p->ParValues.size();	//Number of possible values
+                this->Thaw();
+            }
+            break;
+        default:
+            wxString r = UI2String();
+            m_Txt_Result->ChangeValue(r);
+            break;
+    }
+}
 
-				//Qui deve cambiare il tipo di input
-				eParType Ty = (eParType)p->ParType;
-				wxString parName = wxString::Format("%s", (ParIdx < c->ParNames.size()) ? c->ParNames[ParIdx] : "--NoName--" );
-				switch (Ty) {
-					case eTime:
-						m_Params[ParIdx]->ChangeType(parName, wxDateTime(0, 0, 12));
-						m_Params[ParIdx]->SetToolTip(wxString::Format("Time"));
-						break;
-					case eNumber:
-						m_Params[ParIdx]->ChangeType(parName, p->MinValue, p->MaxValue);
-						m_Params[ParIdx]->SetToolTip(wxString::Format("From %d to %d", p->MinValue, p->MaxValue));
-						break;
-					case eChoice:
-						{
-							wxArrayString Names;	//Names.Clear();
-							wxArrayInt Codes;		//Codes.Clear();
-							for (int pp = 0; pp < nv; pp++) {	//For each possible value (if applicable)
-								Names.Add(p->ParValues[pp]);
-								Codes.Add(pp);
-							}
-							m_Params[ParIdx]->ChangeType(parName, Names, Codes);
-						}
-						break;
-				}
+void CmdEditorCtrl::Fill_Commands(void) {
+    size_t nCmd = Commands_Size();
 
-				m_Params[ParIdx]->Show(true);
-				m_Params[ParIdx]->SetLabel(wxString::Format("%c-%s-%d-", c->ParamPattern[ParIdx], parName, nv));	//Set the name and type
-//m_Params[ParIdx]->Thaw();
-				m_Params[ParIdx]->ReposeSizers();
-			}
-			for (; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
-				m_Params[ParIdx]->Show(false);
-				m_Params[ParIdx]->SetLabel("---");
-				m_Params[ParIdx]->ReposeSizers();
-			}
-		}
-	}
+    char	Type = 'M';
+    int Sel = m_cho_SubSystem->GetSelection();
+    if (Sel >= 0) Type = ((sSubSystem*)m_cho_SubSystem->GetClientData(Sel))->Type;
 
-	m_Txt_Result->SetBackgroundColour(wxColor(255, 255, 255));
-	m_Txt_Result->ChangeValue(UI2String());
+    m_cho_StepperCmd->Clear();
+    for (size_t i = 0; i < nCmd; i++) {
+        const sSampler_Commands* pp = Command_Get(i);
+        if(pp->SubSys==Type)
+            m_cho_StepperCmd->Append(Command_Get(i)->Descr, (void*)pp);
+    }
+    int DefCmd = 0;
+    m_cho_StepperCmd->SetSelection(DefCmd);
 
-	wxSizer*sizMaster = GetSizer(); // use the sizer for layout
-	sizMaster->Fit(this); // fit the dialog to the contents
-	sizMaster->SetSizeHints(this); // set hints to honor min size
-	GetParent()->Refresh();//	m_mgr.Update(); //Thaw();
-	GetParent()->Layout();
-
-	this->Thaw();
+    int sSel = m_cho_StepperCmd->GetSelection();
+    if (sSel >= 0) {
+        wxCommandEvent event(wxEVT_CHOICE, m_cho_StepperCmd->GetId());
+        event.SetEventObject(m_cho_StepperCmd);
+        event.SetInt(DefCmd); //
+        m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
+    }else{
+        for (int ParIdx = 0; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
+            m_Params[ParIdx]->Show(false);  //B
+            //m_Params[ParIdx]->Show(false);
+            m_Params[ParIdx]->SetLabel("---");
+            m_Params[ParIdx]->ReposeSizers();
+        }
+    }
 }
 
 CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
-								wxWindowID		winid,
-								const wxPoint&	pos,
-								const wxSize&	size,
-								long			style,
-								const wxString& name
-							) : wxPanel(parent, winid, pos, size, style, name)
+                                wxWindowID		winid,
+                                const wxPoint&	pos,
+                                const wxSize&	size,
+                                long			style,
+                                const wxString& name
+                            ) : wxPanel(parent, winid, pos, size, style, name)
 {
 
-	m_Txt_ProgId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
-	m_Txt_ProgId->SetToolTip(_("m_Txt_ProgId"));
+    m_Txt_ProgId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
+    m_Txt_ProgId->SetToolTip(_("m_Txt_ProgId"));
 
-	m_Txt_StepId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
-	m_Txt_StepId->SetToolTip(_("m_Txt_StepId"));
+    m_Txt_StepId = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
+    m_Txt_StepId->SetToolTip(_("m_Txt_StepId"));
 
-	m_txt_NumOfPars = new wxTextCtrl(this, wxID_ANY, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_READONLY);
-	m_txt_NumOfPars->SetToolTip(_("m_txt_NumOfPars"));
+    m_Txt_Result = new wxTextCtrl(this, ID_TXT_Result, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT);// | wxTE_READONLY);
+    m_Txt_Result->SetToolTip(_("m_Txt_Result "));
 
-	m_Txt_Result = new wxTextCtrl(this, ID_TXT_Result, _("---"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT);// | wxTE_READONLY);
-	m_Txt_Result->SetToolTip(_("m_Txt_Result "));
+    m_sta_SubSystem     = new wxStaticText(this, wxID_ANY, _("SubSys"),     wxDefaultPosition, wxDefaultSize, 0);    m_sta_SubSystem->Wrap(-1);
+    m_sta_CmdCode       = new wxStaticText(this, wxID_ANY, _("Code"),       wxDefaultPosition, wxDefaultSize, 0);    m_sta_CmdCode->Wrap(-1);
+    m_sta_ParamPattern  = new wxStaticText(this, wxID_ANY, _("Pattern"),    wxDefaultPosition, wxDefaultSize, 0);    m_sta_ParamPattern->Wrap(-1);
 
-	m_txt_CmdCode = new wxTextCtrl(this, wxID_ANY, _("Command Code"), wxDefaultPosition, wxSize(30, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */);
-	m_txt_CmdCode->SetToolTip(_("m_txt_CmdCode"));
+    m_txt_SubSystem = new wxTextCtrl(this, wxID_ANY, _("SubSystem"), wxDefaultPosition, wxSize(30, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */);
+    m_txt_SubSystem->SetToolTip(_("m_txt_SubSystem"));
 
-	m_txt_ParamPattern = new wxTextCtrl(this, wxID_ANY, _("Command Pattern"), wxDefaultPosition, wxSize(115, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */ );
-	m_txt_ParamPattern->SetToolTip(_("m_txt_ParamPattern"));
+    m_txt_CmdCode = new wxTextCtrl(this, wxID_ANY, _("Command Code"), wxDefaultPosition, wxSize(30, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */);
+    m_txt_CmdCode->SetToolTip(_("m_txt_CmdCode"));
 
-	m_txt_ParamNames = new wxTextCtrl(this, wxID_ANY, _("Command Names"), wxDefaultPosition, wxSize(-1, -1), wxALIGN_LEFT | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY );
-	m_txt_ParamNames->SetToolTip(_("m_txt_ParamNames"));
+    m_txt_ParamPattern = new wxTextCtrl(this, wxID_ANY, _("Command Pattern"), wxDefaultPosition, wxSize(115, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */ );
+    m_txt_ParamPattern->SetToolTip(_("m_txt_ParamPattern"));
 
 #if !defined(SHOW_PARAMS_INFO)
-	m_txt_NumOfPars->Show(false);
-	m_txt_CmdCode->Show(false);
-	m_txt_ParamPattern->Show(false);
-	m_txt_ParamNames->Show(false);
+    //m_txt_NumOfPars->Show(false);
+    m_txt_SubSystem->Show(false);
+    m_txt_CmdCode->Show(false);
+    m_txt_ParamPattern->Show(false);
+    //m_txt_ParamNames->Show(false);
 #endif
 
-	m_cho_Motor = new wxChoice(this, -1, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SORT*/ );
-	m_cho_Motor->SetToolTip(_("Motor List"));
-	m_cho_Motor->Append("Motor X", (void*)0);
-	m_cho_Motor->Append("Motor Y", (void*)1);
-	m_cho_Motor->Append("Motor Z", (void*)2);
-	m_cho_Motor->Append("Probe", (void*)3);
-	m_cho_Motor->SetSelection(0);
+    for (size_t i = 0; i < WXSIZEOF(m_Params); i++) {
+        m_Params[i] = new CmdParLabel(this, wxString::Format("Par_%d", (int)i));
+    }
 
-	for (size_t i = 0; i < WXSIZEOF(m_Params); i++) {
-		m_Params[i] = new CmdParLabel(this, wxString::Format("Par_%d", (int)i));
-	}
+    sSampler_Check();
 
-	sSampler_Check();
+    m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+        m_cho_SubSystem->SetToolTip(_("SubSystems List"));
+        for (size_t i = 0; i < SubSystem_Size(); i++) {
+            m_cho_SubSystem->Append(SubSystem_Get(i)->Descr, (void*)SubSystem_Get(i));
+        }
+        m_cho_SubSystem->SetSelection(4);
 
-#if defined(USE_SUBSYSTEM)
-	m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-		m_cho_SubSystem->SetToolTip(_("SubSystems List"));
-		m_cho_SubSystem->Append("Motors", (void*)0);
-		m_cho_SubSystem->Append("Barcode", (void*)1);
-		m_cho_SubSystem->Append("StripLine", (void*)2);
-		m_cho_SubSystem->Append("ADC", (void*)3);
-		m_cho_SubSystem->Append("Power", (void*)3);
-		m_cho_SubSystem->SetSelection(0);
-#endif
-	m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SORT*/);
-	m_cho_StepperCmd->SetToolTip(_("Main Command"));
-	size_t nCmd = Commands_Size();
-	for (size_t i = 0; i < nCmd; i++) {
-		const sSampler_Commands* pp = Command_Get(i);
-		m_cho_StepperCmd->Append(Command_Get(i)->Descr, (void*)pp);
-	}
-	int DefCmd = 3;
-	m_cho_StepperCmd->SetSelection(DefCmd);
+    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SORT*/);
+    m_cho_StepperCmd->SetToolTip(_("Main Command"));
+    Fill_Commands();
 
-	wxCommandEvent event(wxEVT_CHOICE, m_cho_StepperCmd->GetId());
-	event.SetEventObject(m_cho_StepperCmd);
-	event.SetInt(DefCmd); //
-	m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
 
-SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
-	#if defined(USE_SUBSYSTEM)
-		SIZER_STATDEBUG(sizComp, "SubSystems", wxHORIZONTAL);
-		sizComp->Add(m_cho_SubSystem, 0, wxALL, 5);
-	#endif
-	SIZER_STATDEBUG3(sizTop, "Master", wxHORIZONTAL);
-		SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
-			sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
-			sizDBInfo->Add(m_Txt_StepId, 0, wxALL, 5);
+    //int DefCmd = 0;
+    //m_cho_StepperCmd->SetSelection(DefCmd);
 
-		SIZER_STATDEBUG(sizCmd, "Command", wxHORIZONTAL);
-			sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
+    SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
+        sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
+        sizDBInfo->Add(m_Txt_StepId, 0, wxALL, 5);
+
+    SIZER_STATDEBUG(sizComp, "SubSystems", wxHORIZONTAL);
+        sizComp->Add(m_cho_SubSystem, 0, wxALL, 5);
+
+    SIZER_STATDEBUG(sizCmd, "Command", wxHORIZONTAL);
+        sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
+
+    SIZER_STATDEBUG(sizTop, "Master", wxHORIZONTAL);
+
 
 #if defined(SHOW_PARAMS_INFO)
-		SIZER_STATDEBUG(sizNOfPars, "N. Params", wxVERTICAL);
-			sizNOfPars->Add(m_txt_NumOfPars, 0, wxALL, 5);
+        SIZER_STATDEBUG(sizNOfPars, "N. Params", wxVERTICAL);
 
-			//Raggruppare
-			SIZER_STATDEBUG(sizCodeId, "Identifier", wxHORIZONTAL);
-				sizCodeId->Add(m_txt_CmdCode, 0, wxALL, 1);
-				sizCodeId->Add(m_txt_ParamPattern, 0, wxALL, 1);
-			sizNOfPars->Add(sizCodeId, 0, wxALL, 5);
+        wxGridSizer* gSizer1 = new wxGridSizer(0, 2, 0, 0);
+            gSizer1->Add(m_sta_SubSystem, 0, wxALIGN_RIGHT | wxALL, 2);
+            gSizer1->Add(m_txt_SubSystem, 1, wxALL, 2);
 
-			sizNOfPars->Add(m_txt_ParamNames, 0, wxALL, 5);
+            gSizer1->Add(m_sta_CmdCode, 0, wxALIGN_RIGHT | wxALL, 2);
+            gSizer1->Add(m_txt_CmdCode, 1, wxALL, 2);
+
+            gSizer1->Add(m_sta_ParamPattern, 0, wxALIGN_RIGHT | wxALL, 2);
+            gSizer1->Add(m_txt_ParamPattern, 1, wxALL, 2);
+
+        sizNOfPars->Add(gSizer1, 0, wxALL, 0);
 #endif			
 
-		SIZER_STATDEBUG(sizMotor, "Axes", wxHORIZONTAL);
-			sizMotor->Add(m_cho_Motor, 0, wxALL, 5);
+        SIZER_STATDEBUG(sizParams2, "Parameters", wxVERTICAL);
+            sizParams2->SetMinSize(wxSize(500, 200));
+            for(int i=0; i<WXSIZEOF(m_Params); i++)
+                sizParams2->Add(m_Params[i], 0, wxALL | wxGROW, 0);
 
-		SIZER_STATDEBUG(sizParams2, "Parameters", wxVERTICAL);
-			sizParams2->SetMinSize(wxSize(500, 200));
-			for(int i=0; i<WXSIZEOF(m_Params); i++)
-				sizParams2->Add(m_Params[i], 0, wxALL | wxGROW, 0);
-
-		sizTop->Add(sizDBInfo, 0, wxALL | wxGROW, 5);
-		sizTop->Add(sizCmd,		0, wxALL | wxGROW, 5);
+        sizTop->Add(sizDBInfo, 0, wxALL | wxGROW, 5);
+        sizTop->Add(sizComp,	0, wxALL | wxGROW, 5);
+        sizTop->Add(sizCmd,		0, wxALL | wxGROW, 5);
 #if defined(SHOW_PARAMS_INFO)
-		sizTop->Add(sizNOfPars,	0, wxALL | wxGROW, 5);
+        sizTop->Add(sizNOfPars,	0, wxALL | wxGROW, 5);
 #endif
 
-		sizTop->Add(sizMotor,	0, wxALL | wxGROW, 5);
-		sizTop->Add(0, 0, 1, wxEXPAND, 6);
-		sizTop->Add(sizParams2, 0, wxALL | wxGROW, 5);
+        sizTop->Add(0, 0, 1, wxEXPAND, 6);
+        sizTop->Add(sizParams2, 0, wxALL | wxGROW, 5);
+        
+SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
+    sizMaster->Add(sizTop,		1, wxALL | wxGROW, 0);
+    
+    sizMaster->Add(m_Txt_Result, 0, wxALL | wxGROW, 0);
+    
+    SetSizer(sizMaster); // use the sizer for layout
+    sizMaster->Fit(this); // fit the dialog to the contents
+    sizMaster->SetSizeHints(this); // set hints to honor min size
 
-#if defined(USE_SUBSYSTEM)
-	sizMaster->Add(sizComp,		0, wxALL , 0);
-#endif
-	sizMaster->Add(sizTop,		1, wxALL | wxGROW, 0);
-	
-	sizMaster->Add(m_Txt_Result, 0, wxALL | wxGROW, 0);
-	
-	SetSizer(sizMaster); // use the sizer for layout
-	sizMaster->Fit(this); // fit the dialog to the contents
-	sizMaster->SetSizeHints(this); // set hints to honor min size
-
-	m_cho_StepperCmd->SetFocus();//Focus on master but is unknown!
+    m_cho_StepperCmd->SetFocus();//Focus on master but is unknown!
 }
 
 int SelezionaPerClientData(wxChoice* choice, void* targetData) {
-	for (unsigned int i = 0; i < choice->GetCount(); ++i) {
-		if (choice->GetClientData(i) == targetData) {
-			choice->SetSelection(i);
-			return i;
-		}
-	}
-	return -1;
+    if (targetData) {
+        for (unsigned int i = 0; i < choice->GetCount(); ++i) {
+            if (choice->GetClientData(i) == targetData) {
+                choice->SetSelection(i);
+                return i;
+            }
+        }
+    }
+    return -1;
 }
 
 void CmdEditorCtrl::DBData2UI(cCmdStepper& vStep) {
-	wxString aa = DBData2String(vStep);
-	String2UI(aa);
+    wxString aa = DBData2String(vStep);
+    String2UI(aa);
 }
 
-bool CmdEditorCtrl::PoseCommand(char c, uint8_t NumPar) {	//From ?? to CmdEditorCtrl
-	const sSampler_Commands* pCmd = Command_GetByCmd(c, NumPar);
-	if(!pCmd) {
-		//wxMessageBox(wxString::Format("Command ['%c' %d] not found in 'sSampler_Commands'", c, NumPar), "Error", wxOK | wxICON_INFORMATION, NULL);
-		m_cho_StepperCmd->SetSelection(-1);
-		m_cho_Motor->SetSelection(-1);
-		m_txt_NumOfPars->SetValue		(wxEmptyString);
-		m_txt_ParamNames->SetValue		(wxEmptyString);
-		m_txt_CmdCode->SetValue			(wxEmptyString);
-		m_txt_ParamPattern->SetValue	(wxEmptyString);
-		//m_Txt_Result->SetValue(wxEmptyString);
 
-		for (int ParIdx=0; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
-			m_Params[ParIdx]->Show(false);
-		}
-		//m_Txt_Result->ChangeValue("Error");
-		m_Txt_Result->SetBackgroundColour(wxColor(255, 0, 0));
-		return false;
-	}
-	m_Txt_Result->SetBackgroundColour(wxColor(255, 255, 255));
+bool CmdEditorCtrl::PoseCommand(const char SubSys, const char c, uint8_t NumPar) {	//From ?? to CmdEditorCtrl
+    const sSampler_Commands* pCmd = Command_GetByCmd(SubSys, c, NumPar);
+    if(!pCmd) {
+        //wxMessageBox(wxString::Format("Command ['%c' %d] not found in 'sSampler_Commands'", c, NumPar), "Error", wxOK | wxICON_INFORMATION, NULL);
+        m_cho_SubSystem->SetSelection(-1);
+        m_cho_StepperCmd->SetSelection(-1);
 
-	int DefCmd = SelezionaPerClientData(m_cho_StepperCmd, (void*)pCmd);
-	m_cho_StepperCmd->SetSelection(DefCmd);
+        m_txt_SubSystem->SetValue       (wxEmptyString);
+        m_txt_CmdCode->SetValue			(wxEmptyString);
+        m_txt_ParamPattern->SetValue	(wxEmptyString);
 
-	wxCommandEvent event(wxEVT_CHOICE, m_cho_StepperCmd->GetId());
-	event.SetEventObject(m_cho_StepperCmd);
-	event.SetInt(DefCmd); //
-	m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
-	return true;
+        for (int ParIdx=0; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
+            m_Params[ParIdx]->Show(false);  //A
+        }
+        m_Txt_Result->SetBackgroundColour(wxColor(255, 0, 0));
+        return false;
+    }
+    m_Txt_Result->SetBackgroundColour(wxColor(255, 255, 255));
+
+    int n = SelezionaPerClientData(m_cho_SubSystem,  (void*)SubSystem_GetByType(SubSys));
+    m_cho_SubSystem->SetSelection(n);
+    {   //Refill m_cho_StepperCmd
+        wxCommandEvent event(wxEVT_CHOICE, m_cho_SubSystem->GetId());
+        event.SetEventObject(m_cho_SubSystem);
+        event.SetInt(n); //
+        m_cho_SubSystem->GetEventHandler()->ProcessEvent(event);
+    }
+
+    int DefCmd = SelezionaPerClientData(m_cho_StepperCmd, (void*)pCmd);
+    m_cho_StepperCmd->SetSelection(DefCmd);
+    {   //Refill Parameters
+        wxCommandEvent event(wxEVT_CHOICE, m_cho_StepperCmd->GetId());
+        event.SetEventObject(m_cho_StepperCmd);
+        event.SetInt(DefCmd); //
+        m_cho_StepperCmd->GetEventHandler()->ProcessEvent(event);
+    }
+    return true;
 }
 
-bool CmdEditorCtrl::Cmd2UI(uint8_t Mot, char Cmd, const std::vector<long>& ParValues) {
-	if ( !PoseCommand(Cmd, ParValues.size()) )
-		return false;
-	m_cho_Motor->SetSelection(Mot);//Set Motor
-	//......................................................................
-	for (int i = 0; i < ParValues.size(); i++) m_Params[i]->Freeze();
-	for (int i = 0; i < ParValues.size(); i++) {
-		m_Params[i]->SetCurrentValue(ParValues[i]);
-	}
-	for (int i = 0; i < ParValues.size(); i++) m_Params[i]->Thaw();
-	//......................................................................
-	m_Txt_Result->ChangeValue(UI2String());
-	return true;
+bool CmdEditorCtrl::Cmd2UI(const char Sys, const char Cmd, const std::vector<long>& ParValues) {   //ToDo
+    if ( !PoseCommand(Sys, Cmd, ParValues.size()) ) //ToDo
+        return false;
+    //......................................................................
+    for (int i = 0; i < ParValues.size(); i++) m_Params[i]->Freeze();
+    for (int i = 0; i < ParValues.size(); i++) {
+        m_Params[i]->SetCurrentValue(ParValues[i]);
+    }
+    for (int i = 0; i < ParValues.size(); i++) m_Params[i]->Thaw();
+    //......................................................................
+    m_Txt_Result->ChangeValue(UI2String());
+    return true;
 }
 
 bool CmdEditorCtrl::String2UI(wxString StrCmd) {
-	//1) Parse Command
-	int		Motor;
-	char	chCmd;
-	int32_t a[7];
-	int FieldsFounded = sscanf(StrCmd.c_str(), "m%d;%c,%ld,%ld,%ld,%ld,%ld,%ld", &Motor, &chCmd, &a[0], &a[1], &a[2], &a[3], &a[4], &a[5]);
-	std::vector<long>	ParValues;
-	for (int i = 0; i < FieldsFounded - 2; i++) {
-		ParValues.push_back(a[i]);
-	}
-	return Cmd2UI(Motor, chCmd, ParValues);
+    char	chSubSys;
+    char	chCmd;
+    int32_t a[NUMOFPARAMS];
+#if NUMOFPARAMS != 10
+#error REVIEW CODE
+#endif
+    wxString Format = "c%c,%c";
+    for (int i = 0; i < NUMOFPARAMS; i++)
+        Format+=",%ld";
+    int FieldsFounded = sscanf(StrCmd.c_str(), Format, &chSubSys, &chCmd,
+        &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8], &a[9]);
+    std::vector<long>	ParValues;
+    for (int i = 0; i < FieldsFounded - 2; i++) {
+        ParValues.push_back(a[i]);
+    }
+    return Cmd2UI(chSubSys, chCmd, ParValues);//ToDo
 }

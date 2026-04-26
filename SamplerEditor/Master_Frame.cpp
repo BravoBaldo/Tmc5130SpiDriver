@@ -554,6 +554,7 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				info.m_itemId = m_lstPrgDetail->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
 				info.SetTextColour(*wxRED);	//info.SetBackgroundColour(*wxGREEN);
 				info.SetFont(*wxITALIC_FONT);
+
 				m_lstPrgDetail->SetItem(info);
 				m_lstPrgDetail->RefreshItem(info.m_itemId);
 				//-----------------------------------------------------------------------

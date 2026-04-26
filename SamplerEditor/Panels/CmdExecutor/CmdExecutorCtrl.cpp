@@ -66,16 +66,18 @@ bool CmdExecutorCtrl::ExecuteSteps(long from, long to) {
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
 		int j = 0;
 		Msg[j++] = '0';
-		Msg[j++] = vStep.m_Motor;
+		//Msg[j++] = vStep.m_Motor;
 		Msg[j++] = vStep.m_Cmd;
-		vStep.m_Cnt = vStep.m_Pattern.Length();
-		Msg[j++] = vStep.m_Cnt;// vStep.m_Cnt;
+		//vStep.m_Cnt = vStep.m_Pattern.Length();
+		unsigned int Cnt = vStep.m_Pattern.Length();
+		Msg[j++] = Cnt;// vStep.m_Cnt;
 
-		memcpy(&Msg[j], vStep.m_Pattern.c_str().AsUnsignedChar(), vStep.m_Cnt);
-		j += vStep.m_Cnt;
+		memcpy(&Msg[j], vStep.m_Pattern.c_str().AsUnsignedChar(), Cnt);
+		j += Cnt;
 
-		std::memcpy(&Msg[j], &vStep.m_Par[0], sizeof(long)*vStep.m_Cnt);
-		j += sizeof(long) * vStep.m_Cnt;
+		std::memcpy(&Msg[j], &vStep.m_Par[0], sizeof(long)*Cnt);
+		j += sizeof(long) * vStep.m_Pattern.Length();// vStep.m_Cnt;	//ToDo
+		
 		//-----------------------------
 		Msg[j] = vStep.m_MasterId;		j += sizeof(vStep.m_MasterId);
 		Msg[j] = vStep.m_DetailProg;	j += sizeof(vStep.m_DetailProg);

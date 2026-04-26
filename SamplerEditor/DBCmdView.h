@@ -21,13 +21,13 @@ public:
 	void	DBClearProcess(const wxString& OldName, const unsigned int ProgId, bool ClearAll = false);
 	void	DBPrintExport(const wxString& Name, const unsigned int ProgId, bool PrintOnly = false);
 private:
-	//void	OnListEvent(wxListEvent& Evt);
 	bool	m_SortByName;
-
 	DECLARE_NO_COPY_CLASS(cMainListCtrl)
-	//	DECLARE_EVENT_TABLE()
 };
+
 //-----------------------------------------------
+//Compare with SqlQuery_Detail
+enum eDetHeaders{ eDetailProg=0, eSubSys, eCmd, ePattern, eParFirst, eParLast = eParFirst + NUMOFPARAMS-1, eMasterId };
 class cDetailListCtrl : public wxListView {
 public:
 	cDetailListCtrl(wxWindow* parent,
@@ -52,5 +52,4 @@ private:
 	void	OnChar(wxKeyEvent& Evt);
 
 	DECLARE_NO_COPY_CLASS(cDetailListCtrl)
-//	DECLARE_EVENT_TABLE()
 };

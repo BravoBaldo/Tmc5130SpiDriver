@@ -214,15 +214,14 @@ void cDetailListCtrl::PrgDetail_Fill(unsigned int Id) {
 bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) {
 	if (rowIndex < 0 || rowIndex >= this->GetItemCount()) return false;
 
-	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, 0));
-	vStep.m_Motor		= wxAtol(this->GetItemText(rowIndex, 1));
-	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, 2));
-	vStep.m_Pattern		=        this->GetItemText(rowIndex, 3);
-	vStep.m_Cnt			= wxAtol(this->GetItemText(rowIndex, 4));
+	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));	//0
+	vStep.m_SubSystem	= wxAtol(this->GetItemText(rowIndex, eSubSys));		//1
+	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, eCmd));		//2
+	vStep.m_Pattern		=        this->GetItemText(rowIndex, ePattern);		//3
 	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
-		vStep.m_Par[i] = wxAtol(this->GetItemText(rowIndex, 5+i));
+		vStep.m_Par[i]	= wxAtol(this->GetItemText(rowIndex, eParFirst+i));	//
 	}
-	vStep.m_MasterId = wxAtol(this->GetItemText(rowIndex, 12));
+	vStep.m_MasterId	= wxAtol(this->GetItemText(rowIndex, eMasterId));	//
 	return true;
 }
 
@@ -231,16 +230,15 @@ void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 	vStep.m_DetailProg = 0;	//Unused value
 	info.m_itemId = this->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);	//this->GetFocusedItem();
 	if (info.m_itemId >= 0) {
-		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!
-
-		info.m_col = 0;	this->GetItem(info);	vStep.m_DetailProg	= wxAtol(info.m_text);
-		info.m_col = 1;	this->GetItem(info);	vStep.m_Motor		= wxAtol(info.m_text);
-		info.m_col = 2;	this->GetItem(info);	vStep.m_Cmd			= wxAtol(info.m_text);
-		info.m_col = 3;	this->GetItem(info);	vStep.m_Pattern		= info.m_text;
+		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!	//ToDo
+		info.m_col = eDetailProg;	this->GetItem(info);	vStep.m_DetailProg	= wxAtol(info.m_text);
+		info.m_col = eSubSys;		this->GetItem(info);	vStep.m_SubSystem	= wxAtol(info.m_text);
+		info.m_col = eCmd;			this->GetItem(info);	vStep.m_Cmd			= wxAtol(info.m_text);
+		info.m_col = ePattern;		this->GetItem(info);	vStep.m_Pattern		= info.m_text;
 		for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
-			info.m_col = 5+i;	this->GetItem(info);	vStep.m_Par[i] = wxAtol(info.m_text);
+			info.m_col = eParFirst+i;	this->GetItem(info);	vStep.m_Par[i] = wxAtol(info.m_text);
 		}
-		info.m_col = 12;	this->GetItem(info);	vStep.m_MasterId = wxAtol(info.m_text);
+		info.m_col = eMasterId;	this->GetItem(info);	vStep.m_MasterId = wxAtol(info.m_text);
 	}
 }
 
@@ -256,8 +254,8 @@ bool cDetailListCtrl::GetCurrHead(unsigned int* ProgId, unsigned int* DetailId) 
 		wxListItem	LItem;
 		LItem.m_itemId = SelectedStep;
 		LItem.m_mask = wxLIST_MASK_TEXT;	//I want the text!
-		if (ProgId  ) { LItem.m_col = 12;	this->GetItem(LItem);	*ProgId = wxAtol(LItem.m_text); }	//MasterId
-		if (DetailId) { LItem.m_col = 0;	this->GetItem(LItem);	*DetailId = wxAtol(LItem.m_text); }	//DetailProg
+		if (ProgId  ) {	LItem.m_col = eMasterId;	this->GetItem(LItem);	*ProgId   = wxAtol(LItem.m_text);	}	//MasterId
+		if (DetailId) {	LItem.m_col = eDetailProg;	this->GetItem(LItem);	*DetailId = wxAtol(LItem.m_text);	}	//DetailProg
 		return true;
 	}
 	return false;
@@ -267,7 +265,7 @@ bool cDetailListCtrl::GetCurrHead(unsigned int* ProgId, unsigned int* DetailId) 
 void cDetailListCtrl::DeleteItem(void) {
 	unsigned int ProgId = 0, DetailId = 0;
 	/*bool b =*/ GetCurrHead(&ProgId, &DetailId);
-	if (wxMessageBox(wxString::Format("%s %d", _("Are you sure to delete record"), DetailId), _("Warning"), wxNO_DEFAULT | wxYES_NO | wxICON_EXCLAMATION, NULL) == wxYES) {
+	if (wxMessageBox(wxString::Format("%s %d %d", _("Are you sure to delete record"), ProgId, DetailId), _("Warning"), wxNO_DEFAULT | wxYES_NO | wxICON_EXCLAMATION, NULL) == wxYES) {
 #if defined(USE_ODBC)
 		Next_DB* MyDB = g_NazarDB_Get(); if (MyDB == NULL) return;
 		MyDB->ProgDetail_Delete2(ProgId, DetailId);

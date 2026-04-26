@@ -35,4 +35,3 @@
 #define SIZER_STATDEBUG3(sizName,sizLabel,sizDirection)			wxBoxSizer			*sizName = new wxBoxSizer( sizDirection );
 
 #endif //WX_STDWX_H
-#define USE_SUBSYSTEM

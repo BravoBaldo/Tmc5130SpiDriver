@@ -8,6 +8,9 @@
 #include "cDBSampler.h"
 
 
+#define DBNAME "../SamplerXX.db"
+
+
 #include "wx/aboutdlg.h"
 // these headers are only needed for custom about dialog
 #include "wx/statline.h"
@@ -61,6 +64,29 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 //	EVT_PAINT			(				OnPaint )
 END_EVENT_TABLE()
 
+void Test(cDBSampler& yy,
+	uint16_t		MasterId,
+	uint16_t		DetailProg,
+	byte			SubSystem,
+	byte			Cmd,
+	const wxString&	Pattern,
+	int				P0,
+	int				P1,
+	int				P2,
+	int				P3,
+	int				P4
+) {
+	ParamsType	Params;
+	Params.Add(P0);
+	Params.Add(P1);
+	Params.Add(P2);
+	Params.Add(P3);
+	Params.Add(P4);
+	cCmdStepper item(MasterId, DetailProg, SubSystem, Cmd, Pattern, Params);
+	yy.ProgDetail_Insert(item, false);
+}
+
+
 void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	m_btn_Start->Enable( false );
 	m_btn_Stop->Enable( false );
@@ -68,45 +94,65 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	switch( event.GetId() ) {
 		case ID_BTN_Start:	
 			{
-				cDBSampler* xx = new cDBSampler("../Sampler.db");
+				cDBSampler* xx = new cDBSampler(DBNAME);
 				wxString Ret = xx->GetLastError();
 				wxDELETE(xx);
 			}
 			break;
 		case ID_BTN_Stop:
 			{
-				cDBSampler yy("../Sampler.db");
+				cDBSampler yy(DBNAME);
 				wxString Ret = yy.GetLastError();
 				if (!yy.CreateDB())
 					LogMe("Errore nella creazione del DB\n", true);
 			}
 			break;
 		case ID_BTN_TESTS: {
-				cDBSampler yy("../Sampler.db");
+				cDBSampler yy(DBNAME);
 				yy.DBCreateNewProcess();
 			}
 			break;
 		case ID_BTN_TESTS+1: {
-				cDBSampler yy("../Sampler.db");
-				cCmdStepper item(10, 1, 2, 'A', "aia", 3, 1097, 2098, 3099);	yy.ProgDetail_Insert(item, true);
-						item.Set(10, 2, 3, 'A', "aia", 3, 1001, 2001, 3001);	yy.ProgDetail_Insert(item, true);
-						item.Set(10, 3, 1, 'A', "aia", 3, 1002, 2002, 3002);	yy.ProgDetail_Insert(item, true);
-				yy.ProgDetail_Renum(10);
+				cDBSampler yy(DBNAME);
+				Test(yy, 1, 1, 'M', 'A', "Maia", 2, 3, 1097, 2098, 3099);
+				Test(yy, 1, 3, 'M', 'B', "Maib", 3, 3, 1001, 2001, 3001);
+				Test(yy, 1, 2, 'M', 'C', "Maic", 1, 3, 1002, 2002, 3002);
+				yy.ProgDetail_Renum(1,1);
 			}
 			break;
 		case ID_BTN_TESTS + 2: {
-				cDBSampler yy("../Sampler.db");
-				yy.ProgDetail_Swap(10, 10, false);
+				cDBSampler yy(DBNAME);
+				yy.ProgDetail_Swap(1, 2, false);	//Swap with Previous
 			}
 			break;
 		case ID_BTN_TESTS + 3: {
-			cDBSampler yy("../Sampler.db");
-			cCmdStepper item    (10, 100, 11, 'B', "p", 3, 1097, 2098, 3099);	yy.ProgDetail_Insert(item, true);
-						item.Set(10, 101, 12, 'C', "q", 3, 1001, 2001, 3001);	yy.ProgDetail_Insert(item, true);
-						item.Set(10, 102, 13, 'D', "r", 3, 1002, 2002, 3002);	yy.ProgDetail_Insert(item, true);
-			yy.ProgDetail_Delete2(10,101);
-		}
-							 break;
+				cDBSampler yy(DBNAME);
+				Test(yy, 2, 11, 'M', 'A', "p", 2, 3, 1097, 2098, 3099);
+				Test(yy, 2, 12, 'M', 'A', "q", 2, 3, 1097, 2098, 3099);
+				Test(yy, 2, 13, 'M', 'A', "r", 2, 3, 1097, 2098, 3099);
+				yy.ProgDetail_Delete2(10,101);
+			}
+			break;
+		case ID_BTN_TESTS + 4: {
+				cDBSampler yy(DBNAME);
+				yy.ProgDetail_ReadAll(1, LogMe);
+			}
+			break;
+		case ID_BTN_TESTS + 5: {
+			#if defined(USE_DATAVIEWCTRL)
+				m_dvCtrl->ClearColumns();
+				m_dvCtrl->AppendTextColumn("Uno", wxDATAVIEW_CELL_INERT, 50);
+				m_dvCtrl->AppendTextColumn("Due", wxDATAVIEW_CELL_INERT, 150);
+				m_dvCtrl->AppendTextColumn("Tre", wxDATAVIEW_CELL_INERT, 100);
+				m_dvCtrl->AppendTextColumn("Quattro", wxDATAVIEW_CELL_INERT, 80);
+				m_dvCtrl->DeleteAllItems();
+				cDBSampler yy(DBNAME);
+				yy.DataViewCtrl_FillFromSql(m_dvCtrl, "Select * from SAM_ProgDetail",true);
+
+			#endif
+			}
+			break;
+
 
 		default:			LogMe("Unknown\n",	true );			break;
 	}
@@ -155,7 +201,6 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 		menuBar->Append( menuTools, _("&Tools") );
 #endif
 
-
 	SetMenuBar( menuBar );
 
 	// Menu contestuale
@@ -178,15 +223,17 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	//---------------------------------------------------
 	// Widgets
 	//---------------------------------------------------
-	m_btn_Start		= new wxButton	( this, ID_BTN_Start,	_( "Start" ),	wxPoint( 350,  5 ),	wxDefaultSize );
-	m_btn_Stop		= new wxButton	( this, ID_BTN_Stop,	_( "Stop" ),	wxPoint( 350, 35 ),	wxDefaultSize );
+	m_btn_Start		= new wxButton	( this, ID_BTN_Start,	_( "Connect to DB" ),	wxPoint( 350,  5 ),	wxDefaultSize );
+	m_btn_Stop		= new wxButton	( this, ID_BTN_Stop,	_( "Create DB" ),	wxPoint( 350, 35 ),	wxDefaultSize );
 	for (int i = 0; i < WXSIZEOF(m_btn_Tests); i++) {
 		m_btn_Tests[i] = new wxButton(this, ID_BTN_TESTS+i, wxString::Format("Test %02d", i), wxPoint(350, 35), wxDefaultSize);
 	}
-	m_btn_Tests[0]->SetLabel("New Master");
+	m_btn_Tests[0]->SetLabel("New Master");	//
 	m_btn_Tests[1]->SetLabel("Ins.Rows+Renum");
 	m_btn_Tests[2]->SetLabel("Swap 2/3");
 	m_btn_Tests[3]->SetLabel("Ins+Del");
+	m_btn_Tests[4]->SetLabel("Select 1");
+	m_btn_Tests[5]->SetLabel("Change Headers");
 	//DBCreateNewProcess
 	//Insert rows and renum
 	m_txt_Log		= new wxTextCtrl( this, wxID_ANY,		_("Hello\n"),	wxPoint( 100,  6 ),	wxSize(50, -1 ), wxTE_MULTILINE );
@@ -194,19 +241,52 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+wxT("\\") ), false);
 
+#if defined(USE_DATAVIEWCTRL)
+	m_dvCtrl = new wxDataViewListCtrl(this, wxID_ANY);
+	m_dvCtrl->AppendTextColumn("ID",	wxDATAVIEW_CELL_INERT, 50);
+	m_dvCtrl->AppendTextColumn("Nome",	wxDATAVIEW_CELL_INERT, 150);
+	m_dvCtrl->AppendTextColumn("Ruolo",	wxDATAVIEW_CELL_INERT, 100);
+	m_dvCtrl->AppendTextColumn("Stato",	wxDATAVIEW_CELL_INERT, 80);
 
+	wxVector<wxVariant> riga;
+	// Riga 1
+	riga.clear();
+	riga.push_back(wxVariant("1"));
+	riga.push_back(wxVariant("Mario Rossi"));
+	riga.push_back(wxVariant("Admin"));
+	riga.push_back(wxVariant("Attivo"));
+	m_dvCtrl->AppendItem(riga);
 
+	// Riga 2
+	riga.clear();
+	riga.push_back(wxVariant("2"));
+	riga.push_back(wxVariant("Luigi Verdi"));
+	riga.push_back(wxVariant("User"));
+	riga.push_back(wxVariant("Inattivo"));
+	m_dvCtrl->AppendItem(riga);
+
+	// Riga 3
+	riga.clear();
+	riga.push_back(wxVariant("3"));
+	riga.push_back(wxVariant("Anna Bianchi"));
+	riga.push_back(wxVariant("Guest"));
+	riga.push_back(wxVariant("Attivo"));
+	m_dvCtrl->AppendItem(riga);
+#endif
 
 	SetLayouts ();
 
 	
-//	if ( !m_bitmap.LoadFile( _T("C:/DatiBaldo/Job/Video/Minimal_Video/Jigsaw_06/Images/Src/bmpExample.bmp"), wxBITMAP_TYPE_BMP ) )
+//	if ( !m_bitmap.LoadFile( _T("C:/.../Images/Src/bmpExample.bmp"), wxBITMAP_TYPE_BMP ) )
 //		wxLogError(wxT("Can't load BMP image"));
 	//---------------------------------------------------
 }
 
 void MyFrame::SetLayouts ( void ) {
 #ifdef USE_AUI
+	#if defined(USE_DATAVIEWCTRL)
+		m_mgr.AddPane(m_dvCtrl, wxAuiPaneInfo().Name(wxT("m_dvCtrl")).Caption(_("m_dvCtrl")).Center());
+	#endif
 	m_mgr.AddPane ( m_txt_Log,		wxAuiPaneInfo ().Name ( wxT ( "m_txt_Log" ) )	.Caption ( _ ( "m_txt_Log" ) )		.Center ()	);
 	m_mgr.AddPane ( m_btn_Start,	wxAuiPaneInfo ().Name ( wxT ( "m_btn_Start" ) )	.Caption ( _ ( "m_btn_Start" ) )	.Right ()	);
 	m_mgr.AddPane ( m_btn_Stop,		wxAuiPaneInfo ().Name ( wxT ( "m_btn_Stop" ) )	.Caption ( _ ( "m_btn_Stop" ) )		.Right ()	);

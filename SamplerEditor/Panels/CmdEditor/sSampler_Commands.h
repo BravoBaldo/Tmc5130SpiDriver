@@ -3,6 +3,15 @@
 
 typedef enum { eChoice, eNumber, eTime, eUnknown } eParType;
 
+struct sSubSystem {
+	const char		Type;
+	wxString		Descr;
+};
+
+unsigned int				SubSystem_Size(void);
+const sSubSystem*			SubSystem_Get(unsigned int i);
+const sSubSystem*			SubSystem_GetByType(const char Type);
+
 
 typedef struct {	//Commands' parameters
 	byte					ParId;
@@ -14,7 +23,11 @@ typedef struct {	//Commands' parameters
 	std::vector<wxString>	ParValues;
 }sParams;
 
+const sParams* Param_Get(byte Id);
+
+
 typedef struct {	//Microcontroller Commands
+	const char				SubSys;
 	const char				cmd;
 	const char*				Descr;
 	const char*				ParamPattern;
@@ -23,16 +36,16 @@ typedef struct {	//Microcontroller Commands
 	decltype(cmd)			CmdTyp;
 }sSampler_Commands;
 
-typedef struct {	//Microcontroller Commands Identification
+unsigned int				Commands_Size(void);
+const sSampler_Commands*	Command_Get(unsigned int i);
+const sSampler_Commands*	Command_GetByCmd(char SubSys, char c, uint8_t NumPar);
+//int							Command_GetIdOfCmd(char SubSys, char c, uint8_t NumPar);
+void						Params_RemoveAll(void);
+
+
+/*typedef struct {	//Microcontroller Commands Identification
 	const char	cmd;
 	uint8_t		NumPar;
 }sCommandId;
-
-unsigned int				Commands_Size(void);
-const sSampler_Commands*	Command_Get(unsigned int i);
-const sSampler_Commands*	Command_GetByCmd(char c, uint8_t NumPar);
-int							Command_GetIdOfCmd(char c, uint8_t NumPar);
-const sParams*				Param_Get(byte Id);
+*/
 void						sSampler_Check(void);
-void						Params_RemoveAll(void);
-

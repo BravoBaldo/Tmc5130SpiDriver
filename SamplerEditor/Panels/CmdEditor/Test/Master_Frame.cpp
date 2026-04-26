@@ -73,7 +73,8 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	switch( event.GetId() ) {
 		case ID_BTN_Start:	
 			LogMe("String2UI\n", true);
-			m_CmdEditorPanel->String2UI("m0;G,100,120,2000");
+			//cM,y,3,101,102,103
+			m_CmdEditorPanel->String2UI("cM,G,0,100,120,2000");
 			break;
 		case ID_BTN_Stop:
 			LogMe("ToDo!!!!\n",	true );
@@ -154,7 +155,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_btn_Start		= new wxButton	( this, ID_BTN_Start,	_( "Sample" ),	wxPoint( 350,  5 ),	wxDefaultSize );
 	m_btn_Stop		= new wxButton	( this, ID_BTN_Stop,	_( "ToDo" ),	wxPoint( 350, 35 ),	wxDefaultSize );
 
-	m_txt_Input		= new wxTextCtrl(this, ID_TXT_Input, _("m3;y,101,102,103"), wxPoint(100, 6), wxSize(50, -1));
+	m_txt_Input		= new wxTextCtrl(this, ID_TXT_Input, _("cM,G,0,100,120,2000"), wxPoint(100, 6), wxSize(50, -1));
 
 	m_txt_Log		= new wxTextCtrl( this, wxID_ANY,		_("Hello\n"),	wxPoint( 100,  6 ),	wxSize(50, -1 ), wxTE_MULTILINE );
 	m_CmdEditorPanel= new CmdEditorCtrl(this, wxID_ANY);

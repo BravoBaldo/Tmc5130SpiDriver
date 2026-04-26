@@ -784,7 +784,7 @@ private:
     GoHome_ExitLS,
   }FSA_Status;
 
-  struct Fsa {  //Finite State Machine for each Motors
+  +  //Finite State Machine for each Motors
     FSA_Status      Status;       //Finite State Automata
     uint16_t        SecondA;      //AMAX
     uint32_t        StartV;       //VSTART
