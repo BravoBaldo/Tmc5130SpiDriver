@@ -3,6 +3,24 @@
 #include "cHIDAPI.h"
 #include "CmdEditorCtrl.h"
 #include "DBCmdView.h"
+#include "CmdExecutorCtrl.h"
+
+typedef enum : uint8_t { eCmdOk, eCmdRetry, eCmdError }eCmdAnswer;
+#pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
+typedef struct _sCommAnsw {
+	char		m_SubSystem;						//1
+	byte		m_Cmd			= 0;				//1
+	uint16_t	m_MasterId		= 0;				//2
+	uint16_t	m_DetailProg	= 0;				//2
+
+	eCmdAnswer	m_Result		= eCmdOk;			//1
+	int32_t   	m_Val			= 0;				//4
+	char		m_Text[30]		= "";
+}sCommAnsw;
+#pragma pack(pop) // Ripristina l'allineamento originale
+
+
+
 
 class CmdExecutorCtrl : public wxPanel {
 	wxButton*	m_Btn_ExecAll = nullptr;
@@ -19,8 +37,9 @@ class CmdExecutorCtrl : public wxPanel {
 	DECLARE_EVENT_TABLE()
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
-	bool		ExecuteSteps	(long from, long to);
-	void		SendCommand		(const unsigned char* data, size_t length, long long TimoutMs = 100);
+	bool		ExecuteStep		(cCmdStepper& vStep);
+	void		SendCommand		(const unsigned char* data, size_t length, long TimeoutMs = 500);
+	eCmdAnswer	ParseAnswer(const sCommAnsw& Answ);
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,
@@ -34,5 +53,5 @@ public:
 		m_ptrEditor = ptrEditor;
 		m_ptrPrgDetail = ptrPrgDetail;
 	}
-	bool		ExecuteFrom(long from, long to);
+	bool		ExecuteSteps(long from, long to);
 };

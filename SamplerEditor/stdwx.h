@@ -55,6 +55,15 @@ C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
 	);
 
 
+typedef int32_t		ParamType;	//See also in cCmdStepper.h
+
+#define GET_MAX_SIGNED(T) ((T)((1ULL << (sizeof(T) * 8 - 1)) - 1))
+#define GET_MIN_SIGNED(T) ((T)(-(GET_MAX_SIGNED(T)) - 1))
+
+#define MAX_PARAM GET_MAX_SIGNED(ParamType)
+#define MIN_PARAM GET_MIN_SIGNED(ParamType)
+
+
 #ifdef _DEBUG
 	#define SIZER_STATDEBUG(sizName,sizLabel,sizDirection)			wxStaticBoxSizer	*sizName = new wxStaticBoxSizer( new wxStaticBox( this, -1, sizLabel ), sizDirection );
 	#define SIZER_STATDEBUG2(Father,sizName,sizLabel,sizDirection)	wxStaticBoxSizer	*sizName = new wxStaticBoxSizer( new wxStaticBox( Father, -1, sizLabel ), sizDirection );

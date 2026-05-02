@@ -34,8 +34,7 @@ cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
 
             Cmd.m_SubSystem = c->SubSys;
             Cmd.m_Cmd       = c->cmd;
-            Cmd.m_Pattern = c->ParamPattern;
-            //Cmd.m_Cnt = strlen(c->ParamPattern);
+            Cmd.SetPattern(c->ParamPattern);
             for (size_t i = 0; i < c->ParNames.size(); i++) {
                 Cmd.m_Par[i] = m_Params[i]->GetValue();
             }
@@ -50,7 +49,7 @@ wxString CmdEditorCtrl::DBData2String(cCmdStepper& vStep) {
     //if (vStep.m_Motor < 0)
     //    return wxEmptyString;
     Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
-    for (size_t i = 0; i < strlen(vStep.m_Pattern); i++) {
+    for (size_t i = 0; i < vStep.m_PatLen; i++) {
         Result += wxString::Format(",%ld", vStep.m_Par[i]);
     }
     return Result;
@@ -103,6 +102,7 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                     m_txt_SubSystem->SetValue(c->SubSys);
                     m_txt_CmdCode->SetValue(c->cmd);					//Command Id
                     m_txt_ParamPattern->SetValue(c->ParamPattern);		//Params List
+                    m_txt_LenPattern->SetValue(wxString::Format("%d", NumOfParams)); //.Lenght()
     #ifdef WWWWWWWWWW
                     //Fills m_txt_ParamNames for DEBUG 
                     m_txt_ParamNames->SetValue(wxEmptyString);
@@ -242,6 +242,7 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
     m_sta_SubSystem     = new wxStaticText(this, wxID_ANY, _("SubSys"),     wxDefaultPosition, wxDefaultSize, 0);    m_sta_SubSystem->Wrap(-1);
     m_sta_CmdCode       = new wxStaticText(this, wxID_ANY, _("Code"),       wxDefaultPosition, wxDefaultSize, 0);    m_sta_CmdCode->Wrap(-1);
     m_sta_ParamPattern  = new wxStaticText(this, wxID_ANY, _("Pattern"),    wxDefaultPosition, wxDefaultSize, 0);    m_sta_ParamPattern->Wrap(-1);
+    m_sta_LenPattern    = new wxStaticText(this, wxID_ANY, _("N.Params"),   wxDefaultPosition, wxDefaultSize, 0);    m_sta_LenPattern->Wrap(-1);
 
     m_txt_SubSystem = new wxTextCtrl(this, wxID_ANY, _("SubSystem"), wxDefaultPosition, wxSize(30, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */);
     m_txt_SubSystem->SetToolTip(_("m_txt_SubSystem"));
@@ -252,11 +253,16 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
     m_txt_ParamPattern = new wxTextCtrl(this, wxID_ANY, _("Command Pattern"), wxDefaultPosition, wxSize(115, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */ );
     m_txt_ParamPattern->SetToolTip(_("m_txt_ParamPattern"));
 
+    m_txt_LenPattern = new wxTextCtrl(this, wxID_ANY, _("Len Pattern"), wxDefaultPosition, wxSize(115, -1), wxALIGN_LEFT /* | wxTE_MULTILINE | wxTE_RICH | wxTE_READONLY */);
+    m_txt_LenPattern->SetToolTip(_("m_txt_LenPattern"));
+    
+
 #if !defined(SHOW_PARAMS_INFO)
     //m_txt_NumOfPars->Show(false);
     m_txt_SubSystem->Show(false);
     m_txt_CmdCode->Show(false);
     m_txt_ParamPattern->Show(false);
+    m_txt_LenPattern->Show(false);
     //m_txt_ParamNames->Show(false);
 #endif
 
@@ -306,6 +312,10 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 
             gSizer1->Add(m_sta_ParamPattern, 0, wxALIGN_RIGHT | wxALL, 2);
             gSizer1->Add(m_txt_ParamPattern, 1, wxALL, 2);
+
+            gSizer1->Add(m_sta_LenPattern, 0, wxALIGN_RIGHT | wxALL, 2);
+            gSizer1->Add(m_txt_LenPattern, 1, wxALL, 2);
+            
 
         sizNOfPars->Add(gSizer1, 0, wxALL, 0);
 #endif			
@@ -365,6 +375,7 @@ bool CmdEditorCtrl::PoseCommand(const char SubSys, const char c, uint8_t NumPar)
         m_txt_SubSystem->SetValue       (wxEmptyString);
         m_txt_CmdCode->SetValue			(wxEmptyString);
         m_txt_ParamPattern->SetValue	(wxEmptyString);
+        m_txt_LenPattern->SetValue      (wxEmptyString);
 
         for (int ParIdx=0; ParIdx < WXSIZEOF(m_Params); ParIdx++) {
             m_Params[ParIdx]->Show(false);  //A

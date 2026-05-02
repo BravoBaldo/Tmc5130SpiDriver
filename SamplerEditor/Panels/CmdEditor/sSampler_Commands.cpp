@@ -38,14 +38,15 @@ static const sParams SamplerParams[]{
 	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "Enable"})							},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
 	{ 's', eNumber,	"Speed",		500,			25000																			},
-	{ 't',   eTime,	"Time",			0,				wxINT32_MAX																		},	//wxUINT32_MAX = 0xffffffff
+	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
+	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({"None","FixedItalianFlag_Sx","FixedItalianFlag_Dx","MoveSingle_Sx","MoveSingle_Dx","MoveDouble_Sx","MoveDouble_Dx","MoveFlagItaly_Sx","MoveFlagItaly_Dx","GraysSx", "GraysDx","MoveArrow_Sx","MoveArrow_Dx","Fade","Bouncing"})							},
 
-	{ 'A', eNumber,	"Acc.n",		wxINT32_MIN,	wxINT32_MAX,	"Acceleration"				, RetArray2({"Acceleration"})},
+	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})},
 	{ 'C', eNumber,	"Byte",			0,				0xFF																			},
 	{ 'M', eChoice,	"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)", "Probe"})},
 	{ 'O', eChoice,	"On/Off",		0,				1,				"Off/ON"					, RetArray2({"Off", "ON"})			},
-	{ 'S', eNumber,	"Steps.",		wxINT32_MIN,	wxINT32_MAX,	"Steps"						, RetArray2({"Steps"})},
-	{ 'V', eNumber,	"Vel.",			wxINT32_MIN,	wxINT32_MAX,	"Velocity"					, RetArray2({"Velocity"})},
+	{ 'S', eNumber,	"Steps.",		MIN_PARAM,		MAX_PARAM,		"Steps"						, RetArray2({"Steps"})},
+	{ 'V', eNumber,	"Vel.",			MIN_PARAM,		MAX_PARAM,		"Velocity"					, RetArray2({"Velocity"})},
 	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
 	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
 	{ 'p', eNumber,	"Process",		0,				 5,				"Laser Game"},
@@ -68,8 +69,12 @@ static const sSampler_Commands Sampler_Commands[] = {
 	  {'A', 'a', "GetADC",			"",				RetArray2({})},
 	  {'B', 'l', "Laser ON",		"O",			RetArray2({"Laser On/Off"})},
 	  {'B', 'R', "Read List",		"",				RetArray2({})},
-	  {'S', 'l', "Show",			"O",			RetArray2({"Strip On/Off"})},
-	  {'S', 'P', "Start Process",	"p",			RetArray2({"Light Game"})},
+
+	  {'S', 'l', "Led Effect",		"g",			RetArray2({"Strip LED Effect"})},
+	  {'S', 'd', "Delay",			"t",			RetArray2({"Delay"})},
+	  {'S', 'r', "Reset Timer",		"",				RetArray2({})},
+	  {'S', 'g', "Get Remaining",	"",				RetArray2({})},
+
 	  {'P', 'v', "Read Volt",		"",				RetArray2({})},
 	  {'P', 'A', "Read Amp",		"",				RetArray2({})},
 	  {'P', 'W', "Read Watt",		"",				RetArray2({})},

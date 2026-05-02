@@ -256,7 +256,6 @@ wxString cDBSampler::SqlQuery_Detail(const unsigned int ProgId) {
     }
 
     //ToDo See enum eDetHeaders{ eDetailProg=0, eMotor, eCmd, ePattern, eCnt, eParFirst, eParLast= eParFirst + NUMOFPARAMS, eMasterId=12 };
-
     wxString SqlQuery = wxString::Format(
         "SELECT DetailProg AS [%s], SubSys, Cmd, Pattern AS [%s] %s, MasterId"
         " FROM " PROGDETAIL_TABLENAME
@@ -346,9 +345,10 @@ bool cDBSampler::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProg
             strParNames += wxString::Format(", Par%d", i);
         }
 
-        wxString SqlCmd = wxString::Format(//ToDo
-            "INSERT INTO " PROGDETAIL_TABLENAME " (MasterId, DetailProg, Motor, Cmd, Pattern, Cnt %s ) "
-                            "SELECT %d, DetailProg, Motor, Cmd, Pattern, Cnt, %s "
+        wxString SqlCmd = wxString::Format(
+            "INSERT INTO " PROGDETAIL_TABLENAME 
+                           " (MasterId, DetailProg, SubSys, Cmd, Pattern %s ) "
+                            "SELECT %d, DetailProg, SubSys, Cmd, Pattern %s "
             "FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d;",
             strParNames, ProgIdNew,
             strParNames, ProgIdOld
@@ -370,7 +370,7 @@ bool cDBSampler::CreateTable(const char* sql_create) {
     return true;
 }
 
-bool cDBSampler::CreateSlave(void) {    //ToDo: sql_create-> wxString & Consider NUMOFPARAMS
+bool cDBSampler::CreateSlave(void) {
     wxString strParDefs;
     for (byte i = 0; i < NUMOFPARAMS; i++) {
         strParDefs += wxString::Format("Par%d          INTEGER,", i);
@@ -681,10 +681,10 @@ bool cDBSampler::ProgDetail_Insert(const cCmdStepper& item, bool AllowRenum ) {
     sqlite3_bind_int64(stmt, 2, item.m_DetailProg);
     sqlite3_bind_int  (stmt, 3, item.m_SubSystem);
     sqlite3_bind_int  (stmt, 4, item.m_Cmd);
-    sqlite3_bind_text (stmt, 5, item.m_Pattern.utf8_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text (stmt, 5, item.GetPatternAsChars(), -1, SQLITE_TRANSIENT);
 
     int i;
-    for (i = 0; i < item.m_Pattern.length(); i++) {
+    for (i = 0; i < item.m_PatLen; i++) {
         sqlite3_bind_int64(stmt, 6 + i, item.m_Par[i]);
     }
     for (; i < NUMOFPARAMS; i++) {

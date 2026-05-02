@@ -217,7 +217,7 @@ bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) 
 	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));	//0
 	vStep.m_SubSystem	= wxAtol(this->GetItemText(rowIndex, eSubSys));		//1
 	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, eCmd));		//2
-	vStep.m_Pattern		=        this->GetItemText(rowIndex, ePattern);		//3
+	vStep.SetPattern( this->GetItemText(rowIndex, ePattern).mb_str());				//3
 	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
 		vStep.m_Par[i]	= wxAtol(this->GetItemText(rowIndex, eParFirst+i));	//
 	}
@@ -234,7 +234,7 @@ void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 		info.m_col = eDetailProg;	this->GetItem(info);	vStep.m_DetailProg	= wxAtol(info.m_text);
 		info.m_col = eSubSys;		this->GetItem(info);	vStep.m_SubSystem	= wxAtol(info.m_text);
 		info.m_col = eCmd;			this->GetItem(info);	vStep.m_Cmd			= wxAtol(info.m_text);
-		info.m_col = ePattern;		this->GetItem(info);	vStep.m_Pattern		= info.m_text;
+		info.m_col = ePattern;		this->GetItem(info);	vStep.SetPattern(info.m_text.mb_str());
 		for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
 			info.m_col = eParFirst+i;	this->GetItem(info);	vStep.m_Par[i] = wxAtol(info.m_text);
 		}

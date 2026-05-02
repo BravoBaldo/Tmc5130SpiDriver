@@ -62,6 +62,15 @@ void CmdParLabel::ChangeType(const wxString& name, const wxDateTime& dt) {	//eTi
 
 	wxDELETE(m_gen_Param);
 	m_gen_Param = new wxTimePickerCtrl(this, wxID_ANY, dt);
+	/* //---------------------------------------------------------------------
+	HWND hwnd = (HWND)m_gen_Param->GetHWND();
+	//m_gen_Param->SetFocus();
+	//::SendMessage(hwnd, WM_KEYDOWN, VK_HOME, 0);
+	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
+	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
+	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
+	*/
+	//--------------------------------------------------------------------------
 	SetSizers();
 }
 

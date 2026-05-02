@@ -1,9 +1,9 @@
 #include "stdwx.h"
 #include "wx/artprov.h"
-#include "CmdExecutorCtrl.h"
 #include <chrono>
 #include <wx/stopwatch.h>
 #include <winsock2.h>
+#include <numeric>	//std::accumulate
 
 enum {
 	ID_Btn_ExecAll = wxID_HIGHEST,
@@ -25,65 +25,133 @@ void myMilliSleep(long long T){
 	}
 }
 
-//wxLongLong
-void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long long /*TimoutMs*/) {
-	m_HidExec.Write_NoWait(data, length);	// Writing...
-	wxYield();
-	LogMe(wxString::Format("Message sent..."), false);
-
-	// Reading...
-	wxStopWatch sw;
-	int res = 0, cnt=0;
-	while(res==0 && m_Running){
-		cnt++;
-		wxYield();
-		res = m_HidExec.Read();
-	}
-	long DeltaT = sw.Time();
-	LogMe(wxString::Format("Received %d bytes in %d and loops %ld ms: '%s'.\n", res, cnt, DeltaT, m_HidExec.GetBuffAsString()), false);
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sCommAnsw& Answ) {
+	LogMe(wxString::Format("\tSystem    %c\n", Answ.m_SubSystem), true);
+	LogMe(wxString::Format("\tRisultato %s\n", (Answ.m_Result == eCmdOk) ? "Ok" : "Ko"), true);
+	LogMe(wxString::Format("\tValore    %ld\n", Answ.m_Val), true);
+	return Answ.m_Result;
 }
 
-uint8_t xor_checksum(const uint8_t* data, size_t len) {
+void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
+	bool Success = false;
+	int res = 0;
+	int retryCount = 0;
+	wxStopWatch sw2;
+
+	// Se il timeout non specificato o zero, impostiamo un default (es. 500ms)
+	if (TimeoutMs <= 0) TimeoutMs = 500;
+
+	//m_HidExec.Open(m_HidInfo);
+	while (!Success && m_Running) {
+		// 1. Trasmissione
+		if (m_HidExec.Write_NoWait(data, length) < 0) {
+			LogMe("Errore hardware in scrittura. Apro e Riprovo...\n", true);
+			m_HidExec.Open(m_HidInfo);
+			wxMilliSleep(100); // Piccola pausa prima di riprovare
+			continue;
+		}
+		LogMe(wxString::Format("Tentativo %d: Messaggio inviato...\n", ++retryCount), true);
+
+		// 2. Attesa risposta con Timeout
+		wxStopWatch sw;
+		res = 0;
+
+		// Continua a leggere fino a che non ricevi dati O scade il timeout O il programma si ferma
+		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
+			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
+			if (res <= 0) {
+				wxYield(); // Lascia respirare la UI di wxWidgets
+			}
+		}
+
+		// 3. Verifica esito
+		if (res > 0) {
+			Success = true;
+
+			sCommAnsw Risposta;
+			//m_HidExec.GetAnswerLen()
+			//m_HidExec.GetBuffer()
+			memcpy(&Risposta, (sCommAnsw*)m_HidExec.GetBuffer(), sizeof(sCommAnsw));
+			LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
+			if(ParseAnswer(Risposta)!= eCmdOk)
+				Success = false;
+			//LogMe(wxString::Format("Ricevuti %d byte in %ld ms: '%s'\n", res, sw.Time(), m_HidExec.GetBuffAsString()), true);
+		} else {
+			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
+			// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
+			if (retryCount > 10) {
+				LogMe("Troppi tentativi falliti. Operazione interrotta.\n", true);
+				break;
+			}
+		}
+	}
+	LogMe(wxString::Format("Concluso in %ld ms.\n", sw2.Time()), true);
+}
+
+
+/*
+// Versione ottimizzata
+uint16_t CalcCheckSum(const uint8_t msg[], size_t len) {
+	uint32_t sum = 0; // Usa uint32_t per evitare overflow durante il calcolo
+	for (size_t i = 0; i < len; ++i) {
+		sum += msg[i];
+	}
+	// Ritorna il complemento a due della somma troncata a 16 bit
+	return (uint16_t)(~sum + 1);
+}*/
+
+uint16_t CalcCheckSum(const uint8_t msg[], size_t len) {
+	if (msg == nullptr) return 0;
+	uint16_t sum = std::accumulate(msg, msg + len, (uint16_t)0);
+	return ~sum + 1;
+}
+
+/*uint8_t xor_checksum(const uint8_t data[], size_t len) {
 	uint8_t checksum = 0;
 	for (size_t i = 0; i < len; ++i) {
 		checksum ^= data[i];
 	}
 	return checksum;
+}*/
+
+// XOR Checksum moderno
+uint8_t xor_checksum(const uint8_t data[], size_t len) {
+	if (data == nullptr) return 0;
+	return std::accumulate(data, data + len, (uint8_t)0, std::bit_xor<uint8_t>());
 }
 
-#define TX_MODE_M
+#define TX_BINARY_M
+
+bool CmdExecutorCtrl::ExecuteStep(cCmdStepper& vStep) {
+	unsigned char Msg[sizeof(cCmdStepper) + 1];	// + Starting byte
+#if defined(TX_BINARY_M)	//ToDo Check exported data
+	int j = 0;
+	Msg[j++] = 'b';					//Buffer Type
+	//vStep.m_CheckSum = 0x55;
+	vStep.m_CheckSum = xor_checksum((const uint8_t*)&vStep, sizeof(cCmdStepper) - sizeof(vStep.m_CheckSum));
+
+	memcpy(&Msg[j], &vStep, sizeof(vStep));
+	j += sizeof(vStep);
+	SendCommand(Msg, sizeof(vStep) + 1);	//+The Initial Code
+#else
+#endif
+	return true;
+}
 
 bool CmdExecutorCtrl::ExecuteSteps(long from, long to) {
+m_Btn_ExecStep->Enable(false);
+m_Btn_ExecAll->Enable(false);
 	LogMe(wxString::Format("Start Execution from %ld'\n-----------------------------\n", from), false);
 
 	cCmdStepper vStep;
 	wxString CmdStr;			//wxMemoryBuffer
-	unsigned char Msg[100];
+	m_Running = true;
 	for (long i = from; i < to; i++) {
 		m_ptrPrgDetail->Select(i, true);
 		wxYield();
-#if defined(TX_MODE_M)
+#if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
-		int j = 0;
-		Msg[j++] = '0';
-		//Msg[j++] = vStep.m_Motor;
-		Msg[j++] = vStep.m_Cmd;
-		//vStep.m_Cnt = vStep.m_Pattern.Length();
-		unsigned int Cnt = vStep.m_Pattern.Length();
-		Msg[j++] = Cnt;// vStep.m_Cnt;
-
-		memcpy(&Msg[j], vStep.m_Pattern.c_str().AsUnsignedChar(), Cnt);
-		j += Cnt;
-
-		std::memcpy(&Msg[j], &vStep.m_Par[0], sizeof(long)*Cnt);
-		j += sizeof(long) * vStep.m_Pattern.Length();// vStep.m_Cnt;	//ToDo
-		
-		//-----------------------------
-		Msg[j] = vStep.m_MasterId;		j += sizeof(vStep.m_MasterId);
-		Msg[j] = vStep.m_DetailProg;	j += sizeof(vStep.m_DetailProg);
-		Msg[j] = xor_checksum(Msg, j);
-
-		SendCommand(Msg, j+1);	//Append XOR Checksum
+		ExecuteStep(vStep);
 #else
 		CmdStr = (m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i)) ? m_ptrEditor->DBData2String(vStep) : "------------";
 		LogMe(wxString::Format("Execute %ld: '%s'\n", i, CmdStr), false);
@@ -97,13 +165,12 @@ bool CmdExecutorCtrl::ExecuteSteps(long from, long to) {
 #endif
 //		myMilliSleep(10);	//wxMilliSleep(100);
 	}
+	m_Running = false;
 	LogMe("Stop Execution --------------------------\n", false);
-	return true;
-}
+m_Btn_ExecStep->Enable(true);
+m_Btn_ExecAll->Enable(true);
 
-bool CmdExecutorCtrl::ExecuteFrom(long from, long to) {
-	m_Running = true;
-	return ExecuteSteps(from, to);
+	return true;
 }
 
 void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
@@ -112,23 +179,19 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 		case ID_Btn_ExecStep:
 			m_Btn_ExecStep->Enable(false);
 			m_Btn_ExecAll->Enable(false);
-			{	//Ask the Editor for the current command and send it
-				long itemIndex = m_ptrPrgDetail->GetFirstSelected();
-				ExecuteFrom(itemIndex, itemIndex + 1);
+			//Non dal DB ma dall'editor!!!
+			{
+				m_Running = true;
+				cCmdStepper	s = m_ptrEditor->UI2DBData();
+				ExecuteStep(s);
+				m_Running = false;
 			}
 			m_Btn_ExecStep->Enable(true);
 			m_Btn_ExecAll->Enable(true);
 			break;
 		case ID_Btn_ExecAll:
-			m_Btn_ExecStep->Enable(false);
-			m_Btn_ExecAll->Enable(false);
-			{	// Ask for ProgramId then scan all steps
-				LogMe(wxString::Format("Execute All from = '%ld/%ld'\n", m_ptrEditor->GetProgId(), m_ptrEditor->GetStepId()), true);
-				//Soluzione 1, Senza DB, preleva i dati dalla riga corrente, logga poi passa alla successiva:
-				ExecuteFrom(0, m_ptrPrgDetail->GetItemCount());
-			}
-			m_Btn_ExecStep->Enable(true);
-			m_Btn_ExecAll->Enable(true);
+			LogMe(wxString::Format("Execute All from = '%ld/%ld'\n", m_ptrEditor->GetProgId(), m_ptrEditor->GetStepId()), true);
+			ExecuteSteps(0, m_ptrPrgDetail->GetItemCount());
 			break;
 		case ID_Btn_Panic:
 			m_Running = false;
@@ -140,16 +203,32 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 	}
 }
 
-void CmdExecutorCtrl::OnTimer(wxTimerEvent& WXUNUSED(event)) {
+void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 	m_timer->Stop();
-	//if (m_Running) {
-		bool v = m_HidExec.IsOpenable(m_HidInfo);
-		if (v && !m_HidExec.IsOpened())	m_HidExec.Open(m_HidInfo);
-		this->Enable(v && m_HidExec.IsOpened());
-	//}
 
-	m_timer->Start(50);
+	// 1. Verifica presenza fisica del dispositivo
+	struct hid_device_info* devs = hid_enumerate(m_HidInfo.vendor_id, m_HidInfo.product_id);
+	bool isPresent = (devs != nullptr);
+	if (devs) hid_free_enumeration(devs);
+
+	// 2. Gestione connessione
+	if (isPresent) {
+		if (!m_HidExec.IsOpened()) m_HidExec.Open(m_HidInfo);	// Tenta l'apertura solo se non aperto
+	} else {
+		if (m_HidExec.IsOpened()) m_HidExec.Close();	// Se non presente ma era aperto, chiudilo pulitamente
+	}
+
+	bool isReady = isPresent && m_HidExec.IsOpened() /*&& m_Running == false*/;
+	// Set UI Status
+	if (this->IsEnabled() != isReady) {
+		this->Enable(isReady);
+		//m_Btn_ExecStep->Enable(isReady);
+		//m_Btn_ExecAll->Enable(isReady);
+		LogMe(isReady ? "Dispositivo Connesso." : "Dispositivo Disconnesso.", true);	// Logga il cambio di stato per debug
+	}
+	m_timer->Start(250);	// Restart timer
 }
+
 
 CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 	wxWindowID		winid,

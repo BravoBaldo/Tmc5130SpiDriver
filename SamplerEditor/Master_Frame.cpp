@@ -125,18 +125,7 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 				// --- In the Editor there is not the DetailProg ------------------------------------------
 				s.m_DetailProg = m_lstPrgDetail->GetSelectedItem().m_DetailProg;
 				// ---------------------------------------------
-#ifdef WERTWWW
-				LogMe(wxString::Format("(wxID_SQLINSERTAFT) %s\n", m_CmdEditor->UI2String()), true);
-				LogMe(wxString::Format("\tIds.....: %ld/%ld\n", s.m_MasterId, s.m_DetailProg), true);
-				LogMe(wxString::Format("\tMotor...: %d\n", s.m_Motor), true);
-				LogMe(wxString::Format("\tCmd.....: '%c'\n", (char)s.m_Cmd), true);
-				LogMe(wxString::Format("\tPattern.: '%s' (%d)\n", s.m_Pattern, s.m_Cnt), true);
-				wxString dataStr;
-				for (size_t i = 0; i < WXSIZEOF(s.m_Par); ++i) {
-					dataStr << s.m_Par[i] << (i < (WXSIZEOF(s.m_Par)-1) ? ", " : "");
-				}
-				LogMe(wxString::Format("\tData....: %s\n", dataStr), true);
-#endif
+
 				m_lstPrgDetail->UpdateItem(s, EvtId == wxID_SQLINSERTAFT);
 
 			}
@@ -398,13 +387,13 @@ void MyFrame::OnMenu( wxCommandEvent& event ) {
 		case ID_MNU_PRGMDET_EXECSTEP:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteFrom(itemIndex, itemIndex+1);
+				m_PanExec->ExecuteSteps(itemIndex, itemIndex+1);
 			}
 		break;
 		case ID_MNU_PRGMDET_EXECFROM:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteFrom(itemIndex, m_lstPrgDetail->GetItemCount());
+				m_PanExec->ExecuteSteps(itemIndex, m_lstPrgDetail->GetItemCount());
 			}
 			break;
 

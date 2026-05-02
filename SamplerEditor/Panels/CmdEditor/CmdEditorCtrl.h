@@ -23,6 +23,9 @@ class CmdEditorCtrl : public wxPanel {
 	wxStaticText	*m_sta_ParamPattern	= nullptr;
 	wxTextCtrl		*m_txt_ParamPattern	= nullptr;
 
+	wxStaticText	*m_sta_LenPattern	= nullptr;
+	wxTextCtrl		*m_txt_LenPattern	= nullptr;
+
 	CmdParLabel		*m_Params[NUMOFPARAMS];
 
 	wxChoice		*m_cho_SubSystem	= nullptr;
