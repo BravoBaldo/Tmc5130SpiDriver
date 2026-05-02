@@ -29,9 +29,6 @@ cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
     if (Sel >= 0) {
         const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
         if (c) {
-            Cmd.m_MasterId   = 0;
-            Cmd.m_DetailProg = 0;
-
             Cmd.m_SubSystem = c->SubSys;
             Cmd.m_Cmd       = c->cmd;
             Cmd.SetPattern(c->ParamPattern);
@@ -45,9 +42,7 @@ cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
 
 wxString CmdEditorCtrl::DBData2String(cCmdStepper& vStep) {
     wxString Result = wxEmptyString;    // ToDo
-    //cM,G,0,100,120,2000
-    //if (vStep.m_Motor < 0)
-    //    return wxEmptyString;
+
     Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
     for (size_t i = 0; i < vStep.m_PatLen; i++) {
         Result += wxString::Format(",%ld", vStep.m_Par[i]);

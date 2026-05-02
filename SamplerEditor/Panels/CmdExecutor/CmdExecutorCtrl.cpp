@@ -4,7 +4,7 @@
 #include <wx/stopwatch.h>
 #include <winsock2.h>
 #include <numeric>	//std::accumulate
-
+#include "CmdExecutorCtrl.h"
 enum {
 	ID_Btn_ExecAll = wxID_HIGHEST,
 	ID_Btn_ExecStep,
@@ -32,18 +32,17 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sCommAnsw& Answ) {
 	return Answ.m_Result;
 }
 
+//ToDo: Separate Tx and Rx each with own TimeOut
+
 void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
-	bool Success = false;
-	int res = 0;
-	int retryCount = 0;
+	bool Success	= false;
+	int res			= 0;
+	int retryCount	= 0;
 	wxStopWatch sw2;
+	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
-	// Se il timeout non specificato o zero, impostiamo un default (es. 500ms)
-	if (TimeoutMs <= 0) TimeoutMs = 500;
-
-	//m_HidExec.Open(m_HidInfo);
 	while (!Success && m_Running) {
-		// 1. Trasmissione
+		// 1. Transmission
 		if (m_HidExec.Write_NoWait(data, length) < 0) {
 			LogMe("Errore hardware in scrittura. Apro e Riprovo...\n", true);
 			m_HidExec.Open(m_HidInfo);
@@ -67,19 +66,25 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 		// 3. Verifica esito
 		if (res > 0) {
 			Success = true;
-
-			sCommAnsw Risposta;
-			//m_HidExec.GetAnswerLen()
-			//m_HidExec.GetBuffer()
-			memcpy(&Risposta, (sCommAnsw*)m_HidExec.GetBuffer(), sizeof(sCommAnsw));
-			LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
-			if(ParseAnswer(Risposta)!= eCmdOk)
-				Success = false;
-			//LogMe(wxString::Format("Ricevuti %d byte in %ld ms: '%s'\n", res, sw.Time(), m_HidExec.GetBuffAsString()), true);
+			char Tipo = ((char*)m_HidExec.GetBuffer())[0];
+			switch (Tipo) {
+				case 'a':
+					{
+						sCommAnsw Risposta;
+						memcpy(&Risposta, (sCommAnsw*)m_HidExec.GetBuffer(), sizeof(sCommAnsw));
+						LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
+						if (ParseAnswer(Risposta) != eCmdOk)
+							Success = false;
+					}
+					break;
+				default:
+					LogMe(wxString::Format("\nERRORE: Risposta non riconosciuta ('%c').\n", Tipo), true);
+					//Inutile continuare!
+					break;
+			}
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
-			// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
-			if (retryCount > 10) {
+			if (retryCount > 10) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
 				LogMe("Troppi tentativi falliti. Operazione interrotta.\n", true);
 				break;
 			}
@@ -120,19 +125,24 @@ uint8_t xor_checksum(const uint8_t data[], size_t len) {
 	return std::accumulate(data, data + len, (uint8_t)0, std::bit_xor<uint8_t>());
 }
 
+uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
+	uint32_t sum = 0; // Usiamo 32 bit per evitare overflow intermedi nel loop
+	for (size_t i = 0; i < len; ++i) {
+		sum += data[i];
+	}
+	return (uint16_t)(~sum + 1);
+}
+
 #define TX_BINARY_M
 
 bool CmdExecutorCtrl::ExecuteStep(cCmdStepper& vStep) {
 	unsigned char Msg[sizeof(cCmdStepper) + 1];	// + Starting byte
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 	int j = 0;
-	Msg[j++] = 'b';					//Buffer Type
-	//vStep.m_CheckSum = 0x55;
-	vStep.m_CheckSum = xor_checksum((const uint8_t*)&vStep, sizeof(cCmdStepper) - sizeof(vStep.m_CheckSum));
-
+	vStep.m_CheckSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(cCmdStepper) - sizeof(vStep.m_CheckSum));
 	memcpy(&Msg[j], &vStep, sizeof(vStep));
 	j += sizeof(vStep);
-	SendCommand(Msg, sizeof(vStep) + 1);	//+The Initial Code
+	SendCommand( Msg, sizeof(vStep) );
 #else
 #endif
 	return true;
@@ -208,8 +218,10 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 
 	// 1. Verifica presenza fisica del dispositivo
 	struct hid_device_info* devs = hid_enumerate(m_HidInfo.vendor_id, m_HidInfo.product_id);
+
 	bool isPresent = (devs != nullptr);
 	if (devs) hid_free_enumeration(devs);
+	//hid_exit();	//Avoid Memory Leak about error_buffer
 
 	// 2. Gestione connessione
 	if (isPresent) {
@@ -218,14 +230,13 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 		if (m_HidExec.IsOpened()) m_HidExec.Close();	// Se non presente ma era aperto, chiudilo pulitamente
 	}
 
-	bool isReady = isPresent && m_HidExec.IsOpened() /*&& m_Running == false*/;
+	bool isReady = isPresent && m_HidExec.IsOpened();
 	// Set UI Status
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
-		//m_Btn_ExecStep->Enable(isReady);
-		//m_Btn_ExecAll->Enable(isReady);
 		LogMe(isReady ? "Dispositivo Connesso." : "Dispositivo Disconnesso.", true);	// Logga il cambio di stato per debug
 	}
+
 	m_timer->Start(250);	// Restart timer
 }
 
@@ -280,4 +291,5 @@ CmdExecutorCtrl::~CmdExecutorCtrl() {
 
 	if (m_HidExec.IsOpened())
 		m_HidExec.Close();
+	hid_exit();	//Avoid Memory Leak about error_buffer
 }

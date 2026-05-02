@@ -7,6 +7,7 @@ typedef int32_t		ParamType;	//See in stdwx
 #pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
 class cCmdStepper {
 public:
+	byte		m_MsgType = 'b';		//1
 	byte		m_SubSystem;			//1
 	byte		m_Cmd;					//1
 	byte		m_PatLen;				//1
@@ -14,8 +15,7 @@ public:
 	ParamType	m_Par[NUMOFPARAMS];		//10*sizeof(ParamType)
 	uint16_t	m_MasterId;				//2
 	uint16_t	m_DetailProg;			//2
-	byte		m_CheckSum;				//1
-
+	uint16_t	m_CheckSum;				//2
 
 	void	SetPattern(const char* s) { 
 					m_PatLen = s ? strlen(s) : 0;
@@ -24,7 +24,6 @@ public:
 					}
 				}
 	inline const char*	GetPatternAsChars(void) const {	return (char*)m_Pattern; }
-	//inline byte			GetPatternLenght(void) const { return m_PatLen; }
 
 	cCmdStepper(uint16_t masterId, uint16_t detailProg
 		, byte				SubSystem
@@ -33,6 +32,7 @@ public:
 		, const char*		pattern
 		, const ParamType	params[]
 	) {
+		//m_MsgType	= 'b';
 		m_SubSystem		= SubSystem;
 		m_MasterId		= masterId;
 		m_DetailProg	= detailProg;

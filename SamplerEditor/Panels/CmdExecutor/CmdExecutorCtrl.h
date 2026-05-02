@@ -8,6 +8,7 @@
 typedef enum : uint8_t { eCmdOk, eCmdRetry, eCmdError }eCmdAnswer;
 #pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
 typedef struct _sCommAnsw {
+	byte		m_MsgType		= 'a';				//1
 	char		m_SubSystem;						//1
 	byte		m_Cmd			= 0;				//1
 	uint16_t	m_MasterId		= 0;				//2
@@ -38,6 +39,9 @@ class CmdExecutorCtrl : public wxPanel {
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
 	bool		ExecuteStep		(cCmdStepper& vStep);
+	//void		TxMessage(const unsigned char* data, size_t length, long TimeoutMs = 500);
+	//void		RxMessage(const unsigned char* data, size_t length, long TimeoutMs = 500);
+
 	void		SendCommand		(const unsigned char* data, size_t length, long TimeoutMs = 500);
 	eCmdAnswer	ParseAnswer(const sCommAnsw& Answ);
 public:

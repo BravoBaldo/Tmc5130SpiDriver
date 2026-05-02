@@ -26,7 +26,7 @@ typedef struct {	//Commands' parameters
 const sParams* Param_Get(byte Id);
 
 
-typedef struct {	//Microcontroller Commands
+typedef struct {	//Microcontroller Commands. See 
 	const char				SubSys;
 	const char				cmd;
 	const char*				Descr;
@@ -39,13 +39,6 @@ typedef struct {	//Microcontroller Commands
 unsigned int				Commands_Size(void);
 const sSampler_Commands*	Command_Get(unsigned int i);
 const sSampler_Commands*	Command_GetByCmd(char SubSys, char c, uint8_t NumPar);
-//int							Command_GetIdOfCmd(char SubSys, char c, uint8_t NumPar);
 void						Params_RemoveAll(void);
 
-
-/*typedef struct {	//Microcontroller Commands Identification
-	const char	cmd;
-	uint8_t		NumPar;
-}sCommandId;
-*/
 void						sSampler_Check(void);

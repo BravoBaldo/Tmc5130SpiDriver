@@ -262,7 +262,6 @@ wxString cDBSampler::SqlQuery_Detail(const unsigned int ProgId) {
         " WHERE MasterId = %d ORDER BY DetailProg"
         , _("N"), _("Command"), strParNames, ProgId);
     return SqlQuery;
-
 }
 
 
