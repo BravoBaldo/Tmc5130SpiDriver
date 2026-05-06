@@ -1,11 +1,12 @@
 #pragma once
 #include "wx/wx.h"
+
 #include "cHIDAPI.h"
 #include "CmdEditorCtrl.h"
 #include "DBCmdView.h"
 #include "CmdExecutorCtrl.h"
+#include "cShowAnswers.h"
 
-typedef enum : uint8_t { eCmdOk, eCmdRetry, eCmdError }eCmdAnswer;
 #pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
 typedef struct _sCommAnsw {
 	byte		m_MsgType		= 'a';				//1
@@ -34,6 +35,7 @@ class CmdExecutorCtrl : public wxPanel {
 	//....................................
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
 	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
+	cAnswersShow*		m_ptrAnswerShow	= nullptr;
 	//...................................
 	DECLARE_EVENT_TABLE()
 	void		OnBtnCommands	(wxCommandEvent& Evt);
@@ -58,4 +60,5 @@ public:
 		m_ptrPrgDetail = ptrPrgDetail;
 	}
 	bool		ExecuteSteps(long from, long to);
+	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
 };

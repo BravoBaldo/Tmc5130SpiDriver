@@ -7,7 +7,6 @@
     <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
-    <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
     <ClCompile Include="stdwx.cpp" />
     <ClCompile Include="XML\tinyxml2.cpp" />
     <ClCompile Include="SqLite\SqLite\sqlite3.c">
@@ -25,6 +24,12 @@
     <ClCompile Include="SqLite\SqLite\cDBSampler.cpp">
       <Filter>Source\DB</Filter>
     </ClCompile>
+    <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp">
+      <Filter>Source\Executor</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp">
+      <Filter>Source\Executor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ResFile.rc" />
@@ -38,6 +43,9 @@
     </Filter>
     <Filter Include="Source\USB">
       <UniqueIdentifier>{8ec94690-ebc6-486b-918a-7a4193fc4e14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Executor">
+      <UniqueIdentifier>{7d13eb9c-29bc-4590-86f9-4460f3bfbf9e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

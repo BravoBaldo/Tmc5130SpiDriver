@@ -2,6 +2,7 @@
 #include "wx/wx.h"
 #include "wx/listctrl.h"
 #include "cCmdStepper.h"
+#include "../SysSampler.h"
 
 
 class cMainListCtrl : public wxListView {

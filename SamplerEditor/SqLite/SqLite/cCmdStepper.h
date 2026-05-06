@@ -1,8 +1,6 @@
 #pragma once
-#include "wx/wx.h"
-
-#define NUMOFPARAMS 10
-typedef int32_t		ParamType;	//See in stdwx
+#include <wx/wx.h>
+#include "../SysSampler.h"
 
 #pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
 class cCmdStepper {

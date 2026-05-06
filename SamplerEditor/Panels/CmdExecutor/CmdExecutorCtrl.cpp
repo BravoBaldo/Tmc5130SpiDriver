@@ -5,6 +5,7 @@
 #include <winsock2.h>
 #include <numeric>	//std::accumulate
 #include "CmdExecutorCtrl.h"
+
 enum {
 	ID_Btn_ExecAll = wxID_HIGHEST,
 	ID_Btn_ExecStep,
@@ -65,6 +66,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 
 		// 3. Verifica esito
 		if (res > 0) {
+			if (m_ptrAnswerShow)
+				m_ptrAnswerShow->SetAnswer(m_HidExec.GetBuffer(), m_HidExec.GetAnswerLen());
 			Success = true;
 			char Tipo = ((char*)m_HidExec.GetBuffer())[0];
 			switch (Tipo) {

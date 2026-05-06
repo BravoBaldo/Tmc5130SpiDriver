@@ -4,7 +4,7 @@
 #include "wx/wx.h"
 #include "DBCmdView.h"
 #include "CmdEditorCtrl.h"
-
+#include "cShowAnswers.h"
 //===============================================
 
 //===============================================
@@ -70,6 +70,7 @@ private:
 	wxButton*			m_Btn_MoveDn		= nullptr;
 	wxButton*			m_Btn_Delete		= nullptr;
 	CmdExecutorCtrl*	m_PanExec			= nullptr;
+	cAnswersShow*		m_PanAnswers		= nullptr;
 
 	wxBitmap			m_bitmap;
 

@@ -6,11 +6,11 @@
 #include "stdwx.h"
 #include "Master_Frame.h"
 
-#include "wx/aboutdlg.h"
+#include <wx/aboutdlg.h>
 // these headers are only needed for custom about dialog
-#include "wx/statline.h"
-#include "wx/generic/aboutdlgg.h"
-#include "wx/artprov.h"
+#include <wx/statline.h>
+#include <wx/generic/aboutdlgg.h>
+#include <wx/artprov.h>
 
 enum {
 	ID_MNU_Quit = wxID_HIGHEST,
@@ -255,6 +255,9 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_PanExec = new CmdExecutorCtrl(this);
 	m_PanExec->SetEditorAndDB(m_CmdEditor, m_lstPrgDetail);
 
+	m_PanAnswers = new cAnswersShow(this);
+	m_PanExec->SetAnswerHandler(m_PanAnswers);
+
 	LogMeSet(m_txt_Log);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+wxT("\\") ), false);
@@ -273,12 +276,14 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 void MyFrame::SetLayouts ( void ) {
 #ifdef USE_AUI
 	m_mgr.AddPane(m_lstPrgMaster,	wxAuiPaneInfo().Name(wxT("m_lstPrgMaster"))	.Caption(_("DBMaster"))		.Left()			.PaneBorder(false));
-	m_mgr.AddPane(m_lstPrgDetail,	wxAuiPaneInfo().Name(wxT("m_lstPrgDetail"))	.Caption(_("Detail"))		.CenterPane()		.PaneBorder(false));
+	m_mgr.AddPane(m_lstPrgDetail,	wxAuiPaneInfo().Name(wxT("m_lstPrgDetail"))	.Caption(_("Detail"))		.CenterPane()	.PaneBorder(false));
 	m_mgr.AddPane(m_CmdEditor,		wxAuiPaneInfo().Name(wxT("m_CmdEditor"))	.Caption(_("m_CmdEditor"))	.Bottom()		.PaneBorder(false));
 
+	m_mgr.AddPane(m_PanAnswers,		wxAuiPaneInfo().Name(wxT("m_PanAnswers"))	.Caption(_("Status"))		.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_PanEditor,		wxAuiPaneInfo().Name(wxT("m_PanEditor"))	.Caption(_("Editor"))		.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_txt_Log,		wxAuiPaneInfo().Name(wxT("m_txt_Log"))		.Caption(_("m_txt_Log"))	.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_PanExec,		wxAuiPaneInfo().Name(wxT("m_PanExec"))		.Caption(_("Execution"))	.Right()		.PaneBorder(false));
+//	
 
 	m_mgr.SetManagedWindow ( this );
 	AuiRefresh ();

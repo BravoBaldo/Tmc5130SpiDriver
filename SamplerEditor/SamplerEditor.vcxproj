@@ -457,6 +457,7 @@
     <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp" />
     <ClCompile Include="SqLite\SqLite\cDBSampler.cpp" />
     <ClCompile Include="SqLite\SqLite\sqlite3.c" />
     <ClCompile Include="stdwx.cpp" />

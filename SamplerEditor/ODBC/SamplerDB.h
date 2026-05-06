@@ -1,7 +1,7 @@
 #pragma once
 
-#include "wx/wx.h"
-#include "wx/listctrl.h"	//ListCtrl_FillFromSql
+#include <wx/wx.h>
+#include <wx/listctrl.h>	//ListCtrl_FillFromSql
 #include <wx/dataview.h>	//wxDataViewListCtrl, wxmsw31??_adv.lib
 
 
