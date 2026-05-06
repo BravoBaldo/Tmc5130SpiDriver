@@ -742,9 +742,9 @@ private:
   uint8_t         uartAddr  = 0;
   long            uartBaud  = 115200;
 
-  uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
-  uint16_t OverSteps = 0; //Num of steps to exit from Limit Switch
-  bool    Calibrated = false;
+  uint8_t   pinSTEP     = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
+  uint16_t  OverSteps   = 0; //Num of steps to exit from Limit Switch
+  bool      Calibrated  = false;
 
 
   //Default Settings
@@ -784,7 +784,7 @@ private:
     GoHome_ExitLS,
   }FSA_Status;
 
-  +  //Finite State Machine for each Motors
+  struct Fsa {  //Finite State Machine for each Motors
     FSA_Status      Status;       //Finite State Automata
     uint16_t        SecondA;      //AMAX
     uint32_t        StartV;       //VSTART

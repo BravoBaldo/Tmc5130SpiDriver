@@ -86,6 +86,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
 			if (retryCount > 10) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
 				LogMe("Troppi tentativi falliti. Operazione interrotta.\n", true);
+				m_Running = false;	//Stop Execution
 				break;
 			}
 		}
