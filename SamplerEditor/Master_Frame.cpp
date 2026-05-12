@@ -98,7 +98,9 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 END_EVENT_TABLE()
 
 void MyFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
-	m_txt_Log->SetValue("");
+	#if defined(USE_MAIN_LOG)
+		m_txt_Log->SetValue("");
+	#endif
 }
 
 void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
@@ -243,8 +245,10 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	//---------------------------------------------------------------------
 
 
+#if defined(USE_MAIN_LOG)
 	m_txt_Log		= new wxTextCtrl( this, ID_TXT_LOG,		_("Hello\n"),	wxPoint( 100,  6 ),	wxSize(50, -1 ), wxTE_MULTILINE );
-
+	LogMeSet(m_txt_Log);
+#endif
 	m_lstPrgMaster = new cMainListCtrl(this, ID_LST_MASTER, wxDefaultPosition, wxSize(150 + 50, 50), wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES);
 	m_lstPrgMaster->MainPrg_Fill();
 
@@ -258,7 +262,6 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_PanAnswers = new cAnswersShow(this);
 	m_PanExec->SetAnswerHandler(m_PanAnswers);
 
-	LogMeSet(m_txt_Log);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+wxT("\\") ), false);
 
@@ -281,7 +284,9 @@ void MyFrame::SetLayouts ( void ) {
 
 	m_mgr.AddPane(m_PanAnswers,		wxAuiPaneInfo().Name(wxT("m_PanAnswers"))	.Caption(_("Status"))		.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_PanEditor,		wxAuiPaneInfo().Name(wxT("m_PanEditor"))	.Caption(_("Editor"))		.Right()		.PaneBorder(false));
+#if defined(USE_MAIN_LOG)
 	m_mgr.AddPane(m_txt_Log,		wxAuiPaneInfo().Name(wxT("m_txt_Log"))		.Caption(_("m_txt_Log"))	.Right()		.PaneBorder(false));
+#endif
 	m_mgr.AddPane(m_PanExec,		wxAuiPaneInfo().Name(wxT("m_PanExec"))		.Caption(_("Execution"))	.Right()		.PaneBorder(false));
 //	
 

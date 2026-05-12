@@ -74,7 +74,9 @@ private:
 
 	wxBitmap			m_bitmap;
 
+#if defined(USE_MAIN_LOG)
 	wxTextCtrl*			m_txt_Log		= nullptr;
+#endif
 	cMainListCtrl*		m_lstPrgMaster	= nullptr;
 	cDetailListCtrl*	m_lstPrgDetail	= nullptr;
 	CmdEditorCtrl*		m_CmdEditor		= nullptr;

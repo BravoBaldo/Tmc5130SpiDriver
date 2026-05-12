@@ -7,13 +7,13 @@ std::vector<wxString> RetArray2(std::initializer_list<wxString> lista) {
 }
 
 static const sSubSystem SubSystems[]{
-	{'A', "ADC Converter"},
-	{'B', "BarCode"},
-	{'S', "StripLEDS"},
-	{'P', "Power Reader"},
-	{'M', "Steppers"},
-	{'E', "Expanders"},
-	{'U', "Unused"},
+	{eADCConverter,	"ADC Converter"},
+	{eBarCode,		"BarCode"},
+	{eStripLed,		"StripLEDS"},
+	{ePwReader,		"Power Reader"},
+	{eSteppers,		"Steppers"},
+	{eExpanders,	"Expanders"},
+	{eUnused,		"Unused"},
 };
 
 unsigned int SubSystem_Size(void) { return WXSIZEOF(SubSystems); };

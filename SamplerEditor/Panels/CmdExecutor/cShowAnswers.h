@@ -2,7 +2,7 @@
 #include <wx/wx.h>
 #include <wx/aui/auibook.h>
 #include <wx/grid.h>
-#include "../SysSampler.h"
+#include "stdwx.h"
 
 
 enum eGrids {
@@ -24,6 +24,9 @@ enum eSteppers {
 
 class cAnswersShow : public wxAuiNotebook {
     wxGrid* m_Grids[eGrid_TOP];
+#if !defined(USE_MAIN_LOG)
+    wxTextCtrl* m_txt_Log = nullptr;
+#endif
     void Grid_AllReadOnly(wxGrid* Grid);
     void Grid_AutoSizeAll(wxGrid* Grid, bool setAsMin = true);
     void Log_Generic_InitEnd(wxGrid* Grid);

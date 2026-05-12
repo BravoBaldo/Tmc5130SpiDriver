@@ -92,8 +92,14 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 	HeadFont.SetNativeFontInfo("0;-13;0;0;0;700;0;0;0;0;3;2;1;34;Arial");
 	if (!HeadFont.IsOk())
 		HeadFont = wxFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false);
+	size_t i;
 
-	size_t i = eGrid_Motors;
+#if !defined(USE_MAIN_LOG)
+	m_txt_Log = new wxTextCtrl(this, wxID_ANY, _("Hello\n"), wxPoint(100, 6), wxSize(50, -1), wxTE_MULTILINE);
+	LogMeSet(m_txt_Log);
+	this->AddPage(m_txt_Log,			_("Last Status"), true );
+#endif
+	i = eGrid_Motors;
 	m_Grids[i] = new wxGrid(this, wxID_ANY);
 		Log_Stepper_Init(m_Grids[i], HeadFont);
 		this->AddPage(m_Grids[i], _("Motors"));

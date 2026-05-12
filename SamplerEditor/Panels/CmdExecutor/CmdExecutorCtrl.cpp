@@ -26,11 +26,12 @@ void myMilliSleep(long long T){
 	}
 }
 
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sCommAnsw& Answ) {
-	LogMe(wxString::Format("\tSystem    %c\n", Answ.m_SubSystem), true);
-	LogMe(wxString::Format("\tRisultato %s\n", (Answ.m_Result == eCmdOk) ? "Ok" : "Ko"), true);
-	LogMe(wxString::Format("\tValore    %ld\n", Answ.m_Val), true);
-	return Answ.m_Result;
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerStandard& Answ) {
+	LogMe(wxString::Format("\tSystem......: %c\n", Answ.m_SubSystem), true);
+	LogMe(wxString::Format("\tCommand.....: %c\n", Answ.m_Cmd), true);
+	LogMe(wxString::Format("\tUnknown Msg.: %c\n", Answ.m_UnknownMsg), true);
+	LogMe(wxString::Format("\tMessage.....: %s\n", Answ.m_Msg), true);
+	return eCmdOk;
 }
 
 //ToDo: Separate Tx and Rx each with own TimeOut
@@ -42,8 +43,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 	wxStopWatch sw2;
 	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
-	while (!Success && m_Running) {
-		// 1. Transmission
+	while (!Success && m_Running) {		// 1. Transmission
 		if (m_HidExec.Write_NoWait(data, length) < 0) {
 			LogMe("Errore hardware in scrittura. Apro e Riprovo...\n", true);
 			m_HidExec.Open(m_HidInfo);
@@ -69,11 +69,11 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			if (m_ptrAnswerShow)
 				m_ptrAnswerShow->SetAnswer(m_HidExec.GetBuffer(), m_HidExec.GetAnswerLen());
 			Success = true;
-			char Tipo = ((char*)m_HidExec.GetBuffer())[0];
+			eMessageTypes Tipo = ((eMessageTypes*)m_HidExec.GetBuffer())[0];
 			switch (Tipo) {
-				case 'a':
+				case eTypAnswStd:
 					{
-						sCommAnsw Risposta;
+						sAnswerStandard Risposta;
 						memcpy(&Risposta, (sCommAnsw*)m_HidExec.GetBuffer(), sizeof(sCommAnsw));
 						LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
 						if (ParseAnswer(Risposta) != eCmdOk)
@@ -82,6 +82,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 					break;
 				default:
 					LogMe(wxString::Format("\nERRORE: Risposta non riconosciuta ('%c').\n", Tipo), true);
+					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);
 					//Inutile continuare!
 					break;
 			}

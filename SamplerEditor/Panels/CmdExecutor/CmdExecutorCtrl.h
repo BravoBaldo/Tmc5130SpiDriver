@@ -45,7 +45,9 @@ class CmdExecutorCtrl : public wxPanel {
 	//void		RxMessage(const unsigned char* data, size_t length, long TimeoutMs = 500);
 
 	void		SendCommand		(const unsigned char* data, size_t length, long TimeoutMs = 500);
-	eCmdAnswer	ParseAnswer(const sCommAnsw& Answ);
+
+	eCmdAnswer	ParseAnswer(const sAnswerStandard& Answ);
+
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,

@@ -1,17 +1,17 @@
 #pragma once
 #include "wx/wx.h"
+#include "stdwx.h"
 
 typedef enum { eChoice, eNumber, eTime, eUnknown } eParType;
 
 struct sSubSystem {
-	const char		Type;
+	eSubSysAcro		Type;
 	wxString		Descr;
 };
 
 unsigned int				SubSystem_Size(void);
 const sSubSystem*			SubSystem_Get(unsigned int i);
 const sSubSystem*			SubSystem_GetByType(const char Type);
-
 
 typedef struct {	//Commands' parameters
 	byte					ParId;
