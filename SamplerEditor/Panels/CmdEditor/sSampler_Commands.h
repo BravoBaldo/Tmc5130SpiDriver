@@ -27,7 +27,7 @@ const sParams* Param_Get(byte Id);
 
 
 typedef struct {	//Microcontroller Commands. See 
-	const char				SubSys;
+	const eSubSysAcro		SubSys;
 	const char				cmd;
 	const char*				Descr;
 	const char*				ParamPattern;

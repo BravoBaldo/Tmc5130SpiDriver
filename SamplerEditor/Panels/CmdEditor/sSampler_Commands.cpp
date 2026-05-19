@@ -6,13 +6,16 @@ std::vector<wxString> RetArray2(std::initializer_list<wxString> lista) {
 	return std::vector<wxString>(lista.begin(), lista.end());	// Inizializza il vector direttamente con il contenuto della lista
 }
 
-static const sSubSystem SubSystems[]{
+static const sSubSystem SubSystems[]{ //See eSubSysAcro
+	{eSystemCmd,	"System"},
 	{eADCConverter,	"ADC Converter"},
 	{eBarCode,		"BarCode"},
 	{eStripLed,		"StripLEDS"},
 	{ePwReader,		"Power Reader"},
-	{eSteppers,		"Steppers"},
 	{eExpanders,	"Expanders"},
+	{eSteppers,		"Steppers"},
+	{eStepDirect,	"SteppersDirect"},
+
 	{eUnused,		"Unused"},
 };
 
@@ -33,63 +36,97 @@ const sSubSystem* SubSystem_GetByType(const char Type) {
 
 static const sParams SamplerParams[]{
 	//ParId	ParType	ParName			MinValue	MaxValue			ToolTip						ParValues;
+	{ 'a', eChoice,	"Accelerations",0,				3,				"(Ac)(De)celerations"		, RetArray2({"FirstAcceleration (A1)", "SecondAcceleration (AMAX)", "FirstDeceleration (DMAX)", "SecondDeceleration (D1)"})								},
 	{ 'b', eChoice,	"Boolean",		0,				1,				"True or False"				, RetArray2({"False", "True"})								},
 	{ 'c', eNumber,	"Char",			(-128),			127																				},
+	{ 'd', eChoice,	"Velocities",	0,				3,				"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
 	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "Enable"})							},
 	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({"None","FixedItalianFlag_Sx","FixedItalianFlag_Dx","MoveSingle_Sx","MoveSingle_Dx","MoveDouble_Sx","MoveDouble_Dx","MoveFlagItaly_Sx","MoveFlagItaly_Dx","GraysSx", "GraysDx","MoveArrow_Sx","MoveArrow_Dx","Fade","Bouncing"})							},
 	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
 	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
 	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "Right"})								},
+	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200", "1=25600", "2=12800", "3=6400", "4=3200", "5=1600", "6=800", "7=400", "8=200"})},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
 	{ 'p', eNumber,	"Process",		0,				 5,				"Laser Game"},
 	{ 's', eNumber,	"Speed",		500,			25000																			},
 	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
-	{ 'v', eChoice,	"Output",		0,				0,				"Outputs"					, RetArray2({"All/None","A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
+	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
+	{ 'v', eChoice,	"Output",		0,				0,				"Outputs"					, RetArray2({"All/None", "A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
 
 
-	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})},
+	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
 	{ 'C', eNumber,	"Byte",			0,				0xFF																			},
+	{ 'L', eNumber,	"Uint32",		0,				wxINT32_MAX,	"if>50000 ask database"		, RetArray2({"Message"})			},	//wxUINT32_MAX = 0xffffffff
 	{ 'M', eChoice,	"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)", "Probe"})},
 	{ 'O', eChoice,	"On/Off",		0,				1,				"Off/ON"					, RetArray2({"Off", "ON"})			},
+	{ 'R', eChoice,	"Ramp Mode",	0,				1,				"Ramp Mode"					, RetArray2({"PositionMode", "VelocityPositiveMode", "VelocityNegativeMode", "HoldMode"})},
 	{ 'S', eNumber,	"Steps.",		MIN_PARAM,		MAX_PARAM,		"Steps"						, RetArray2({"Steps"})},
 	{ 'V', eNumber,	"Vel.",			MIN_PARAM,		MAX_PARAM,		"Velocity"					, RetArray2({"Velocity"})},
+	{ 'P', eNumber,	"Routine",		2000,			65535,			"Routine from DB"			, RetArray2({"Routine" })},
 };
 
 static const sSampler_Commands Sampler_Commands[] = {
 	// Sub  cmd  Descr				ParamPattern	ParNames										ExtDescr
-	  {'M', 'f', "FreeRotation",	"Ml",			RetArray2({"Stepper", "l_direction"})},
-	  {'M', 'w', "WaitPrevCommand",	"M",			RetArray2({"Stepper"})},
-	  {'M', 'C', "Set Currents",	"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
 
-	  {'M', 'h', "Halt",			"MA",			RetArray2({"Stepper", "Deceleration"})},
-	  {'M', 'G', "Goto",			"MAVS",			RetArray2({"Stepper", "Acceleration", "Velocity", "Steps"})},
+	{eSystemCmd, 'a',	"Exec. Routine",		"P",		RetArray2({"Program Id"					})},
+//	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
+//	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
 
-	  {'M', 'x', "Demo1",			"MbeoMO",		RetArray2({"Stepper", "t_False/True","t_Disable/Enable","t_Open/Close", "t_X/Y/Z/P","t_Off/On"})},
-	  {'M', 'y', "Demo2",			"MCsAtM",		RetArray2({"Stepper", "t_byte","t_Speed","t_Accel", "t_Time","t_Motor"})},
-	  {'M', 'y', "Demo3",			"MSVA",			RetArray2({"Stepper", "t_Step","t_Vel","t_Acc.n"})},
+	{eStepDirect,	'a', "ChipEnable",			"Me",		RetArray2({"Stepper", "Chip Abilitation"			})},
+	{eStepDirect,	'b', "setStops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
+	{eStepDirect,	'c', "Set Currents",		"Miij",		RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"	})},
+	{eStepDirect,	'd', "Set Position",		"MS",		RetArray2({"Stepper", "Position"					})},
+	{eStepDirect,	'e', "Set Microsteps",		"Mm",		RetArray2({"Stepper", "MicroSteps"					})},
+	{eStepDirect,	'f', "Set Target",			"MS",		RetArray2({"Stepper", "Final Position"				})},
+	{eStepDirect,	'g', "Set Trapezoidal",		"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
+	{eStepDirect,	'h', "Set Ramp Mode",		"MR",		RetArray2({"Stepper", "Ramp Mode"					})},
+	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
+	{eStepDirect,	'j', "Wait Timer",			"M",		RetArray2({"Stepper"								})},
+	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
+	{eStepDirect,	'l', "InitGoto",			"MVVAAV",	RetArray2({"Stepper", "StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
+	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
+	{eStepDirect,	'n', "Set Accelerations",	"MaA",		RetArray2({"Stepper", "Acc/De-celeration type", "Accel. Value"		})},
+	{eStepDirect,	'o', "Set Velocities",		"MdV",		RetArray2({"Stepper", "Velocity type", "Velocity Value"				})},
 
-	  {'M', 'E', "GoEnd",			"M",			RetArray2({"Stepper"})},
-	  {'M', 'E', "GoEnd 1",			"MV",			RetArray2({"Stepper", "Velocity"})},
-	  {'M', 'H', "Home",			"M",			RetArray2({"Stepper"})},
-	  {'M', 'H', "Home 1",			"MV",			RetArray2({"Stepper", "Velocity"})},
-	  {'M', 'T', "Set Trapezoidal",	"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
-	  {'M', 'w', "Wait End Of",		"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
 
-	  {'A', 'a', "GetADC",			"",				RetArray2({})},
 
-	  {'B', 'l', "Laser ON",		"O",			RetArray2({"Laser On/Off"})},
-	  {'B', 'R', "Read List",		"",				RetArray2({})},
 
-	  {'S', 'l', "Led Effect",		"g",			RetArray2({"Strip LED Effect"})},
-	  {'S', 'd', "Delay",			"t",			RetArray2({"Delay"})},
-	  {'S', 'r', "Reset Timer",		"",				RetArray2({})},
-	  {'S', 'g', "Get Remaining",	"",				RetArray2({})},
 
-	  {'P', 'v', "Read Volt",		"",				RetArray2({})},
-	  {'P', 'A', "Read Amp",		"",				RetArray2({})},
-	  {'P', 'W', "Read Watt",		"",				RetArray2({})},
 
-	  {'E', 'v', "Set Output",		"vO",			RetArray2({"Canale Out", "On/Off"})},
+	{eSteppers,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
+	{eSteppers,	'w', "WaitPrevCommand",		"M",			RetArray2({"Stepper"})},
+	{eSteppers,	'C', "Set Currents",		"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
+
+	{eSteppers,	'h', "Halt",				"MA",			RetArray2({"Stepper", "Deceleration"})},
+	{eSteppers,	'G', "Goto",				"MAVS",			RetArray2({"Stepper", "Acceleration", "Velocity", "Steps"})},
+
+	{eSteppers,	'x', "Demo1",				"MbeoMO",		RetArray2({"Stepper", "t_False/True","t_Disable/Enable","t_Open/Close", "t_X/Y/Z/P","t_Off/On"})},
+	{eSteppers,	'y', "Demo2",				"MCsAtM",		RetArray2({"Stepper", "t_byte","t_Speed","t_Accel", "t_Time","t_Motor"})},
+	{eSteppers,	'y', "Demo3",				"MSVA",			RetArray2({"Stepper", "t_Step","t_Vel","t_Acc.n"})},
+
+	{eSteppers,	'E', "GoEnd",				"M",			RetArray2({"Stepper"})},
+	{eSteppers,	'E', "GoEnd 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
+	{eSteppers,	'H', "Home",				"M",			RetArray2({"Stepper"})},
+	{eSteppers,	'H', "Home 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
+	{eSteppers,	'T', "Set Trapezoidal",		"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
+	{eSteppers,	'w', "Wait End Of",			"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
+
+	{eADCConverter,	'a', "GetADC",			"",				RetArray2({							})},
+
+	{eBarCode,		'l', "Laser ON",		"O",			RetArray2({"Laser On/Off"			})},
+	{eBarCode,		'R', "Read List",		"",				RetArray2({							})},
+
+	{eStripLed,		'l', "Led Effect",		"g",			RetArray2({"Strip LED Effect"		})},
+	{eStripLed,		'd', "Delay",			"t",			RetArray2({"Delay"					})},
+	{eStripLed,		'r', "Reset Timer",		"",				RetArray2({							})},
+	{eStripLed,		'g', "Get Remaining",	"",				RetArray2({							})},
+	{eStripLed,		'w', "WaitTimer",		"",				RetArray2({							})},
+	  
+	{ePwReader,		'v', "Read Volt",		"",				RetArray2({							})},
+	{ePwReader,		'A', "Read Amp",		"",				RetArray2({							})},
+	{ePwReader,		'W', "Read Watt",		"",				RetArray2({							})},
+
+	{eExpanders,	'v', "Set Output",		"vO",			RetArray2({"Canale Out", "On/Off"	})},
 };
 
 void sSampler_Check(void) {

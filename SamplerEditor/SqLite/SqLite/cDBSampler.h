@@ -47,12 +47,13 @@ public:
 	bool	ProgDetail_Delete		(unsigned int ProgId, bool DelFather);
 	bool	ProgDetail_Delete2		(unsigned int ProgId, unsigned int DetailId);
 	//--------------------------------------------------
-	void ProgDetail_ReadAll			(unsigned int ProgId, std::function<void(const wxString&, bool)> logFunc);
+	void	ProgDetail_ReadAll		(unsigned int ProgId, std::function<void(const wxString&, bool)> logFunc);
 
 	void	DBCreateNewProcess(void);
 	void	DBModifyCopyProcess(const wxString& Name, const unsigned int ProgId, bool Modify = true);
 
 	void	DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize);
 
+	bool ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item);
 
 };

@@ -27,14 +27,58 @@ void myMilliSleep(long long T){
 }
 
 eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerStandard& Answ) {
+	LogMe("Answer Standard", true);
 	LogMe(wxString::Format("\tSystem......: %c\n", Answ.m_SubSystem), true);
 	LogMe(wxString::Format("\tCommand.....: %c\n", Answ.m_Cmd), true);
 	LogMe(wxString::Format("\tUnknown Msg.: %c\n", Answ.m_UnknownMsg), true);
 	LogMe(wxString::Format("\tMessage.....: %s\n", Answ.m_Msg), true);
-	return eCmdOk;
+	return eCmdOk;	//ToDo
+}
+
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sExpanderStandard& Answ) {
+	LogMe("Answer from Expanders\n", true);
+	LogMe(wxString::Format("\tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), false);
+	return eCmdOk;	//ToDo
+}
+
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StepperAnswer& Answ) {
+	LogMe("Answer from Steppers\n", true);
+	LogMe(wxString::Format("\tm_Motor......: %d\n", Answ.m_Motor), false);
+	return eCmdOk;	//ToDo
+}
+
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
+	LogMe("Answer from StripLED\n", true);
+	LogMe(wxString::Format("\tm_CurrGame.: %d\n", Answ.m_CurrGame), false);
+	LogMe(wxString::Format("\tm_Remaining: %d\n", Answ.m_Remaining), false);
+	return Answ.m_Result;
+}
+
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
+	LogMe("Answer from Tmc\n", true);
+	LogMe(wxString::Format("\tm_Result....: %d\n", Answ.m_Result), false);
+	LogMe(wxString::Format("\tm_Remaining.: %d\n", Answ.m_Remaining), false);
+
+	if (m_ptrAnswerShow)
+		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
+
+	return Answ.m_Result;
 }
 
 //ToDo: Separate Tx and Rx each with own TimeOut
+/*
+template <typename Typ>
+eCmdAnswer CallExecutor() {
+	Typ Answer;
+	std::memcpy(&Answer, m_HidExec.GetBuffer(), sizeof(Typ));
+	return ParseAnswer(Answer);
+}
+*/
+
+#define CALLEXECUTOR(Typ)	{	Typ Answer;														\
+								std::memcpy(&Answer, (Typ*)m_HidExec.GetBuffer(), sizeof(Typ));	\
+								Success = (ParseAnswer(Answer)==eCmdOk);										\
+							}
 
 void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
 	bool Success	= false;
@@ -45,12 +89,12 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 
 	while (!Success && m_Running) {		// 1. Transmission
 		if (m_HidExec.Write_NoWait(data, length) < 0) {
-			LogMe("Errore hardware in scrittura. Apro e Riprovo...\n", true);
+			LogMe("Hardware error while writing. Open and try again....\n", true);
 			m_HidExec.Open(m_HidInfo);
 			wxMilliSleep(100); // Piccola pausa prima di riprovare
 			continue;
 		}
-		LogMe(wxString::Format("Tentativo %d: Messaggio inviato...\n", ++retryCount), true);
+		LogMe(wxString::Format("Attempt %d: Message sent...\n", ++retryCount), true);
 
 		// 2. Attesa risposta con Timeout
 		wxStopWatch sw;
@@ -60,7 +104,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
 			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
 			if (res <= 0) {
-				wxYield(); // Lascia respirare la UI di wxWidgets
+				wxYield();
 			}
 		}
 
@@ -73,19 +117,23 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			switch (Tipo) {
 				case eTypAnswStd:
 					{
-						sAnswerStandard Risposta;
-						memcpy(&Risposta, (sCommAnsw*)m_HidExec.GetBuffer(), sizeof(sCommAnsw));
 						LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
-						if (ParseAnswer(Risposta) != eCmdOk)
+						sAnswerStandard Answer;
+						memcpy(&Answer, (sAnswerStandard*)m_HidExec.GetBuffer(), sizeof(sAnswerStandard));
+						if (ParseAnswer(Answer) != eCmdOk)
 							Success = false;
 					}
 					break;
+				case eTypAnswExpander:	CALLEXECUTOR(sExpanderStandard);	break;
+				case eTypAnswStepper:	CALLEXECUTOR(StepperAnswer);		break;
+				case eTypAnswStepDir:	CALLEXECUTOR(TmcAnswer);			break;
 				default:
-					LogMe(wxString::Format("\nERRORE: Risposta non riconosciuta ('%c').\n", Tipo), true);
+					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
 					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);
 					//Inutile continuare!
 					break;
 			}
+			LogMe(wxString::Format("Success is '%s'\n", Success?"True":"False"), true);
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
 			if (retryCount > 10) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
@@ -138,20 +186,55 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 	return (uint16_t)(~sum + 1);
 }
 
-#define TX_BINARY_M
+#define TX_BINARY_M	//If defined, Tx via USB, Else via SERIAL
 
 bool CmdExecutorCtrl::ExecuteStep(cCmdStepper& vStep) {
-	unsigned char Msg[sizeof(cCmdStepper) + 1];	// + Starting byte
+	unsigned char	Msg[sizeof(cCmdStepper) + 1];	// + Starting byte
+	size_t			Msg_Len = 0;
+
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 	int j = 0;
 	vStep.m_CheckSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(cCmdStepper) - sizeof(vStep.m_CheckSum));
 	memcpy(&Msg[j], &vStep, sizeof(vStep));
 	j += sizeof(vStep);
-	SendCommand( Msg, sizeof(vStep) );
+	Msg_Len = sizeof(vStep);
 #else
 #endif
+	/* Soluzione 1
+		If "Exec. Routine"
+			ExecuteSteps(0, m_ptrPrgDetail->GetItemCount());
+			Execute all steps of MasterId = vStep.m_Par[0];
+				...probabimente senza visualizzare (soprattutto senza il parametro -e
+	*/
+
+
+	SendCommand(Msg, Msg_Len);
 	return true;
 }
+
+bool CmdExecutorCtrl::ExecuteSteps(uint16_t	m_MasterId) {	//Execute Steps from DB
+	int64_t detailProg = 0;
+	cCmdStepper vStep;
+	bool recordFound;
+
+#if defined(USE_ODBC)
+#else
+	{
+		cDBSampler yy(SQLLITEDBPATH);
+		do {
+			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
+			if (recordFound) {
+				LogMe(wxString::Format("\t Step %d\n", vStep.m_DetailProg), false);
+				ExecuteStep(vStep);
+				detailProg = vStep.m_DetailProg + 1;
+			}
+		} while (recordFound);
+	}
+#endif
+
+	return true;
+}
+
 
 bool CmdExecutorCtrl::ExecuteSteps(long from, long to) {
 m_Btn_ExecStep->Enable(false);
@@ -162,11 +245,16 @@ m_Btn_ExecAll->Enable(false);
 	wxString CmdStr;			//wxMemoryBuffer
 	m_Running = true;
 	for (long i = from; i < to; i++) {
-		m_ptrPrgDetail->Select(i, true);
+		m_ptrPrgDetail->Select(i, true);	//Select instruction on the display and get MasterId/
 		wxYield();
+
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
-		ExecuteStep(vStep);
+		if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd=='a') {
+			LogMe(wxString::Format("Execute SUbroutine %d\n", vStep.m_Par[0]), false);
+			ExecuteSteps(vStep.m_Par[0]);
+		}else
+			ExecuteStep(vStep);
 #else
 		CmdStr = (m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i)) ? m_ptrEditor->DBData2String(vStep) : "------------";
 		LogMe(wxString::Format("Execute %ld: '%s'\n", i, CmdStr), false);

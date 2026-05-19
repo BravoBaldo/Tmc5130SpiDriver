@@ -33,7 +33,6 @@ void cMainListCtrl::MainPrg_Fill(void) {
 		LItem.m_col = 0;	this->GetItem(LItem);	OldSelected = wxAtol(LItem.m_text);
 		LItem.m_col = 0;	this->GetItem(LItem);	OldName = LItem.m_text;
 	}
-	bool		g_EnableEditor = false;
 #if defined(USE_ODBC)
 	Next_DB* MyDB = g_NazarDB_Get(); if (MyDB == NULL) return;
 	MyDB->ProgMaster_Fill2(this, m_SortByName, true, -99, g_EnableEditor ? 0 : 1);//1);

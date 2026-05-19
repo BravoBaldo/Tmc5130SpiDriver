@@ -31,12 +31,14 @@ class cAnswersShow : public wxAuiNotebook {
     void Grid_AutoSizeAll(wxGrid* Grid, bool setAsMin = true);
     void Log_Generic_InitEnd(wxGrid* Grid);
 
-    void Log_Stepper_Init(wxGrid* Grid, const wxFont& HeadFont);
-    void Log_Stepper_Fill(wxGrid* Grid, void* Answer, size_t AnswerLen= sizeof(StepperAnswer));
+    void Log_Stepper_Init(const wxFont& HeadFont);
+    
 
 	eCmdAnswer ShowAnswer_A(void* Answer, size_t AnswerLen);
 public:
     cAnswersShow(wxWindow* parent);
+    void Log_Stepper_Fill(const StepperAnswer& Answer);
+    void Log_Stepper_Fill(const TmcAnswer& Answer);
 
 	bool SetAnswer(void* Answer, size_t AnswerLen);
     void AddSamplePages();

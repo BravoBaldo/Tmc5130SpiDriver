@@ -52,19 +52,10 @@ wxString CmdEditorCtrl::DBData2String(cCmdStepper& vStep) {
 
 wxString CmdEditorCtrl::UI2String(void) {
     wxString Result = "c";
-/*
-    char strTyp = '\0';
-    int s = m_cho_SubSystem->GetSelection();
-    if (s < 0)      return wxEmptyString;
-
-    strTyp = ((sSubSystem*)m_cho_SubSystem->GetClientData(s))->Type;
-    Result += wxString::Format("c%c,", strTyp);
-*/
-    //cM,G,0,100,120,2000
 
     int Sel = m_cho_StepperCmd->GetSelection();
     if (Sel < 0)	return wxEmptyString;
-    const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
+    const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);
     if (!c)			return wxEmptyString;
     Result += wxString::Format("%c,", c->SubSys);
     Result += wxString::Format("%c", c->cmd);
@@ -94,7 +85,7 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                     }
 
                     //m_txt_NumOfPars->SetValue(wxString::Format("%d %d", NumOfParams, (int)(c->ParNames.size())));
-                    m_txt_SubSystem->SetValue(c->SubSys);
+                    m_txt_SubSystem->SetValue((const char)c->SubSys);
                     m_txt_CmdCode->SetValue(c->cmd);					//Command Id
                     m_txt_ParamPattern->SetValue(c->ParamPattern);		//Params List
                     m_txt_LenPattern->SetValue(wxString::Format("%d", NumOfParams)); //.Lenght()

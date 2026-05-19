@@ -3,6 +3,7 @@
 #include "stdwx.h"
 
 wxTextCtrl* g_txtLog = NULL;
+bool		g_EnableEditor = false;
 
 void LogMeSet(wxTextCtrl* p) {g_txtLog = p;}
 
@@ -31,6 +32,17 @@ wxString ShowBuffer ( byte* Buffer, unsigned int LenBuf ) {
 	return TB;
 }
 
+wxString ByteToBinaryWxString(uint8_t byte) {
+	wxString binaryStr;
+	binaryStr.Alloc(8); // Ottimizza l'allocazione della memoria per 8 caratteri
+
+	for (int i = 7; i >= 0; i--) {
+		// Estrae il singolo bit e appende '1' o '0'
+		binaryStr.Append(((byte >> i) & 1) ? wxT('1') : wxT('0'));
+	}
+
+	return binaryStr;
+}
 unsigned long GetMaskFromString ( const wxString & strBuf ) {
 	unsigned long Mask = 1, Res = 0;
 	for(byte i = 0; i<strBuf.Len (); i++) {

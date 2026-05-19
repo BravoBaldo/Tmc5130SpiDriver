@@ -20,7 +20,6 @@ static int callback(void* , int argc, char** argv, char** azColName) {
     return 0;
 }
 
-
 void cDBSampler::ErrorShow(const char* zErrMsg) {
     wxMessageBox(zErrMsg, "SQL Error!", wxOK | wxICON_INFORMATION, NULL);
     //	wxMessageDialog(NULL,msg,"SQL Error!", wxOK | wxICON_INFORMATION );
@@ -746,4 +745,66 @@ bool cDBSampler::ProgDetail_Delete(unsigned int ProgId, bool DelFather) {
 bool cDBSampler::ProgDetail_Delete2(unsigned int ProgId, unsigned int DetailId) {
     wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d AND DetailProg = %d", ProgId, DetailId);
     return ExecuteSQL(Sql_Del, true);
+}
+
+bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item) {
+    if (!m_db) return false;
+
+    // Genera dinamicamente la lista dei campi "Par0, Par1, ... ParN"
+    wxString strParNames;
+    for (byte i = 0; i < NUMOFPARAMS; i++) {
+        strParNames += wxString::Format(", Par%d", i);
+    }
+
+    // Costruisce la query SQL di selezione basata sulla chiave primaria
+    wxString sql = wxString::Format(
+        "SELECT SubSys, Cmd, Pattern %s, DetailProg FROM %s WHERE MasterId = ? AND DetailProg >= ?;",
+        strParNames, PROGDETAIL_TABLENAME
+    );
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(m_db, sql.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        return false;
+    }
+
+    // Binding dei parametri di ricerca (WHERE)
+    sqlite3_bind_int64(stmt, 1, masterId);
+    sqlite3_bind_int64(stmt, 2, detailProg);
+
+    bool recordFound = false;
+    int rc = sqlite3_step(stmt);
+
+    if (rc == SQLITE_ROW) {
+        recordFound = true;
+
+        // Ripristina le chiavi nell'oggetto
+        item.m_MasterId     = masterId;
+        //item.m_DetailProg   = detailProg;
+
+        // Estrazione dei dati standard (colonne 0, 1, 2)
+        item.m_SubSystem    = sqlite3_column_int(stmt, 0);
+        item.m_Cmd          = sqlite3_column_int(stmt, 1);
+        item.m_DetailProg   = sqlite3_column_int(stmt, 13);
+
+        // Gestione del pattern di testo
+        const char* patternText = (const char*)sqlite3_column_text(stmt, 2);
+        if (patternText) {
+            // Nota: adatta questa riga al metodo reale che usi per impostare il pattern
+            // (es. item.SetPatternFromChars(patternText) o assegnazione diretta)
+            item.SetPattern(patternText);
+        }
+
+        // Estrazione dinamica dell'array dei parametri (a partire dalla colonna index 3)
+        for (int i = 0; i < NUMOFPARAMS; i++) {
+            item.m_Par[i] = sqlite3_column_int64(stmt, 3 + i);
+        }
+    } else if (rc == SQLITE_DONE) {
+        recordFound = false; // Record non trovato, gestibile senza mostrare un errore di sistema
+    } else {
+        ErrorShow(sqlite3_errmsg(m_db)); // Errore effettivo del database durante l'esecuzione
+    }
+
+    sqlite3_finalize(stmt);
+    return recordFound;
 }

@@ -16,6 +16,7 @@
 	#include "wx/msw/private.h"
 	#include "wx/config.h"
 
+#include "../../../../SysSampler.h"
 
 	wxString		ShowBuffer			( byte* Buffer, unsigned int LenBuf );
 	void			LogMeSet			( wxTextCtrl* p );

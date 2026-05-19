@@ -158,6 +158,19 @@ uint32_t TMC5130::readRegUART(uint8_t slave, Reg reg) {
 // ======= SEZIONE STEP/DIR ============================
 // =====================================================
 
+void TMC5130::setStops(MotorDirection Direction){
+	TMC5130::SwMode sw_mode	= getSwMode();  //SW_MODE
+	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
+	sw_mode.stop_l_enable	= 1;	//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.pol_stop_l		= 1;	//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.stop_r_enable	= 1;	//1: Enables automatic motor stop during active right reference switch input
+	sw_mode.pol_stop_r		= 1;	//0=non-inverted, high active, 1=inverted, low active
+	sw_mode.sg_stop			= 0;	//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
+	sw_mode.en_softstop		= 0;	//0: Hard stop 1: Soft stop    
+	setSwMode(sw_mode);
+}
+
 void TMC5130::beginStepDir(uint8_t stepPin, uint8_t dirPin, uint8_t enPin) {
   mode = MODE_STEPDIR;
   pinSTEP = stepPin;
@@ -384,6 +397,7 @@ void TMC5130::setMaxVelocity(uint32_t v) {
 void TMC5130::setStartVelocity(uint32_t v){
   assert(v>=0 && v<=0x3FFFF);
   writeReg(VSTART, v);
+  ShadowRegs.VSTART = v;
 }
 
 void TMC5130::setFirstVelocity(uint32_t v)  {

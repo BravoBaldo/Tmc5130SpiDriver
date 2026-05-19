@@ -207,18 +207,18 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	//---------------------------------------------------
 	// Widgets
 	//---------------------------------------------------
-	m_PanEditor = new wxPanel(this);
-	m_Btn_InsertAfter = new wxButton(m_PanEditor, wxID_SQLINSERTAFT, _("Insert (After)"));
-	m_Btn_InsertUpdate = new wxButton(m_PanEditor, wxID_SQLUPDATE, _("Update"));
-	m_Btn_Delete = new wxButton(m_PanEditor, wxID_SQLDELETE, _("Delete"));
-	m_Btn_MoveUp = new wxButton(m_PanEditor, ID_Btn_MoveUp, _("Up"));
-	m_Btn_MoveDn = new wxButton(m_PanEditor, ID_Btn_MoveDn, _("Down"));
+	m_PanEditor			= new wxPanel(this);
+	m_Btn_InsertAfter	= new wxButton(m_PanEditor, wxID_SQLINSERTAFT, _("Insert (After)"));
+	m_Btn_InsertUpdate	= new wxButton(m_PanEditor, wxID_SQLUPDATE, _("Update"));
+	m_Btn_Delete		= new wxButton(m_PanEditor, wxID_SQLDELETE, _("Delete"));
+	m_Btn_MoveUp		= new wxButton(m_PanEditor, ID_Btn_MoveUp, _("Up"));
+	m_Btn_MoveDn		= new wxButton(m_PanEditor, ID_Btn_MoveDn, _("Down"));
 
-	m_Btn_InsertAfter->SetBitmap(wxArtProvider::GetIcon(wxART_FILE_SAVE, wxART_BUTTON), wxLEFT);
-	m_Btn_InsertUpdate->SetBitmap(wxArtProvider::GetIcon(wxART_FIND_AND_REPLACE, wxART_BUTTON), wxLEFT);
-	m_Btn_Delete->SetBitmap(wxArtProvider::GetIcon(wxART_DELETE, wxART_BUTTON), wxLEFT);
-	m_Btn_MoveUp->SetBitmap(wxArtProvider::GetIcon(wxART_GO_UP, wxART_BUTTON), wxLEFT);
-	m_Btn_MoveDn->SetBitmap(wxArtProvider::GetIcon(wxART_GO_DOWN, wxART_BUTTON), wxLEFT);
+	m_Btn_InsertAfter->SetBitmap	(wxArtProvider::GetIcon(wxART_FILE_SAVE,		wxART_BUTTON), wxLEFT);
+	m_Btn_InsertUpdate->SetBitmap	(wxArtProvider::GetIcon(wxART_FIND_AND_REPLACE,	wxART_BUTTON), wxLEFT);
+	m_Btn_Delete->SetBitmap			(wxArtProvider::GetIcon(wxART_DELETE,			wxART_BUTTON), wxLEFT);
+	m_Btn_MoveUp->SetBitmap			(wxArtProvider::GetIcon(wxART_GO_UP,			wxART_BUTTON), wxLEFT);
+	m_Btn_MoveDn->SetBitmap			(wxArtProvider::GetIcon(wxART_GO_DOWN,			wxART_BUTTON), wxLEFT);
 
 
 	{

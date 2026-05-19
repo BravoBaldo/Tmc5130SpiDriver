@@ -1,40 +1,3 @@
-/*
-ToDo:
-  Fsa's for movements
-    1) una sola FSA per volta da 'attaccare' ad uno stepper al momento e da chiamare continuamente
-    2) Ogni Stepper ha una sua FSA che viene chiamata continuamente
-    Movimenti possibili
-      Stop(Hard, Soft, variable)
-      Stay(Parking, Neutral)
-      Change MicroStep
-      GoTo
-      Reset
-      GoHome
-  GoTo and wait target
-  Execute an "HomeToStall"
-  Check if to use Polidoro's class printer....
-  Implementare gli algoritmi descritti nel datasheet
-  Inserire i valori di default per ciascun motore con la possibilità di re-inizializzarlo
-Tests
-  Seriale
-  connessione
-  Fermata 'morbida':  Ok StopMotor
-  In 'Neutral=Folle'  Ok
-  In 'Parking'        Ok
-  MotorA continuous rotation, MotB two laps forward and two back
-  GoTo... steps
-
-Done:
-  https://github.com/khoih-prog/ESP32TimerInterrupt
-  remove TMC5130_RampMode
-  Introduce ShadowRegs (see DriverParameters)
-  Le inizializzazioni del Datasheet
-  Eliminare StepperNames
-  unificare Gconf and GconfBits
-  Rendere Regs Private
-*/
-
-
 #include <SPI.h>
 #include "TMC5130.h"
 #include "TMC5130_Display.h"
@@ -43,9 +6,24 @@ Done:
 #include "StringSplitter.h" //https://github.com/aharshac/StringSplitter
 #include "TMC5130_Menu.h"
 
-#define I2C_SDA         16     //pin21 i2c serial data
-#define I2C_SCK         17     //pin47 i2c serial clock
-#define EXPANDER_ADDR_A 0x20  //I/O port expander A
+//#define USE_OLD_PROTO
+#if defined(USE_OLD_PROTO)
+  #define I2C_SDA         16     //pin21 i2c serial data
+  #define I2C_SCK         17     //pin47 i2c serial clock
+  #define EXPANDER_ADDR_A 0x20  //I/O port expander A
+#else
+  #define I2C_SDA   38
+//  #define I2C_SCL   39 
+  #define I2C_SCK   39
+  #define I2C_FREQ  4000000   //4000000
+  #define EXPANDER_ADDR_A 0x21  //I/O port expander A
+
+  #define SPI_SCK   41
+  #define SPI_MISO  42
+  #define SPI_MOSI  40
+  #define SPI_FREQ  4000000
+
+#endif
 
 //#define SPI_CS          5        //SPI's Chip Select
 #define SPI_FREQ        4000000   //4000000
@@ -72,7 +50,7 @@ void ARDUINO_ISR_ATTR onTimer() {
 //--- List All expanders ------------------------------------------
 
 enum : uint8_t {
-  ExpanderA = 0,
+  ExpanderStepper = 0,
   Expander_Count  //Must be last
 }Expanders;
 
@@ -106,15 +84,18 @@ void getIsoDate(const char* date, char* out) {
 }
 
 // --- Setup Steppers -----------------------------------------------------------------
-void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderA].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
+void  SpiEnableSteppers(uint8_t csPin, bool en) { EXPANDERS[ExpanderStepper].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
 
 //AAA: Maybe SPI_FREQ must be unique!!!
 TMC5130 Steppers[]={
-                    TMC5130(SPI,  9, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
-                    TMC5130(SPI,  8, SpiEnableSteppers, SPI_FREQ, "Motor B:"),
-                    TMC5130(SPI, 10, SpiEnableSteppers, SPI_FREQ, "Motor C"),
-//                    TMC5130(SPI, 11, SpiEnableSteppers, SPI_FREQ, "Motor D"),
-                };
+    TMC5130(SPI,  6,  7, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
+    TMC5130(SPI,  4,  5, SpiEnableSteppers, SPI_FREQ, "Motor B: Left/Right"),
+    TMC5130(SPI,  2,  3, SpiEnableSteppers, SPI_FREQ, "Motor C: Syringe/Diluter"),
+//    TMC5130(SPI, 12, 13, SpiEnableSteppers, SPI_FREQ, "Motor D: Depositor"),
+//    TMC5130(SPI, 10, 11, SpiEnableSteppers, SPI_FREQ, "Motor E"),
+//    TMC5130(SPI,  8,  9, SpiEnableSteppers, SPI_FREQ, "Motor F")
+};
+
 #define STEP_STALL 0 //For Stall experiments
 //---------------------------------------------------------------------------------------
 
@@ -124,22 +105,27 @@ uint8_t StepperInTest = 0;
 
 void ShowReadableRegistersAll(void);
 
+void Stepper_Enable(uint8_t MotIdx, bool En){
+	EXPANDERS[ExpanderStepper].write1(Steppers[MotIdx].getcePinAddress(), En?0:1);  //0 Activate	
+}
+
 void setup_Basic() {
-  Serial.begin(115200);
-  delay(1000);
+  Serial.begin(115200); delay(1000);
 
   Wire.begin(I2C_SDA, I2C_SCK, 400000);       //Expanders initializations
 
-  EXPANDERS[ExpanderA].begin(OUTPUT, 0x0000); //per default mette tutti output
-  EXPANDERS[ExpanderA].write16(0xFFFF);       //1 means OFF!!!!
+  EXPANDERS[ExpanderStepper].begin(OUTPUT, 0x0000); //per default mette tutti output
+  EXPANDERS[ExpanderStepper].write16(0xFFFF);       //1 means OFF!!!!
 
   //pinMode(SPI_CS, OUTPUT); digitalWrite(SPI_CS, HIGH);  //Init for ChipSelect on board
   
   Serial.println("Just turned On registers");
-  ShowReadableRegistersAll();
+  //ShowReadableRegistersAll();
 
   for(int i=0; i<wxSIZEOF(Steppers); i++){
     TMC5130_Init_00(Steppers[i]);
+    Stepper_Enable(i, true);
+    EXPANDERS[ExpanderStepper].write1(Steppers[i].getcsPinAddress(), 1);  //0 Activate	
   }
 
 }
@@ -288,10 +274,11 @@ void setup() {
   setup_Basic();  //Serial, Expander(s), Motor(s)
   delay(2000);
 
-  //ShowReadableRegistersAll();
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+
+
   //Init Steppers to default
   for(int i=0; i<wxSIZEOF(Steppers); i++){
-    //ShowReadableRegisters(Steppers[i]);
     //Check Motor Power
     while (!Steppers[i].IsConnected()) {
       Serial.print("ERROR: Stepper '");
@@ -299,6 +286,7 @@ void setup() {
       Serial.println("': No communication detected, check motor power and connections.");
       delay(500);
     }
+    Serial.printf("Stepper %d/%d is Ok\n", i, wxSIZEOF(Steppers));
     TMC5130_Init_00(Steppers[i]);
 
     fsa[i] = {&Steppers[i], 0,  false,  3,  0,    0,    1000,   false,  false};
@@ -535,7 +523,7 @@ void mnuSetNeutralAll   ()  { for(int i=0; i<wxSIZEOF(Steppers); i++) {
 void mnuSetParking      ()  {Steppers[StepperInTest].setParking();}
 void mnuSetParkingAll   ()  { for(int i=0; i<wxSIZEOF(Steppers); i++) Steppers[StepperInTest].setParking(); }
 
-void mnuSetFreeRunning  ()  {Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
+void mnuSetFreeRunning  ()  {Stepper_Enable(StepperInTest, true); Steppers[StepperInTest].setCurrent(7, 1, 1); SetFreeRunning(Steppers[StepperInTest], 2,8);}
 void mnuSetPositional   ()  {SetPositional(Steppers[StepperInTest], 2,8);}
 void mnuSetDirection    ()  {Steppers[StepperInTest].setRampMode(TMC5130::VelocityNegativeMode);}
 void mnuZeroGoto        ()  { Steppers[StepperInTest].Exec_StopAndZero(); }

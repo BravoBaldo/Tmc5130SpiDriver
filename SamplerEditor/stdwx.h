@@ -37,11 +37,14 @@ C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
 	#define SQLLITEDBPATH "../Sampler.db"
 //#endif
 	wxString		ShowBuffer			( byte* Buffer, unsigned int LenBuf );
+	wxString		ByteToBinaryWxString(uint8_t byte);
 	void			LogMeSet			( wxTextCtrl* p );
 	void			LogMe				( const wxString & ToLog, bool PrependTime );
 	unsigned long	GetMaskFromString	( const wxString & strBuf );
 	void			gMainFrameSet		( wxFrameBase* p );
 	void			g_SetStatusText		( const wxString& text, int nField );
+
+	extern		bool		g_EnableEditor;
 
 #if defined(USE_ODBC)
 	Next_DB*	g_NazarDB_Get(void);

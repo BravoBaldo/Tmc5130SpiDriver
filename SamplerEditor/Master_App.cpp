@@ -15,9 +15,10 @@
 
 static const wxCmdLineEntryDesc	g_cmdLineDesc[] = {
 	//kind					shortName	longName			description											type	flags
-	{ wxCMD_LINE_SWITCH,	"h",	"help",			_ ( "displays help on the command line parameters" )  },
-	{ wxCMD_LINE_SWITCH,	"v",	"version",		_ ( "print version" ) },
-	{ wxCMD_LINE_OPTION,	"l",	"lang",			_ ( "Set languages examples :'ita', 'eng', 'fra'" ),				wxCMD_LINE_VAL_STRING },
+	{ wxCMD_LINE_SWITCH,	"h",	"help",			_( "displays help on the command line parameters" )			},
+	{ wxCMD_LINE_SWITCH,	"v",	"version",		_( "print version" )										},
+	{ wxCMD_LINE_OPTION,	"l",	"lang",			_( "Set languages examples :'ita', 'eng', 'fra'" ),			wxCMD_LINE_VAL_STRING },
+	{ wxCMD_LINE_SWITCH,	"e",	"Editor",		_("Enable editor")											},
 
 	{ wxCMD_LINE_NONE }
 };
@@ -120,6 +121,11 @@ bool MyApp::OnInit () {
 	wxString	Lang = "";
 	if(cmdParser.Found ( wxT ( "l" ), &Lang )) {
 	}
+
+	if (cmdParser.Found(wxT("e"))) {
+		g_EnableEditor = true;
+	}
+
 	PurgeName ( Lang );
 	SelectLanguage ( GetLangId ( Lang ) );
 
@@ -147,7 +153,7 @@ bool MyApp::OnInit () {
 	MyFrame *frame = new MyFrame (
 		PRG_LONG_NAME,
 		wxPoint ( 50, 50 ),
-		wxSize ( 1400, 1000 ),
+		wxSize ( 1600, 1000 ),
 		m_locale
 	);
 	frame->CentreOnScreen ();

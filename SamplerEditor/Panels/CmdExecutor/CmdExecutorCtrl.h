@@ -7,21 +7,6 @@
 #include "CmdExecutorCtrl.h"
 #include "cShowAnswers.h"
 
-#pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
-typedef struct _sCommAnsw {
-	byte		m_MsgType		= 'a';				//1
-	char		m_SubSystem;						//1
-	byte		m_Cmd			= 0;				//1
-	uint16_t	m_MasterId		= 0;				//2
-	uint16_t	m_DetailProg	= 0;				//2
-
-	eCmdAnswer	m_Result		= eCmdOk;			//1
-	int32_t   	m_Val			= 0;				//4
-	char		m_Text[30]		= "";
-}sCommAnsw;
-#pragma pack(pop) // Ripristina l'allineamento originale
-
-
 
 
 class CmdExecutorCtrl : public wxPanel {
@@ -46,7 +31,12 @@ class CmdExecutorCtrl : public wxPanel {
 
 	void		SendCommand		(const unsigned char* data, size_t length, long TimeoutMs = 500);
 
-	eCmdAnswer	ParseAnswer(const sAnswerStandard& Answ);
+	eCmdAnswer	ParseAnswer(const sAnswerStandard&		Answ);
+	eCmdAnswer	ParseAnswer(const sExpanderStandard&	Answ);
+	eCmdAnswer	ParseAnswer(const StepperAnswer& Answ);
+	eCmdAnswer	ParseAnswer(const StripAnswer& Answ);
+	eCmdAnswer	ParseAnswer(const TmcAnswer& Answ);
+
 
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
@@ -62,5 +52,6 @@ public:
 		m_ptrPrgDetail = ptrPrgDetail;
 	}
 	bool		ExecuteSteps(long from, long to);
+	bool		ExecuteSteps(uint16_t	m_MasterId);
 	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
 };

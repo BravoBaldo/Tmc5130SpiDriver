@@ -1,6 +1,6 @@
 #pragma once
 #include <wx/wx.h>
-#include "../SysSampler.h"
+#include "stdwx.h"
 
 #pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
 class cCmdStepper {
