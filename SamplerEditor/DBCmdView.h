@@ -28,7 +28,7 @@ private:
 
 //-----------------------------------------------
 //Compare with SqlQuery_Detail
-enum eDetHeaders{ eDetailProg=0, eSubSys, eCmd, ePattern, eParFirst, eParLast = eParFirst + NUMOFPARAMS-1, eMasterId };
+enum eDetHeaders{ eDetailProg=0, eSubSys, eCmd, ePattern, eParFirst, eParLast = eParFirst + NUMOFPARAMS-1, eMasterId, efielsCount };
 class cDetailListCtrl : public wxListView {
 public:
 	cDetailListCtrl(wxWindow* parent,
@@ -49,8 +49,7 @@ public:
 	bool		PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex);
 	cCmdStepper	GetSelectedItem(void);
 private:
-	void	OnListEvent(wxListEvent& Evt);
-	void	OnChar(wxKeyEvent& Evt);
-
+	void	OnListEvent		(wxListEvent& Evt);
+	void	OnChar			(wxKeyEvent& Evt);
 	DECLARE_NO_COPY_CLASS(cDetailListCtrl)
 };

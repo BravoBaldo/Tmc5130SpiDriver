@@ -137,25 +137,22 @@ void cMainListCtrl::DBPrintExport(const wxString& Name, const unsigned int ProgI
 	wxString	 caption		 = _("Choose a file");
 	wxString	 defaultDir		 = ".";
 	wxString	 wildcard		 = (PrintOnly) ? "Program files (*.lst)|*.lst|All files (*.*)|*.*" : "Export files (*.xml)|*.xml|All files (*.*)|*.*";
-	wxString	 defaultFilename = (PrintOnly) ? wxString::Format("%s.lst", Name) : wxString::Format("%s.xml", Name);
+
+	wxString	 defaultFilename = wxString::Format("%s.%s", Name, (PrintOnly) ? "lst":"xml");
+
 	wxFileDialog dialog(this, caption, defaultDir, defaultFilename, wildcard, wxFD_SAVE);
+
 	if (dialog.ShowModal() == wxID_OK) {
 		wxYield();
-		if (PrintOnly) {
-#if defined(USE_ODBC)
-			Next_DB* MyDB = g_NazarDB_Get(); if (MyDB == NULL) return;
-			MyDB->ProgMaster_Print(ProgId, Name, dialog.GetPath());
-#else
-			cDBSampler yy(SQLLITEDBPATH);
-			yy.ProgMaster_Print(ProgId, Name, dialog.GetPath());
-#endif
-		} else {
-#if defined(USE_ODBC)
-#else
-			cDBSampler yy(SQLLITEDBPATH);
-			yy.ProgMaster_Export2(ProgId, dialog.GetPath());
-#endif
-		}
+
+		#if defined(USE_ODBC)
+		#else
+				cDBSampler yy(SQLLITEDBPATH);
+				if (PrintOnly)
+					yy.ProgMaster_Print(ProgId, Name, dialog.GetPath());
+				else
+					yy.ProgMaster_Export2(ProgId, dialog.GetPath());
+		#endif
 	}
 	Enable();
 }
@@ -213,10 +210,10 @@ void cDetailListCtrl::PrgDetail_Fill(unsigned int Id) {
 bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) {
 	if (rowIndex < 0 || rowIndex >= this->GetItemCount()) return false;
 
-	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));	//0
-	vStep.m_SubSystem	= wxAtol(this->GetItemText(rowIndex, eSubSys));		//1
-	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, eCmd));		//2
-	vStep.SetPattern( this->GetItemText(rowIndex, ePattern).mb_str());				//3
+	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));
+	vStep.m_SubSystem	= wxAtol(this->GetItemText(rowIndex, eSubSys));
+	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, eCmd));
+	vStep.SetPattern( this->GetItemText(rowIndex, ePattern).mb_str());
 	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
 		vStep.m_Par[i]	= wxAtol(this->GetItemText(rowIndex, eParFirst+i));	//
 	}

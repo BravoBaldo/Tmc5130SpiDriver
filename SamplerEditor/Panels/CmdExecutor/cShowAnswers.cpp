@@ -41,8 +41,11 @@ StepperAnswer SetStepperDemo(void) {
 void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
 	wxGrid* grid = m_Grids[eGrid_Motors];
 	if (grid == NULL)	return;
-	grid->CreateGrid(eStep_TOP, 11);
-	//grid->SetRowLabelSize(0);
+	grid->CreateGrid(eStep_TOP, eStpShowCount);
+
+	wxGridCellAttr* LeftAlign = new wxGridCellAttr(); LeftAlign->SetAlignment(wxALIGN_LEFT, wxALIGN_CENTRE);
+	//wxGridCellAttr* LeftAlign = nullptr;
+
 	grid->SetRowLabelValue(eStep_UpDwn,		"Up/Dn");
 	grid->SetRowLabelValue(eStep_LR,		"Left/Right");
 	grid->SetRowLabelValue(eStep_Syringe,	"Syringe/Diluter");
@@ -50,80 +53,91 @@ void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
 	grid->SetRowLabelValue(eStep_Needle,	"Motor E");
 	grid->SetRowLabelValue(eStep_Spare,		"Motor F");
 
-	//grid->SetColLabelSize(0);
-	//unsigned int	R = 0;
-	grid->SetColLabelValue( 0, "Time");
-	grid->SetColLabelValue( 1, "Status");
-	grid->SetColLabelValue( 2, "Ioin");
-	grid->SetColLabelValue( 3, "FsaStatus");
-	grid->SetColLabelValue( 4, "Vel.");
-	grid->SetColLabelValue( 5, "Pos.");
-	grid->SetColLabelValue( 6, "Target");
-	grid->SetColLabelValue( 7, "irun");
-	grid->SetColLabelValue( 8, "ihold");
-	grid->SetColLabelValue( 9, "holdDelay");
-	grid->SetColLabelValue(10, "Currents");
+	grid->SetColLabelValue(eStpShowTime,		"Time");
+	grid->SetColLabelValue(eStpShowSpiStatus,	"Status");
+	grid->SetColLabelValue(eStpShowIoin8,		"Ioin");
+	grid->SetColLabelValue(eStpShowVel,			"Vel.");
+	grid->SetColLabelValue(eStpShowPos,			"Pos.");
+	grid->SetColLabelValue(eStpShowTarget,		"Target");
+	grid->SetColLabelValue(eStpShowCurrents,	"Currents");
+	grid->SetColLabelValue(eStpShowChopConf,	"ChopConf");	grid->SetColAttr(eStpShowChopConf,	LeftAlign);
+	grid->SetColLabelValue(eStpShowDrvStatus,	"DrvStatus");	grid->SetColAttr(eStpShowDrvStatus,	LeftAlign); LeftAlign->IncRef();
+	grid->SetColLabelValue(eStpShowMsCurAct,	"MSCURACT");	grid->SetColAttr(eStpShowMsCurAct,	LeftAlign); LeftAlign->IncRef();
+
 
 	Log_Generic_InitEnd(grid);
 
-	Log_Stepper_Fill(SetStepperDemo() );
+	//Log_Stepper_Fill(SetStepperDemo() );
 }
 
 void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
-	wxGrid* grid = m_Grids[eGrid_Motors];
-	unsigned int	R = 0;
-	R = SA.m_Motor;
-grid->BeginBatch(); // Blocca l'aggiornamento grafico temporaneamente
-	grid->SetCellValue(R, 0, wxString::Format("%d", SA.m_Remaining));
-	//grid->SetCellValue(R, 1, wxString::Format("%s", ByteToBinaryWxString(SA.m_spiStatus)));
+	wxGrid*			grid	= m_Grids[eGrid_Motors];
+	unsigned int	R		= SA.m_Motor;
+	grid->BeginBatch();
+	grid->SetCellValue(R, eStpShowTime,			wxString::Format("%d", SA.m_Remaining));
+	grid->SetCellValue(R, eStpShowSpiStatus,	wxString::Format("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"	//"%s|%s|%s|%s|%s|%s|%s|%s"
+													, (SA.m_spiStatus & 0x01) ? "Rst" : "   "
+													, (SA.m_spiStatus & 0x02) ? "Err" : "   "
+													, (SA.m_spiStatus & 0x04) ? "SG2" : "   "
+													, (SA.m_spiStatus & 0x08) ? "STL" : "   "
+													, (SA.m_spiStatus & 0x10) ? "Vok" : "   "
+													, (SA.m_spiStatus & 0x20) ? "Pok" : "   "
+													, (SA.m_spiStatus & 0x40) ? "s_L" : "   "
+													, (SA.m_spiStatus & 0x80) ? "s_R" : "   "
+												));
 
-	grid->SetCellValue(R, 1, wxString::Format("%s|%s|%s|%s|%s|%s|%s|%s" 
-		, (SA.m_spiStatus & 0x01) ? "Rst":"   "
-		, (SA.m_spiStatus & 0x02) ? "Err" : "   "
-		, (SA.m_spiStatus & 0x04) ? "SG2" : "   "
-		, (SA.m_spiStatus & 0x08) ? "STL" : "   "
-		, (SA.m_spiStatus & 0x10) ? "Vok" : "   "
-		, (SA.m_spiStatus & 0x20) ? "Pok" : "   "
-		, (SA.m_spiStatus & 0x40) ? "s_L" : "   "
-		, (SA.m_spiStatus & 0x80) ? "s_R" : "   "
-	));
+	grid->SetCellValue(R, eStpShowIoin8,		wxString::Format("%d", SA.m_Ioin8));
+	//eStpShowFsaStatus
+	grid->SetCellValue(R, eStpShowVel,			wxString::Format("%d", SA.m_Velocity));
+	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%d", SA.m_Position));
+	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%d", SA.m_xTarget));
+	grid->SetCellValue(R, eStpShowCurrents,		wxString::Format("%d-%d-%d"
+													, (SA.m_Currents) & 0x1F
+													, (SA.m_Currents >>  5) & 0x1F
+													, (SA.m_Currents >> 10) & 0x0F
+												));
 
-	grid->SetCellValue(R, 2, wxString::Format("%d", SA.m_Ioin8));
-	grid->SetCellValue(R, 4, wxString::Format("%d", SA.m_Velocity));
+	uint8_t mstep = (SA.m_CHOPCONF >> 24) & 0x0F;
+	grid->SetCellValue(R, eStpShowChopConf, wxString::Format("MicroStep..:%d\n%X", mstep, SA.m_CHOPCONF));
 
-	grid->SetCellValue(R, 5, wxString::Format("%d", SA.m_Position));
-	grid->SetCellValue(R, 6, wxString::Format("%d", SA.m_xTarget));
-	grid->SetCellValue(R,10, wxString::Format("%d-%d-%d"
-		, (SA.m_Currents) & 0x1F
-		, (SA.m_Currents >>  5) & 0x1F
-		, (SA.m_Currents >> 10) & 0x0F
-	));
+	int16_t	SgRes	= (SA.m_DRV_STATUS)		& 0x3FF;	//10 bits
+	uint8_t csAct	= (SA.m_DRV_STATUS>>16) & 0x1F;		// 5 bits
+
+	grid->SetCellValue(R, eStpShowDrvStatus, wxString::Format(	"CS_ACTUAL..:%d\n"
+																"SG RESULT..:%d\n"
+																"%08X", 
+																csAct, 
+																SgRes,
+																SA.m_DRV_STATUS));
+
+	int16_t 	CurA	= (SA.m_MSCURACT >> 16) & 0x01FF;		//MSCURACT
+	int16_t 	CurB	= SA.m_MSCURACT         & 0x01FF;		//MSCURACT
+	grid->SetCellValue(R, eStpShowMsCurAct, wxString::Format(	"CurA....:%d\n"
+																"CurB....:%d\n"
+																"%08X",
+																CurA, 
+																CurB, 
+																SA.m_MSCURACT));
 
 	grid->AutoSize();
-grid->EndBatch(); // Sblocca e ridisegna la griglia
-
-	//grid->Refresh();
+	grid->EndBatch();
 	::wxYield();
 }
 
 void cAnswersShow::Log_Stepper_Fill(const StepperAnswer& SA) {
 	wxGrid* grid = m_Grids[eGrid_Motors];
 	if (grid == NULL)	return;
-	unsigned int	R = 0, C=0;
+	unsigned int	R = 0;
 	R = SA.m_Motor;
 
-	grid->SetCellValue(R, C++,	wxString::Format("%02X", SA.m_spiStatus));
-	grid->SetCellValue(R, C++,	wxString::Format("%02X",	SA.m_spiStatus));
-	grid->SetCellValue(R, C++,	wxString::Format("%02X",	SA.m_Ioin8));
-	grid->SetCellValue(R, C++,	wxString::Format("%02X",	SA.m_FsaStatus));
-	grid->SetCellValue(R, C++,	wxString::Format("%ld",	SA.m_Velocity));
-	grid->SetCellValue(R, C,	wxString::Format("%ld",	SA.m_Position));	grid->SetCellBackgroundColour(R, C++, *wxGREEN);
-	grid->SetCellValue(R, C,	wxString::Format("%ld",	SA.m_xTarget));		grid->SetCellBackgroundColour(R, C++, *wxRED);
+	grid->SetCellValue(R, eStpShowTime,			wxString::Format("%02X",	SA.m_spiStatus));
+	grid->SetCellValue(R, eStpShowSpiStatus,	wxString::Format("%02X",	SA.m_spiStatus));
+	grid->SetCellValue(R, eStpShowIoin8,		wxString::Format("%02X",	SA.m_Ioin8));
+	grid->SetCellValue(R, eStpShowVel,			wxString::Format("%ld",		SA.m_Velocity));
+	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%ld",		SA.m_Position));	grid->SetCellBackgroundColour(R, eStpShowPos, *wxGREEN);
+	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld",		SA.m_xTarget));		grid->SetCellBackgroundColour(R, eStpShowTarget, *wxRED);
 
-	grid->SetCellValue(R, C++,	wxString::Format("%d",		SA.m_irun));
-	grid->SetCellValue(R, C++,	wxString::Format("%d",		SA.m_ihold));
-	grid->SetCellValue(R, C++,	wxString::Format("%d",		SA.m_holdDelay));
-
+	//eStpShowCurrents
 	::wxYield();
 }
 

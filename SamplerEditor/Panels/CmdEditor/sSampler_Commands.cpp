@@ -21,12 +21,13 @@ static const sSubSystem SubSystems[]{ //See eSubSysAcro
 
 unsigned int SubSystem_Size(void) { return WXSIZEOF(SubSystems); };
 
-const sSubSystem*	SubSystem_Get(unsigned int i)	{
+const sSubSystem*	SubSystem_Get(unsigned int i)	{ //ToDo maybe it is eSubSysAcro
 	if (i >= WXSIZEOF(SubSystems))
 		i = 0;
-	return &SubSystems[i];
+	return &SubSystems[i];	//ToDo 
 };
-const sSubSystem* SubSystem_GetByType(const char Type) {
+
+const sSubSystem* SubSystem_GetByType(eSubSysAcro Type) {
 	for (size_t i = 0; i < WXSIZEOF(SubSystems); i++) {
 		if (SubSystems[i].Type == Type)
 			return &SubSystems[i];
@@ -52,6 +53,7 @@ static const sParams SamplerParams[]{
 	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
 	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
 	{ 'v', eChoice,	"Output",		0,				0,				"Outputs"					, RetArray2({"All/None", "A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
+	{ 'w', eChoice,	"Waitings",		0,				5,				"Waiting Motor"				, RetArray2({"eWaitVelocity", "eWaitPosition", "eWaitHome", "eWaitPosAndVel", "eWaitTimer"})							},
 
 
 	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
@@ -72,8 +74,9 @@ static const sSampler_Commands Sampler_Commands[] = {
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
 
+	{eStepDirect,	'0', "Do Nothing",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'a', "ChipEnable",			"Me",		RetArray2({"Stepper", "Chip Abilitation"			})},
-	{eStepDirect,	'b', "setStops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
+	{eStepDirect,	'b', "Set Stops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
 	{eStepDirect,	'c', "Set Currents",		"Miij",		RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepDirect,	'd', "Set Position",		"MS",		RetArray2({"Stepper", "Position"					})},
 	{eStepDirect,	'e', "Set Microsteps",		"Mm",		RetArray2({"Stepper", "MicroSteps"					})},
@@ -81,8 +84,12 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'g', "Set Trapezoidal",		"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
 	{eStepDirect,	'h', "Set Ramp Mode",		"MR",		RetArray2({"Stepper", "Ramp Mode"					})},
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
+
+	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
+
 	{eStepDirect,	'j', "Wait Timer",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
+
 	{eStepDirect,	'l', "InitGoto",			"MVVAAV",	RetArray2({"Stepper", "StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
 	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
 	{eStepDirect,	'n', "Set Accelerations",	"MaA",		RetArray2({"Stepper", "Acc/De-celeration type", "Accel. Value"		})},

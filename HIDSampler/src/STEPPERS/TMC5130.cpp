@@ -159,7 +159,7 @@ uint32_t TMC5130::readRegUART(uint8_t slave, Reg reg) {
 // =====================================================
 
 void TMC5130::setStops(MotorDirection Direction){
-	TMC5130::SwMode sw_mode	= getSwMode();  //SW_MODE
+	SwMode sw_mode	= getSwMode();  //SW_MODE
 	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
 	sw_mode.stop_l_enable	= 1;	//1: Enables automatic motor stop during active left reference switch input
 	sw_mode.pol_stop_l		= 1;	//0=non-inverted, high active, 1=inverted, low active
@@ -292,7 +292,7 @@ void TMC5130::softwareEnable(){  //CHOPCONF
   Chopconf chopconf;
   chopconf.bytes = readReg(CHOPCONF);
   chopconf.toff = 3;  //from 1...15 enabled_toff_;  //Off time setting controls duration of slow decay phase
-  writeReg(TMC5130::CHOPCONF, chopconf.bytes);
+  writeReg(CHOPCONF, chopconf.bytes);
 }
 
 void TMC5130::writeChopperMode(ChopperMode chopper_mode) {  //CHOPCONF
@@ -476,9 +476,9 @@ void TMC5130::writeStopMode(StopMode stop_mode) { //SW_MODE
 
 void TMC5130::enableStallStop(bool En) { //SW_MODE //True=enable, False=disable
   SwMode sw_mode;
-  sw_mode.bytes = readReg(TMC5130::SW_MODE);
+  sw_mode.bytes = readReg(SW_MODE);
   sw_mode.sg_stop = En?1:0;
-  writeReg(TMC5130::SW_MODE, sw_mode.bytes);
+  writeReg(SW_MODE, sw_mode.bytes);
 }
 
 void TMC5130::cacheControllerSettings(ControllerParameters &Ret) {
@@ -604,14 +604,14 @@ void TMC5130::writePwmOffset(uint8_t pwm_amplitude) {  //PWMCONF
 }
 
 void TMC5130::writePwmGradient(uint8_t pwm_amplitude) {  //PWMCONF
-  TMC5130::Pwmconf pwmconf;
+  Pwmconf pwmconf;
   pwmconf.bytes = getPwmconf();
   pwmconf.pwm_grad = pwm_amplitude;
   setPwmconf(pwmconf.bytes);
 }
 
 void TMC5130::enableAutomaticCurrentControl(bool en) {  //PWMCONF
-  TMC5130::Pwmconf pwmconf;
+  Pwmconf pwmconf;
   pwmconf.bytes = getPwmconf();
   pwmconf.pwm_autoscale = en?1:0;
   pwmconf.pwm_symmetric = en?1:0; //alias pwm_autograd

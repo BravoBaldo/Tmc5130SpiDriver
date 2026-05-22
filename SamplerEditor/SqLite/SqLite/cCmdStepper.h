@@ -2,8 +2,8 @@
 #include <wx/wx.h>
 #include "stdwx.h"
 
-#pragma pack(push, 1) // Salva l'allineamento attuale e imposta a 1 byte
-class cCmdStepper {
+#pragma pack(push, 1) //
+class cCmdStepper {	//ToDo See struct sCommand
 public:
 	byte		m_MsgType = 'b';		//1
 	byte		m_SubSystem;			//1

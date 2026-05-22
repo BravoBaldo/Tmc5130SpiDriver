@@ -12,9 +12,7 @@
 
 
 typedef std::function<void(uint8_t, bool)> SPI_ENABLER_CB;
-
-extern void EnableSpiOnChip(uint8_t csPin, bool en);
-//extern SPI_ENABLER_CB EnableSpiOnChip;
+extern void EnableSpiOnChip(uint8_t csPin, bool en);	//extern SPI_ENABLER_CB EnableSpiOnChip;
 
 class TMC5130 {
 public:
@@ -893,7 +891,7 @@ public:
     FSA.Status = Nothing;
     setSecondAcceleration(a);        //AMAX
     setMaxVelocity(0);               //VMAX
-    setRampMode(TMC5130::PositionMode);
+    setRampMode(PositionMode);
     return true;
   }
 
@@ -949,7 +947,7 @@ public:
 
     SetTrapezoidal(A, V); //setSecondAcceleration=setFirstDeceleration, setMaxVelocity
     setTarget(S); //XTARGET
-    setRampMode(TMC5130::PositionMode);
+    setRampMode(PositionMode);
     FSA.Status = WaitEndOfSteps;
     return true;
   }
@@ -1012,8 +1010,22 @@ public:
     return true;
   }
 
+  typedef enum { eWaitVelocity, eWaitPosition, eWaitHome, eWaitPosAndVel, eWaitTimer} eWaitingMotor;
+  bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
+		if((CheckTimeOut || (Ty==eWaitTimer)) && WaitTimer())	return true;
+
+		switch(Ty){
+			case eWaitVelocity:		return getVelocity()					== 0;						//FSA_WaitStop
+			case eWaitPosition:		return GetSpiStatus().position_reached;								//
+			case eWaitHome:			return (GetSpiStatus().bytes & 0xC0)	!= 0;						//IsAtHome
+			case eWaitPosAndVel:	return (getVelocity() == 0) && GetSpiStatus().position_reached;		//FSA_WaitEndOfSteps
+			case eWaitTimer:		return false;	//WaitTimer();
+		}
+		return true;	//Error!!!!
+  }
+
   bool FSA_WaitStop			(void)	{ return (getVelocity()==0); }
-  bool FSA_WaitEndOfSteps	(void)	{ return GetSpiStatus().position_reached || (getVelocity() == 0); }
+  bool FSA_WaitEndOfSteps	(void)	{ return GetSpiStatus().position_reached && (getVelocity() == 0); }
   bool IsAtHome				(void)	{ return (GetSpiStatus().bytes & 0xC0) != 0; }	//Status.status_stop_l || Status.status_stop_r
 
   uint8_t FSA_Status_ExitLS = 0;
@@ -1048,7 +1060,7 @@ public:
       case StopAndZero:
         setSecondAcceleration(FSA.SecondA); //AMAX
         setMaxVelocity(0);                  //VMAX
-        setRampMode(TMC5130::PositionMode); //RAMPMODE
+        setRampMode(PositionMode); //RAMPMODE
         FSA.Status = WaitStop;
         break;
       case WaitStop:

@@ -57,7 +57,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len);
   };
 
 void cSteppers_InitFreeRotate(uint8_t MotIdx, bool Direction, bool Free=true){
-  Steppers[MotIdx].setStops(Direction ? TMC5130::ForwardDirection : TMC5130::ReverseDirection);
+  //Steppers[MotIdx].setStops(Direction ? TMC5130::ForwardDirection : TMC5130::ReverseDirection);
 	Steppers[MotIdx].setCurrent(7, 1, 1);
   if(Free)  SetFreeRunning(Steppers[MotIdx], 2, 0, Direction);
 }
@@ -124,7 +124,7 @@ void setup() {
     Steppers[0].setPosition(0);
     Steppers[0].setMicrosteps(8);
     Steppers[0].SetTrapezoidal(100, 3000); //setSecondAcceleration=setFirstDeceleration, setMaxVelocity
-    Steppers[0].setTarget(20000); //XTARGET
+    Steppers[0].setTargetBase(20000); //XTARGET
     Steppers[0].setRampMode(TMC5130::PositionMode);
     Serial.println("Avvio Uno.\n");
 
@@ -183,17 +183,26 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         Answer.m_Motor    = Cmd.m_Par[0];
         AnswerSent = true;
         switch(Cmd.m_Cmd){
+          case  48: Serial.println("Do Nothing");     Answer.m_Result = eCmdOk;                                                                               break;
           case  97: Serial.println("Chip Enable");    Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].SetChipEnable(Cmd.m_Par[1]!=0);                        break;
           case  98: Serial.println("Init Stops");     Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setStops((Cmd.m_Par[1]!=0)?TMC5130::ForwardDirection:TMC5130::ReverseDirection);            break;
           case  99: Serial.println("Set Currents");   Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setCurrent(Cmd.m_Par[1], Cmd.m_Par[2], Cmd.m_Par[3]);  break;
           case 100: Serial.println("Set Position");   Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setPosition  (Cmd.m_Par[1]);                           break;
           case 101: Serial.println("Set MicroStep");  Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setMicrosteps(Cmd.m_Par[1]);                           break;
-          case 102: Serial.println("Set Target");     Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setTarget    (Cmd.m_Par[1]);                           break;
+          case 102: Serial.println("Set Target");     Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setTargetBase(Cmd.m_Par[1]);                           break;
           case 103: Serial.println("SetTrapezoidal"); Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].SetTrapezoidal(Cmd.m_Par[1], Cmd.m_Par[2]);            break;
           case 104: Serial.println("Set Ramp Mode");  Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setRampMode((TMC5130::RampMode)Cmd.m_Par[1]);          break;
           case 105: Serial.println("Set Timer");      Answer.m_Result = (Steppers[Cmd.m_Par[0]].SetTimer(Cmd.m_Par[1]*1000) ?eCmdOk : eCmdRetry);             break;
-          case 106: Serial.println("Wait Timer");     Answer.m_Result = (Steppers[Cmd.m_Par[0]].WaitTimer()                 ?eCmdOk : eCmdRetry);             break;
+
+          case 106:
+            if(Cmd.m_PatLen==1){
+              Serial.println("Wait Timer");     Answer.m_Result = (Steppers[Cmd.m_Par[0]].WaitTimer()                 ?eCmdOk : eCmdRetry);
+            }else{
+              Serial.println("Generic Wait");   Answer.m_Result = (Steppers[Cmd.m_Par[0]].WaitMotor((TMC5130::eWaitingMotor)Cmd.m_Par[1], Cmd.m_Par[2]!=0)  ?eCmdOk : eCmdRetry);
+            }
+            break;
           case 107: Serial.println("Wait Stop");      Answer.m_Result = (Steppers[Cmd.m_Par[0]].FSA_WaitEndOfSteps  ()      ?eCmdOk : eCmdRetry);             break;
+
           case 108: Serial.println("Init GoTo");      Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].InitGoTo         (Cmd.m_Par[1], Cmd.m_Par[2], Cmd.m_Par[3], Cmd.m_Par[4], Cmd.m_Par[5]); break;
           case 109: Serial.println("FreeRunning");    Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].SetFreeRunning   (Cmd.m_Par[1], Cmd.m_Par[2], Cmd.m_Par[3]);                             break;
           case 110: Serial.println("Set Accel..s");   Answer.m_Result = eCmdOk; Steppers[Cmd.m_Par[0]].setAccelerations ( (TMC5130::eAccelerations)Cmd.m_Par[1], Cmd.m_Par[2]);                             break;
@@ -203,11 +212,14 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         }
         Answer.m_Remaining  = Steppers[Cmd.m_Par[0]].getRemaining()/1000;
         Answer.m_spiStatus  = Steppers[Cmd.m_Par[0]].GetSpiStatus().bytes;
-        Answer.m_Ioin8      = (Steppers[Cmd.m_Par[0]].getIoin().bytes & 0xFF);
-        Answer.m_Velocity   = Steppers[Cmd.m_Par[0]].getVelocity();
-        Answer.m_Position   = Steppers[Cmd.m_Par[0]].getPosition();
-        Answer.m_xTarget    = Steppers[Cmd.m_Par[0]].getTarget();
-        Answer.m_Currents   = Steppers[Cmd.m_Par[0]].getCurrents();
+        Answer.m_Ioin8      = (Steppers[Cmd.m_Par[0]].getIoin().bytes & 0xFF);  //IOIN
+        Answer.m_Velocity   = Steppers[Cmd.m_Par[0]].getVelocity();             //VACTUAL
+        Answer.m_Position   = Steppers[Cmd.m_Par[0]].getPosition();             //XACTUAL
+        Answer.m_xTarget    = Steppers[Cmd.m_Par[0]].getTarget();               //XTARGET
+        Answer.m_Currents   = Steppers[Cmd.m_Par[0]].getCurrents();             //ShadowRegs.Ihold_Irun
+        Answer.m_CHOPCONF   = Steppers[Cmd.m_Par[0]].getChopconf().bytes;       //CHOPCONF
+        Answer.m_DRV_STATUS = Steppers[Cmd.m_Par[0]].getDrvStatus().bytes;      //DRV_STATUS
+        Answer.m_MSCURACT   = Steppers[Cmd.m_Par[0]].getMscuract().bytes;       //MSCURACT
 
         SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
       }

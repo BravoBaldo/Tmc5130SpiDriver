@@ -265,7 +265,7 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
         }
         m_cho_SubSystem->SetSelection(4);
 
-    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SORT*/);
+    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
     m_cho_StepperCmd->SetToolTip(_("Main Command"));
     Fill_Commands();
 
@@ -371,7 +371,7 @@ bool CmdEditorCtrl::PoseCommand(const char SubSys, const char c, uint8_t NumPar)
     }
     m_Txt_Result->SetBackgroundColour(wxColor(255, 255, 255));
 
-    int n = SelezionaPerClientData(m_cho_SubSystem,  (void*)SubSystem_GetByType(SubSys));
+    int n = SelezionaPerClientData(m_cho_SubSystem,  (void*)SubSystem_GetByType((eSubSysAcro)SubSys));
     m_cho_SubSystem->SetSelection(n);
     {   //Refill m_cho_StepperCmd
         wxCommandEvent event(wxEVT_CHOICE, m_cho_SubSystem->GetId());

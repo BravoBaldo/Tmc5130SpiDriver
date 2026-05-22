@@ -54,6 +54,6 @@ public:
 
 	void	DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize);
 
-	bool ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item);
+	bool	ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item);
 
 };

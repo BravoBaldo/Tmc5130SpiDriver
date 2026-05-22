@@ -94,8 +94,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_LIST_ITEM_RIGHT_CLICK	( ID_LST_PRGDETAIL,	OnListEvent )
 	EVT_LIST_ITEM_SELECTED		( ID_LST_PRGDETAIL,	OnListEvent )
 	EVT_LIST_ITEM_DESELECTED	( ID_LST_PRGDETAIL,	OnListEvent )
-
-END_EVENT_TABLE()
+	END_EVENT_TABLE()
 
 void MyFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
 	#if defined(USE_MAIN_LOG)
@@ -253,6 +252,9 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_lstPrgMaster->MainPrg_Fill();
 
 	m_lstPrgDetail = new cDetailListCtrl(this, ID_LST_PRGDETAIL, wxDefaultPosition, wxSize(48, 50), wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES);
+	m_lstPrgDetail->SetToolTip(_("List Of Commands"));
+	m_lstPrgDetail->Bind(wxEVT_MOTION, &MyFrame::OnMouseMotion, this);
+
 
 	m_CmdEditor = new CmdEditorCtrl(this, wxID_ANY);
 
@@ -271,9 +273,6 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	m_lstPrgMaster->Select(0);
 	m_lstPrgMaster->EnsureVisible(0);
 
-//	if ( !m_bitmap.LoadFile( _T("C:/DatiBaldo/Job/Video/Minimal_Video/Jigsaw_06/Images/Src/bmpExample.bmp"), wxBITMAP_TYPE_BMP ) )
-//		wxLogError(wxT("Can't load BMP image"));
-	//---------------------------------------------------
 }
 
 void MyFrame::SetLayouts ( void ) {
@@ -288,7 +287,6 @@ void MyFrame::SetLayouts ( void ) {
 	m_mgr.AddPane(m_txt_Log,		wxAuiPaneInfo().Name(wxT("m_txt_Log"))		.Caption(_("m_txt_Log"))	.Right()		.PaneBorder(false));
 #endif
 	m_mgr.AddPane(m_PanExec,		wxAuiPaneInfo().Name(wxT("m_PanExec"))		.Caption(_("Execution"))	.Right()		.PaneBorder(false));
-//	
 
 	m_mgr.SetManagedWindow ( this );
 	AuiRefresh ();
@@ -523,7 +521,8 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				m_CmdEditor->SetDbInfo(MasterId, -1);
 				m_lstPrgDetail->PrgDetail_Fill(MasterId);
 				m_lstPrgDetail->Focus(0);	m_lstPrgDetail->Select(0);
-			
+				//m_lstPrgDetail->SetToolTip(_("Parapaponzi"));
+
 				m_lstPrgMaster->SetFocus();
 
 
@@ -537,8 +536,8 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_CLEAR,	_("Remove Steps"));
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_DROP,	_("Remove Process!"));
 				m_menuPopUp->AppendSeparator();
-				m_menuPopUp->Append(ID_MNU_PRGMAIN_PRINT,	_("Print"));
-				m_menuPopUp->Append(ID_MNU_PRGMAIN_Export,	_("Export"));
+				m_menuPopUp->Append(ID_MNU_PRGMAIN_PRINT,	_("Print (.lst)"));
+				m_menuPopUp->Append(ID_MNU_PRGMAIN_Export,	_("Export (.xml)"));
 
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());
 				wxDELETE(m_menuPopUp);

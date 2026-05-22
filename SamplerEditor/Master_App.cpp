@@ -58,6 +58,8 @@ public:
 	~MyApp ();
 private:
 	virtual	bool	OnInit ();
+	virtual int OnExit() override;	// called before the application termination
+
 	void	SelectLanguage ( int lang );			// Recreates m_locale according to lang
 	wxLocale*					m_locale;
 	wxSingleInstanceChecker*	m_checker;
@@ -76,6 +78,17 @@ MyApp::~MyApp () {
 #if defined(USE_ODBC)
 	g_NazarDB_Close();
 #endif
+}
+
+int MyApp::OnExit() {
+	// 1. Esegue la pulizia interna standard di wxWidgets
+	wxApp::OnExit();
+
+	// 2. Forza la disinizializzazione di COM (se era stata aperta da Windows)
+	// Richiede #include <objbase.h> o <combaseapi.h>
+	::CoUninitialize();
+
+	return 0;	// exit code is 0, everything is ok
 }
 
 void MyApp::SelectLanguage ( int lang ) {

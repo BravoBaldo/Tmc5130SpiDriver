@@ -80,4 +80,46 @@ private:
 	cMainListCtrl*		m_lstPrgMaster	= nullptr;
 	cDetailListCtrl*	m_lstPrgDetail	= nullptr;
 	CmdEditorCtrl*		m_CmdEditor		= nullptr;
+
+
+	long m_lastHoveredItem;
+public:
+	void OnMouseMotion(wxMouseEvent& event) {
+		wxPoint mousePos = event.GetPosition();			// 1. Get Mouse position
+
+		// 2. Controlla quale riga e quali flag interseca la posizione del mouse
+		int flags		= 0;
+		long itemIndex	= m_lstPrgDetail->HitTest(mousePos, flags);
+
+		// 3. Verifica se il mouse si trova effettivamente sopra un elemento/testo valido
+		if (itemIndex != wxNOT_FOUND && (flags & (wxLIST_HITTEST_ONITEMLABEL | wxLIST_HITTEST_ONITEM))) {
+
+			// Ottimizzazione: aggiorna il ToolTip solo se il mouse passa a una riga diversa
+			if (itemIndex != m_lastHoveredItem) {
+				m_lastHoveredItem = itemIndex;
+
+				// Recupera le informazioni della riga per comporre il ToolTip personalizzato
+				int SubSys		= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 1));// .ToInt();
+				int Cmd			= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 2));	// .ToInt();
+				int PatternLen	= m_lstPrgDetail->GetItemText(itemIndex, 3).Length();
+				const sSubSystem* Ssys = SubSystem_GetByType((eSubSysAcro)SubSys);
+				const sSampler_Commands* pCmd = Command_GetByCmd((char)SubSys, (char)Cmd, PatternLen);
+
+				wxString toolTipText = wxString::Format( "%s/%s", Ssys->Descr, pCmd->Descr);
+
+				m_lstPrgDetail->SetToolTip(toolTipText);
+			}
+		}
+		else {
+			// Se il mouse sta nell'area vuota della ListView, resetta lo stato e nasconde il ToolTip
+			if (m_lastHoveredItem != -1) {
+				m_lastHoveredItem = -1;
+				m_lstPrgDetail->SetToolTip("");
+			}
+		}
+
+		// Importante: permette la propagazione dell'evento ad altri gestori nativi
+		event.Skip();
+	}
+
 };

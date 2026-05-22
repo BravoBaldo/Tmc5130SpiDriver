@@ -32,12 +32,13 @@ typedef enum : uint8_t {	// AnswerType is lowercase
 	eTypAnswPwReader	= 'p',
 	eTypAnswExpander	= 'e',
 	eTypAnswStepper		= 'm',	
-	eTypAnswStepDir		= 'd',	
+	eTypAnswStepDir		= 'd',
+	eTypStepperRegs		= 'r',
 }eMessageTypes;
 
 
 #pragma pack(push, 1)
-typedef struct _sCmd{	//Command from PC
+typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 	eMessageTypes	m_MsgType				= eTypCommand;	//1
 	eSubSysAcro		m_SubSystem				= eUnused;		//1
 	byte			m_Cmd					= 0;			//1
@@ -78,22 +79,33 @@ typedef struct _sStripAnswer{
 }StripAnswer;
 #pragma pack(pop)
 
+typedef enum : uint8_t	{	eStpShowTime,   eStpShowSpiStatus, eStpShowIoin8,    eStpShowVel, eStpShowPos, 
+							eStpShowTarget, eStpShowCurrents,  eStpShowChopConf, eStpShowDrvStatus, eStpShowMsCurAct,
+							eStpShowCount
+						}eStepShowAnswer;
+                         
 #pragma pack(push, 1)
 typedef struct _sTmcAnswer{
 	byte		m_MsgType	= eTypAnswStepDir;	//1
 	eCmdAnswer	m_Result	= eCmdOk;
-	uint8_t		m_Motor;
-	uint16_t	m_Remaining	= 0;
 
+	uint8_t		m_Motor;
+	
+	uint16_t	m_Remaining	= 0;
 	uint8_t		m_spiStatus;
 	uint8_t		m_Ioin8;
 	uint32_t	m_Velocity;
 	int32_t  	m_Position;
 	int32_t		m_xTarget;
-	uint16_t	m_Currents;
+	uint16_t	m_Currents;		//irun, ihold, holdDelay;
+	uint32_t	m_CHOPCONF;		//Chopconf		getMicrosteps
+	uint32_t	m_DRV_STATUS;	//DrvStatus  getDrvStatus
+	uint32_t	m_MSCURACT;
 	//ChipEnabled
 }TmcAnswer;
 #pragma pack(pop)
+
+static_assert(sizeof(TmcAnswer) <= 64, "Error: TmcAnswer exceeds the maximum size of 64 bytes!");
 
 #pragma pack(push, 1)
 typedef struct _sStepAnswer{
@@ -105,6 +117,7 @@ typedef struct _sStepAnswer{
 	eCmdAnswer	m_Result		= eCmdOk;			//1
 
 	uint8_t		m_Motor;
+//	uint16_t	m_Remaining	= 0;
 	uint8_t		m_spiStatus;	//GetSpiStatus().bytes
 	uint8_t		m_Ioin8;		//(getIoin().bytes & 0xFF)
 	uint32_t	m_Velocity;
@@ -114,5 +127,25 @@ typedef struct _sStepAnswer{
 	uint8_t		m_ihold;
 	uint8_t		m_holdDelay;
 	uint8_t		m_FsaStatus;	//FSA_Status	FSA.Status
-}StepperAnswer;
+}StepperAnswer;	// AAA To Remove see TmcAnswer
 #pragma pack(pop)
+static_assert(sizeof(StepperAnswer) <= 64, "Error: StepperAnswer exceeds the maximum size of 64 bytes!");
+
+/*
+#pragma pack(push, 1)
+typedef struct _sStepRegs{
+	byte		m_MsgType		= eTypStepperRegs;	//1
+	eSubSysAcro	m_SubSystem		= eStepDirect;		//1
+	eCmdAnswer	m_Result		= eCmdOk;			//1
+
+	byte		m_Motor			= 0;
+	byte		m_RegFrom		= 0;
+	byte		m_NumReg		= 0;
+	int32_t   	m_Reg[13]		= {0};			//4*10
+}StepperRegsAnswer;
+#pragma pack(pop)
+
+void ReadRegs(StepperRegsAnswer& S, uint8_t From, uint8_t nToread){	//AAA: nToread<= WXSIZEOF(StepperRegsAnswer.m_Reg)
+	for(uint8_t i=0; i<nToread; i++) S.m_Reg[i]=readReg(i+From);
+}
+*/

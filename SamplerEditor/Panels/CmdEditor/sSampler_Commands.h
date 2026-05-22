@@ -11,7 +11,7 @@ struct sSubSystem {
 
 unsigned int				SubSystem_Size(void);
 const sSubSystem*			SubSystem_Get(unsigned int i);
-const sSubSystem*			SubSystem_GetByType(const char Type);
+const sSubSystem*			SubSystem_GetByType(eSubSysAcro Type);
 
 typedef struct {	//Commands' parameters
 	byte					ParId;
