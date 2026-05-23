@@ -102,10 +102,10 @@ public:
 				int SubSys		= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 1));// .ToInt();
 				int Cmd			= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 2));	// .ToInt();
 				int PatternLen	= m_lstPrgDetail->GetItemText(itemIndex, 3).Length();
-				const sSubSystem* Ssys = SubSystem_GetByType((eSubSysAcro)SubSys);
-				const sSampler_Commands* pCmd = Command_GetByCmd((char)SubSys, (char)Cmd, PatternLen);
+				const sSubSystem		*Ssys = SubSystem_GetByType((eSubSysAcro)SubSys);
+				const sSampler_Commands	*pCmd = Command_GetByCmd((char)SubSys, (char)Cmd, PatternLen);
 
-				wxString toolTipText = wxString::Format( "%s/%s", Ssys->Descr, pCmd->Descr);
+				wxString toolTipText = wxString::Format( "%s/%s", Ssys ? Ssys->Descr:"???", pCmd?pCmd->Descr:"???");
 
 				m_lstPrgDetail->SetToolTip(toolTipText);
 			}

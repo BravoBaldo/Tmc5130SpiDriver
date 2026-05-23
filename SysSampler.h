@@ -44,10 +44,17 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 	byte			m_Cmd					= 0;			//1
 	byte			m_PatLen				= 0;			//1
 	byte			m_Pattern[NUMOFPARAMS]	= {'\0'};		//10
-	int32_t   		m_Par[NUMOFPARAMS]		= {0};			//4*10
+	ParamType  		m_Par[NUMOFPARAMS]		= {0};			//4*10
 	uint16_t		m_MasterId				= 0;			//2
 	uint16_t		m_DetailProg			= 0;			//2
 	uint16_t  		m_ChkSum				= 0;			//2
+	inline const char* GetPatternAsChars(void) const { return (char*)m_Pattern; }
+	void	SetPattern(const char* s) {
+		m_PatLen = s ? strlen(s) : 0;
+		for (byte i = 0; i < NUMOFPARAMS; ++i) {
+			m_Pattern[i] = (i < m_PatLen) ? s[i] : '\0';
+		}
+	}
 }sCommand;
 #pragma pack(pop)
 

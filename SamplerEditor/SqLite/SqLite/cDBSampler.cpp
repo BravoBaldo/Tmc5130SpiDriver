@@ -395,7 +395,7 @@ bool cDBSampler::CreateSlave(void) {
         , strParDefs
     );
 
-    return CreateTable(sql_create.c_str());
+    return CreateTable(sql_create.utf8_str());
 }
 
 bool cDBSampler::CreateMaster(void) {
@@ -413,162 +413,82 @@ bool cDBSampler::CreateDB(void) {
     return true;
 }
 
-bool cDBSampler::ProgMaster_Print(int ProgId, const wxString& /*ProgName*/, const wxString& filePath) {
+bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxString& FilePathName) {
     if (!m_db) return false;
 
-    wxFFile file(filePath, "w"); // Apre in modalita' scrittura
-    if (!file.IsOpened()) return false;
+    auto writer = ExportWriterFactory::CreateWriter(IsText);    //Ask handle to Factory
 
-    sqlite3_stmt* stmtMaster, * stmtSlave;
-
-    // 1. Recupero e scrittura dati MASTER
-    wxString sqlMaster = wxString::Format("SELECT * FROM %s WHERE ProgId = ?;", PROGMASTER_TABLENAME);
-    if (sqlite3_prepare_v2(m_db, sqlMaster.utf8_str(), -1, &stmtMaster, nullptr) != SQLITE_OK) return false;
-
+    // 2. Lettura e scrittura Master
+    sqlite3_stmt* stmtMaster = nullptr;
+    if (sqlite3_prepare_v2(m_db, "SELECT * FROM " PROGMASTER_TABLENAME " WHERE ProgId = ?;", -1, &stmtMaster, nullptr) != SQLITE_OK) {
+        return false;
+    }
     sqlite3_bind_int(stmtMaster, 1, ProgId);
 
-    if (sqlite3_step(stmtMaster) == SQLITE_ROW) {
-        file.Write(wxString::Format("=== PROGRAMMA MASTER (ID: %d) ===\n", ProgId));
-
-        int cols = sqlite3_column_count(stmtMaster);
-        for (int i = 0; i < cols; i++) {
-            wxString colName = wxString::FromUTF8(sqlite3_column_name(stmtMaster, i));
-            wxString colVal = wxString::FromUTF8((const char*)sqlite3_column_text(stmtMaster, i));
-            file.Write(wxString::Format("%s: %s\n", colName, colVal));
-        }
-        file.Write("\n--- DETTAGLI SLAVE ---\n");
-
-        // 2. Recupero e scrittura dati SLAVE
-        wxString sqlSlave = wxString::Format("SELECT * FROM %s WHERE MasterId = ? ORDER BY DetailProg;", PROGDETAIL_TABLENAME);
-        if (sqlite3_prepare_v2(m_db, sqlSlave.utf8_str(), -1, &stmtSlave, nullptr) == SQLITE_OK) {
-            sqlite3_bind_int(stmtSlave, 1, ProgId);
-
-            while (sqlite3_step(stmtSlave) == SQLITE_ROW) { //Print Row columns
-                int sCols = sqlite3_column_count(stmtSlave);
-                wxString line = "> ";
-                for (int j = 0; j < sCols; j++) {
-                    wxString sColVal = wxString::FromUTF8((const char*)sqlite3_column_text(stmtSlave, j));
-                    line += "\"" + sColVal + "\"" + (j < sCols - 1 ? ";" : ""); //Per uscita CSV
-                }
-                file.Write(line + "\n");
-            }
-            sqlite3_finalize(stmtSlave);
-        }
-    }
-    else {
+    if (sqlite3_step(stmtMaster) != SQLITE_ROW) {
         sqlite3_finalize(stmtMaster);
         return false;
     }
 
+    if (!writer->Open(FilePathName)) {
+        sqlite3_finalize(stmtMaster);
+        return false;
+    }
+
+    int cols = sqlite3_column_count(stmtMaster);
+    for (int i = 0; i < cols; i++) {
+        const char* colName = sqlite3_column_name(stmtMaster, i);
+        const char* colVal = (const char*)sqlite3_column_text(stmtMaster, i);
+        writer->WriteMasterField(colName, colVal ? colVal : "");
+    }
     sqlite3_finalize(stmtMaster);
-    file.Close();
-    return true;
+
+    // 3. Predisposizione sezione dettagli
+    writer->BeginDetails();
+
+    // 4. Lettura e scrittura Slave
+    sqlite3_stmt* stmtSlave = nullptr;
+    if (sqlite3_prepare_v2(m_db, "SELECT * FROM " PROGDETAIL_TABLENAME " WHERE MasterId = ? ORDER BY DetailProg;", -1, &stmtSlave, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmtSlave, 1, ProgId);
+        int sCols = sqlite3_column_count(stmtSlave);
+
+        while (sqlite3_step(stmtSlave) == SQLITE_ROW) {
+            sCommand S; // Tua struct originale per il parsing
+            for (int j = 0; j < sCols; j++) {
+                const char* sColVal = (const char*)sqlite3_column_text(stmtSlave, j);
+                switch (j) {
+                case 0: S.m_MasterId    = sColVal ? atol(sColVal) : 0; break;
+                case 1: S.m_DetailProg  = sColVal ? atol(sColVal) : 0; break;
+                case 2: S.m_SubSystem   = (eSubSysAcro)(sColVal ? atol(sColVal) : 0); break;
+                case 3: S.m_Cmd         = sColVal ? atol(sColVal) : 0; break;
+                case 4: S.m_PatLen      = sColVal ? strlen(sColVal) : 0;
+                    for (byte i = 0; i < NUMOFPARAMS; ++i)
+                        S.m_Pattern[i] = (i < S.m_PatLen) ? sColVal[i] : '\0';
+                    break;
+                default:
+                    if (j >= 5 && j <= 14) S.m_Par[j - 5] = sColVal ? atol(sColVal) : 0;
+                    break;
+                }
+            }
+            const sSubSystem        *Ssys = SubSystem_GetByType(S.m_SubSystem);
+            const sSampler_Commands *pCmd = Command_GetByCmd((char)S.m_SubSystem, (char)S.m_Cmd, S.m_PatLen);
+
+            // Pacchettizziamo i dati estratti in una struct pulita indipendente dal formato di output
+            ExportStepData stepData;
+            stepData.C = S;
+            stepData.subSysName     = wxString::Format("%d-%s", (int)S.m_SubSystem, Ssys ? Ssys->Descr : "?");
+            stepData.commandName    = wxString::Format("%d-%s", (int)S.m_SubSystem, pCmd ? pCmd->Descr : "?");
+
+            writer->WriteDetailStep(stepData);  // Scrittura agnostica del formato
+        }
+        sqlite3_finalize(stmtSlave);
+    }
+    return writer->Close();     // 5. Chiusura e salvataggio del file
 }
+
 
 
 #if defined(USEXML)
-bool cDBSampler::ProgMaster_Export2(unsigned int ProgId, const wxString& filePath) {
-    if (!m_db) return false;
-
-    tinyxml2::XMLDocument xml;
-    XMLDeclaration* decl = xml.NewDeclaration();
-    xml.InsertFirstChild(decl);
-
-    XMLNode* root = xml.NewElement("ProgramExport");
-    xml.InsertEndChild(root);
-
-    sqlite3_stmt* stmtMaster, * stmtSlave;
-
-    // 1. Recupero dati MASTER
-    wxString sqlMaster = wxString::Format("SELECT * FROM %s WHERE ProgId = ?;", PROGMASTER_TABLENAME);
-    if (sqlite3_prepare_v2(m_db, sqlMaster.utf8_str(), -1, &stmtMaster, nullptr) != SQLITE_OK) return false;
-
-    sqlite3_bind_int(stmtMaster, 1, ProgId);
-
-    if (sqlite3_step(stmtMaster) == SQLITE_ROW) {
-        XMLElement* masterElement = xml.NewElement("Master");
-        root->InsertEndChild(masterElement);
-
-        int cols = sqlite3_column_count(stmtMaster);
-        for (int i = 0; i < cols; i++) {
-            const char* colName = sqlite3_column_name(stmtMaster, i);
-            const char* colVal = (const char*)sqlite3_column_text(stmtMaster, i);
-            masterElement->SetAttribute(colName, colVal ? colVal : "");
-        }
-
-        // 2. Recupero dati SLAVE
-        XMLElement* detailsElement = xml.NewElement("Details");
-        masterElement->InsertEndChild(detailsElement);
-
-        wxString sqlSlave = wxString::Format("SELECT * FROM %s WHERE MasterId = ? ORDER BY DetailProg;", PROGDETAIL_TABLENAME);
-        if (sqlite3_prepare_v2(m_db, sqlSlave.utf8_str(), -1, &stmtSlave, nullptr) == SQLITE_OK) {
-            sqlite3_bind_int(stmtSlave, 1, ProgId);
-
-            while (sqlite3_step(stmtSlave) == SQLITE_ROW) {
-                XMLElement* stepElement = xml.NewElement("Step");
-                detailsElement->InsertEndChild(stepElement);
-
-                int sCols = sqlite3_column_count(stmtSlave);
-                sCommand S;
-
-                for (int j = 0; j < sCols; j++) {
-                    const char* sColName = sqlite3_column_name(stmtSlave, j);
-                    const char* sColVal = (const char*)sqlite3_column_text(stmtSlave, j);
-                    switch (j) {
-                        case 0: S.m_MasterId    = atol(sColVal);                break;
-                        case 1: S.m_DetailProg  = atol(sColVal);                break;
-                        case 2: S.m_SubSystem   = (eSubSysAcro)atol(sColVal);   break;
-                        case 3: S.m_Cmd         = atol(sColVal);                break;
-                        case 4:
-                            S.m_PatLen = strlen(sColVal);
-                            for (byte i = 0; i < NUMOFPARAMS; ++i) {
-                                S.m_Pattern[i] = (i < S.m_PatLen) ? sColVal[i] : '\0';
-                            }
-                            break;
-                        default:
-                            if (j >= 5 && j <= 14) {
-                                S.m_Par[j-5] = sColVal ? atol(sColVal) : 0;
-                            }
-                            break;
-                    }
-                    //stepElement->SetAttribute(sColName, sColVal ? sColVal : "");
-                }
-                //stepElement->SetAttribute("MasterId",   S.m_MasterId);
-                stepElement->SetAttribute("DetailProg", S.m_DetailProg);
-
-                const sSubSystem        *Ssys = SubSystem_GetByType((eSubSysAcro)S.m_SubSystem);
-                wxString SubSysName = (Ssys) ? Ssys->Descr : "?";
-                const sSampler_Commands *pCmd = Command_GetByCmd((char)S.m_SubSystem, (char)S.m_Cmd, S.m_PatLen);
-                wxString CommandName= (pCmd) ? pCmd->Descr : "?";
-
-                stepElement->SetAttribute("SubSys",     wxString::Format("%d-%s", (int)S.m_SubSystem, SubSysName).c_str());
-                stepElement->SetAttribute("Cmd", wxString::Format("%d-%s", (int)S.m_Cmd, CommandName).c_str());
-                stepElement->SetAttribute("PatLen",     S.m_PatLen);
-                stepElement->SetAttribute("Pattern", (char*)S.m_Pattern);
-                for (byte i = 0; i < S.m_PatLen; ++i) {
-                    stepElement->SetAttribute(wxString::Format("Par%d", i).c_str(), S.m_Par[i]);
-                }
-
-                //<Step MasterId="2004" DetailProg="3" SubSys="68" Cmd="101" Pattern="Mm" Par0="0" Par1="8" Par2="0" Par3="0" Par4="0" Par5="0" Par6="0" Par7="0" Par8="0" Par9="0"/>
-
-               // j = 1;  sColVal = (const char*)sqlite3_column_text(stmtSlave, j); stepElement->SetAttribute(sqlite3_column_name(stmtSlave, j), sColVal ? sColVal : "");
-               // j = 2;  sColVal = (const char*)sqlite3_column_text(stmtSlave, j); stepElement->SetAttribute(sqlite3_column_name(stmtSlave, j), sColVal ? sColVal : "");
-
-            }
-            sqlite3_finalize(stmtSlave);
-        }
-    } else {
-        sqlite3_finalize(stmtMaster);
-        return false;
-    }
-
-    sqlite3_finalize(stmtMaster);
-
-    // 3. Salvataggio su file
-    XMLError eResult = xml.SaveFile(filePath.utf8_str());
-    return (eResult == XML_SUCCESS);
-}
-
 #if defined(USEIMPORT)
 
 /*
@@ -826,15 +746,13 @@ bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdSte
         //item.m_DetailProg   = detailProg;
 
         // Estrazione dei dati standard (colonne 0, 1, 2)
-        item.m_SubSystem    = sqlite3_column_int(stmt, 0);
+        item.m_SubSystem    = (eSubSysAcro)sqlite3_column_int(stmt, 0);
         item.m_Cmd          = sqlite3_column_int(stmt, 1);
         item.m_DetailProg   = sqlite3_column_int(stmt, 13);
 
         // Gestione del pattern di testo
         const char* patternText = (const char*)sqlite3_column_text(stmt, 2);
         if (patternText) {
-            // Nota: adatta questa riga al metodo reale che usi per impostare il pattern
-            // (es. item.SetPatternFromChars(patternText) o assegnazione diretta)
             item.SetPattern(patternText);
         }
 

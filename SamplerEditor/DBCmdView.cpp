@@ -141,19 +141,17 @@ void cMainListCtrl::DBPrintExport(const wxString& Name, const unsigned int ProgI
 	wxString	 defaultFilename = wxString::Format("%s.%s", Name, (PrintOnly) ? "lst":"xml");
 
 	wxFileDialog dialog(this, caption, defaultDir, defaultFilename, wildcard, wxFD_SAVE);
-
 	if (dialog.ShowModal() == wxID_OK) {
 		wxYield();
 
 		#if defined(USE_ODBC)
 		#else
-				cDBSampler yy(SQLLITEDBPATH);
-				if (PrintOnly)
-					yy.ProgMaster_Print(ProgId, Name, dialog.GetPath());
-				else
-					yy.ProgMaster_Export2(ProgId, dialog.GetPath());
+			cDBSampler yy(SQLLITEDBPATH);
+			yy.ProgMaster_Export(PrintOnly, ProgId, dialog.GetPath());
 		#endif
 	}
+
+
 	Enable();
 }
 
@@ -211,7 +209,7 @@ bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) 
 	if (rowIndex < 0 || rowIndex >= this->GetItemCount()) return false;
 
 	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));
-	vStep.m_SubSystem	= wxAtol(this->GetItemText(rowIndex, eSubSys));
+	vStep.m_SubSystem	= (eSubSysAcro)wxAtol(this->GetItemText(rowIndex, eSubSys));	//
 	vStep.m_Cmd			= wxAtol(this->GetItemText(rowIndex, eCmd));
 	vStep.SetPattern( this->GetItemText(rowIndex, ePattern).mb_str());
 	for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
@@ -228,7 +226,7 @@ void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 	if (info.m_itemId >= 0) {
 		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!	//ToDo
 		info.m_col = eDetailProg;	this->GetItem(info);	vStep.m_DetailProg	= wxAtol(info.m_text);
-		info.m_col = eSubSys;		this->GetItem(info);	vStep.m_SubSystem	= wxAtol(info.m_text);
+		info.m_col = eSubSys;		this->GetItem(info);	vStep.m_SubSystem	= (eSubSysAcro)wxAtol(info.m_text);
 		info.m_col = eCmd;			this->GetItem(info);	vStep.m_Cmd			= wxAtol(info.m_text);
 		info.m_col = ePattern;		this->GetItem(info);	vStep.SetPattern(info.m_text.mb_str());
 		for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {

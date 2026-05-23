@@ -29,11 +29,11 @@ cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
     if (Sel >= 0) {
         const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
         if (c) {
-            Cmd.m_SubSystem = c->SubSys;
-            Cmd.m_Cmd       = c->cmd;
+            Cmd.m_command.m_SubSystem   = Cmd.m_SubSystem = c->SubSys;
+            Cmd.m_command.m_Cmd         = Cmd.m_Cmd       = c->cmd;
             Cmd.SetPattern(c->ParamPattern);
             for (size_t i = 0; i < c->ParNames.size(); i++) {
-                Cmd.m_Par[i] = m_Params[i]->GetValue();
+                Cmd.m_command.m_Par[i] = Cmd.m_Par[i] = m_Params[i]->GetValue();
             }
         }
     }
@@ -85,9 +85,9 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                     }
 
                     //m_txt_NumOfPars->SetValue(wxString::Format("%d %d", NumOfParams, (int)(c->ParNames.size())));
-                    m_txt_SubSystem->SetValue((const char)c->SubSys);
-                    m_txt_CmdCode->SetValue(c->cmd);					//Command Id
-                    m_txt_ParamPattern->SetValue(c->ParamPattern);		//Params List
+                    m_txt_SubSystem     ->SetValue((const char)c->SubSys);
+                    m_txt_CmdCode       ->SetValue((const char)c->cmd);				//Command Id
+                    m_txt_ParamPattern  ->SetValue(c->ParamPattern);		//Params List
                     m_txt_LenPattern->SetValue(wxString::Format("%d", NumOfParams)); //.Lenght()
     #ifdef WWWWWWWWWW
                     //Fills m_txt_ParamNames for DEBUG 
@@ -415,7 +415,7 @@ bool CmdEditorCtrl::String2UI(wxString StrCmd) {
     wxString Format = "c%c,%c";
     for (int i = 0; i < NUMOFPARAMS; i++)
         Format+=",%ld";
-    int FieldsFounded = sscanf(StrCmd.c_str(), Format, &chSubSys, &chCmd,
+    int FieldsFounded = sscanf(StrCmd.utf8_str(), Format, &chSubSys, &chCmd,
         &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &a[6], &a[7], &a[8], &a[9]);
     std::vector<long>	ParValues;
     for (int i = 0; i < FieldsFounded - 2; i++) {

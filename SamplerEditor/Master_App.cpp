@@ -5,8 +5,6 @@
 
 #include "stdwx.h"
 
-//#include "vld.h"
-
 #include "wx/wx.h"
 #include "wx/cmdline.h"
 #include "wx/snglinst.h"	// SingleInstance

@@ -28,7 +28,7 @@ const sParams* Param_Get(byte Id);
 
 typedef struct {	//Microcontroller Commands. See 
 	const eSubSysAcro		SubSys;
-	const char				cmd;
+	const byte				cmd;
 	const char*				Descr;
 	const char*				ParamPattern;
 	std::vector<wxString>	ParNames;

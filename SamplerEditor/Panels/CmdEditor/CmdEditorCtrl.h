@@ -76,7 +76,7 @@ public:
 	bool		Cmd2UI			(const char Sys, const char Cmd, const std::vector<long>& ParValues);
 	bool		String2UI		(wxString Cmd);
 
-	bool		PoseCommand(const char SubSys, const char c, uint8_t NumPar);
+	bool		PoseCommand		(const char SubSys, const char c, uint8_t NumPar);
 
 	void		SetDbInfo(long MasterId, long DetId) {
 		m_ProgId = MasterId; if (m_Txt_ProgId)	m_Txt_ProgId->SetValue(wxString::Format("%ld", m_ProgId));
