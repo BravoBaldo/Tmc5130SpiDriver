@@ -25,7 +25,7 @@ class CmdExecutorCtrl : public wxPanel {
 	DECLARE_EVENT_TABLE()
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
-	bool		ExecuteStep		(cCmdStepper& vStep);
+	bool		ExecuteStep		(sCommand& vStep);
 	//void		TxMessage(const unsigned char* data, size_t length, long TimeoutMs = 500);
 	//void		RxMessage(const unsigned char* data, size_t length, long TimeoutMs = 500);
 

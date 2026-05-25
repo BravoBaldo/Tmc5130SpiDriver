@@ -3,7 +3,6 @@
 #include "wx/listctrl.h"	//ListCtrl_FillFromSql
 #include <wx/dataview.h>	//wxDataViewListCtrl, wxmsw31??_adv.lib
 #include "sqlite3.h"
-#include "cCmdStepper.h"
 #include <functional>
 
 #define PROGMASTER_TABLENAME "SAM_ProgMaster"
@@ -14,9 +13,10 @@
 #include <memory>
 
 struct ExportStepData {
-	sCommand	C;
-	wxString	subSysName;
-	wxString	commandName;
+	sCommand		C;
+	wxString		subSysName;
+	wxString		commandName;
+	wxArrayString	ParamsList;
 };
 
 class IExportWriter {
@@ -95,7 +95,7 @@ public:
 		stepElement->SetAttribute("PatLen",		s.C.m_PatLen);
 		stepElement->SetAttribute("Pattern",	(char*)s.C.m_Pattern);
 		for (size_t i = 0; i < s.C.m_PatLen; ++i) {
-			stepElement->SetAttribute(wxString::Format("Par%zu", i).utf8_str(), (int64_t)s.C.m_Par[i]);
+			stepElement->SetAttribute(wxString::Format("Par%zu", i).utf8_str(), s.ParamsList.Item(i).utf8_str());
 		}
 	}
 	bool Close() override {
@@ -136,10 +136,10 @@ public:
 	bool	ProgMaster_Insert		(const wxString& ProgName, unsigned int Id = 0);
 	bool	ProgMaster_Copy			(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew = 0);
 	void	ProgMaster_Fill2		(wxListCtrl* ListCtrl, bool SortByName, bool DoResize = true, int Fld2Translate = 1, byte Filter = 0);
+	wxString	getMasterName		(unsigned int ProgId);
+	bool	ProgMaster_Export		(bool IsText, unsigned int ProgId, const wxString& FilePathName);
 
-	bool	ProgMaster_Export(bool IsText, unsigned int ProgId, const wxString& FilePathName);
-
-	bool	ProgDetail_Insert		(const cCmdStepper& Cmd, bool AllowRenum = true);
+	bool	ProgDetail_Insert		(const sCommand& Cmd, bool AllowRenum = true);
 	bool	ProgDetail_Renum		(unsigned int ProgId, unsigned int Step = 3);
 	void	ProgDetail_Fill			(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoResize = true, int Fld2Translate = 1);
 	bool	ProgDetail_Swap			(unsigned int ProgId, unsigned int iFrom, bool WithNext);
@@ -153,6 +153,6 @@ public:
 
 	void	DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize);
 
-	bool	ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item);
+	bool	ProgDetail_Select(int64_t masterId, int64_t detailProg, sCommand& item);
 
 };

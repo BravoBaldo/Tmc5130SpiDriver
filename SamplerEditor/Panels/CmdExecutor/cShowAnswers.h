@@ -4,14 +4,13 @@
 #include <wx/grid.h>
 #include "stdwx.h"
 
-
 enum eGrids {
     eGrid_Motors,
 
     eGrid_TOP
 };
-
-enum eSteppers {
+/*
+enum eSteppers {    //
     eStep_UpDwn,
     eStep_LR,
     eStep_Syringe,  
@@ -21,6 +20,7 @@ enum eSteppers {
 
     eStep_TOP
 };
+*/
 
 class cAnswersShow : public wxAuiNotebook {
     wxGrid* m_Grids[eGrid_TOP];

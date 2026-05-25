@@ -6,25 +6,16 @@ std::vector<wxString> RetArray2(std::initializer_list<wxString> lista) {
 	return std::vector<wxString>(lista.begin(), lista.end());	// Inizializza il vector direttamente con il contenuto della lista
 }
 
-static const sSubSystem SubSystems[]{ //See eSubSysAcro
-	{eSystemCmd,	"System"},
-	{eADCConverter,	"ADC Converter"},
-	{eBarCode,		"BarCode"},
-	{eStripLed,		"StripLEDS"},
-	{ePwReader,		"Power Reader"},
-	{eExpanders,	"Expanders"},
-	{eSteppers,		"Steppers"},
-	{eStepDirect,	"SteppersDirect"},
-
-	{eUnused,		"Unused"},
+static const sSubSystem SubSystems[]{
+#define X(acronym, character, description) { acronym, description },
+	SUBSYS_LIST
+#undef X
 };
 
 unsigned int SubSystem_Size(void) { return WXSIZEOF(SubSystems); };
 
-const sSubSystem*	SubSystem_Get(unsigned int i)	{ //ToDo maybe it is eSubSysAcro
-	if (i >= WXSIZEOF(SubSystems))
-		i = 0;
-	return &SubSystems[i];	//ToDo 
+const sSubSystem*	SubSystem_GetByIndex(unsigned int i)	{
+	return (i < WXSIZEOF(SubSystems)) ? &SubSystems[i] : nullptr;
 };
 
 const sSubSystem* SubSystem_GetByType(eSubSysAcro Type) {
@@ -42,13 +33,18 @@ static const sParams SamplerParams[]{
 	{ 'c', eNumber,	"Char",			(-128),			127																				},
 	{ 'd', eChoice,	"Velocities",	0,				3,				"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
 	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "Enable"})							},
-	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({"None","FixedItalianFlag_Sx","FixedItalianFlag_Dx","MoveSingle_Sx","MoveSingle_Dx","MoveDouble_Sx","MoveDouble_Dx","MoveFlagItaly_Sx","MoveFlagItaly_Dx","GraysSx", "GraysDx","MoveArrow_Sx","MoveArrow_Dx","Fade","Bouncing"})							},
+	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({
+																												#define X(eStripId, eRunAlways, description) description,
+																													STRIPLEDGAMES_LIST
+																												#undef X
+																											})},
 	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
 	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
 	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "Right"})								},
 	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200", "1=25600", "2=12800", "3=6400", "4=3200", "5=1600", "6=800", "7=400", "8=200"})},
+	{ 'n', eNumber,	"ShowedNumber",	0,				6,				"Show Number"},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
-	{ 'p', eNumber,	"Process",		0,				 5,				"Laser Game"},
+	{ 'p', eNumber,	"Process",		0,				5,				"Laser Game"},
 	{ 's', eNumber,	"Speed",		500,			25000																			},
 	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
 	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
@@ -74,6 +70,28 @@ static const sSampler_Commands Sampler_Commands[] = {
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
 
+
+	{eStepNoMotor,	'0', "Do Nothing",			"",			RetArray2({											})},
+	{eStepNoMotor,	'1', "Set Current Motor",	"M",		RetArray2({"Stepper"								})},
+
+	{eStepNoMotor,	'a', "ChipEnable",			"e",		RetArray2({"Chip Abilitation"				})},
+	{eStepNoMotor,	'b', "Set Stops",			"l",		RetArray2({"Direction"						})},
+	{eStepNoMotor,	'c', "Set Currents",		"iij",		RetArray2({"IHOLD", "IRUN", "IHOLDDELAY"	})},
+	{eStepNoMotor,	'd', "Set Position",		"S",		RetArray2({"Position"						})},
+	{eStepNoMotor,	'e', "Set Microsteps",		"m",		RetArray2({"MicroSteps"						})},
+	{eStepNoMotor,	'f', "Set Target",			"S",		RetArray2({"Final Position"					})},
+	{eStepNoMotor,	'g', "Set Trapezoidal",		"AV",		RetArray2({"Acceleration", "Max Velocity"	})},
+	{eStepNoMotor,	'h', "Set Ramp Mode",		"R",		RetArray2({"Ramp Mode"						})},
+	{eStepNoMotor,	'i', "Set Timer",			"t",		RetArray2({"Time"							})},
+	{eStepNoMotor,	'j', "Wait",				"wb",		RetArray2({"Wait for", "Check Timer"		})},
+
+	{eStepNoMotor,	'l', "InitGoto",			"VVAAV",	RetArray2({"StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
+	{eStepNoMotor,	'm', "Set Free Running",	"Vml",		RetArray2({"SpeedFor1RPS", "MicroSteps", "Direction"	})},
+	{eStepNoMotor,	'n', "Set Accelerations",	"aA",		RetArray2({"Acc/De-celeration type", "Accel. Value"		})},
+	{eStepNoMotor,	'o', "Set Velocities",		"dV",		RetArray2({"Velocity type", "Velocity Value"			})},
+
+
+	//---------------------------------------------------------------------------------------------------------
 	{eStepDirect,	'0', "Do Nothing",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'a', "ChipEnable",			"Me",		RetArray2({"Stepper", "Chip Abilitation"			})},
 	{eStepDirect,	'b', "Set Stops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
@@ -86,7 +104,6 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
 
 	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
-
 	{eStepDirect,	'j', "Wait Timer",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
 
@@ -100,23 +117,23 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 
 
-	{eSteppers,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
-	{eSteppers,	'w', "WaitPrevCommand",		"M",			RetArray2({"Stepper"})},
-	{eSteppers,	'C', "Set Currents",		"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
+	{eSteppersFSA,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
+	{eSteppersFSA,	'w', "WaitPrevCommand",		"M",			RetArray2({"Stepper"})},
+	{eSteppersFSA,	'C', "Set Currents",		"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
 
-	{eSteppers,	'h', "Halt",				"MA",			RetArray2({"Stepper", "Deceleration"})},
-	{eSteppers,	'G', "Goto",				"MAVS",			RetArray2({"Stepper", "Acceleration", "Velocity", "Steps"})},
+	{eSteppersFSA,	'h', "Halt",				"MA",			RetArray2({"Stepper", "Deceleration"})},
+	{eSteppersFSA,	'G', "Goto",				"MAVS",			RetArray2({"Stepper", "Acceleration", "Velocity", "Steps"})},
 
-	{eSteppers,	'x', "Demo1",				"MbeoMO",		RetArray2({"Stepper", "t_False/True","t_Disable/Enable","t_Open/Close", "t_X/Y/Z/P","t_Off/On"})},
-	{eSteppers,	'y', "Demo2",				"MCsAtM",		RetArray2({"Stepper", "t_byte","t_Speed","t_Accel", "t_Time","t_Motor"})},
-	{eSteppers,	'y', "Demo3",				"MSVA",			RetArray2({"Stepper", "t_Step","t_Vel","t_Acc.n"})},
+	{eSteppersFSA,	'x', "Demo1",				"MbeoMO",		RetArray2({"Stepper", "t_False/True","t_Disable/Enable","t_Open/Close", "t_X/Y/Z/P","t_Off/On"})},
+	{eSteppersFSA,	'y', "Demo2",				"MCsAtM",		RetArray2({"Stepper", "t_byte","t_Speed","t_Accel", "t_Time","t_Motor"})},
+	{eSteppersFSA,	'y', "Demo3",				"MSVA",			RetArray2({"Stepper", "t_Step","t_Vel","t_Acc.n"})},
 
-	{eSteppers,	'E', "GoEnd",				"M",			RetArray2({"Stepper"})},
-	{eSteppers,	'E', "GoEnd 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
-	{eSteppers,	'H', "Home",				"M",			RetArray2({"Stepper"})},
-	{eSteppers,	'H', "Home 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
-	{eSteppers,	'T', "Set Trapezoidal",		"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
-	{eSteppers,	'w', "Wait End Of",			"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
+	{eSteppersFSA,	'E', "GoEnd",				"M",			RetArray2({"Stepper"})},
+	{eSteppersFSA,	'E', "GoEnd 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
+	{eSteppersFSA,	'H', "Home",				"M",			RetArray2({"Stepper"})},
+	{eSteppersFSA,	'H', "Home 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
+	{eSteppersFSA,	'T', "Set Trapezoidal",		"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
+	{eSteppersFSA,	'w', "Wait End Of",			"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
 
 	{eADCConverter,	'a', "GetADC",			"",				RetArray2({							})},
 
@@ -128,7 +145,8 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStripLed,		'r', "Reset Timer",		"",				RetArray2({							})},
 	{eStripLed,		'g', "Get Remaining",	"",				RetArray2({							})},
 	{eStripLed,		'w', "WaitTimer",		"",				RetArray2({							})},
-	  
+	{eStripLed,		'n', "SetNumber",		"n",			RetArray2({"Number To Show"			})},
+
 	{ePwReader,		'v', "Read Volt",		"",				RetArray2({							})},
 	{ePwReader,		'A', "Read Amp",		"",				RetArray2({							})},
 	{ePwReader,		'W', "Read Watt",		"",				RetArray2({							})},

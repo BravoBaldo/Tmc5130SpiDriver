@@ -7,7 +7,6 @@
 
 #include "sSampler_Commands.h"
 #include "CmdParLabel.h"
-#include "cCmdStepper.h"
 
 #define SHOW_PARAMS_INFO
 
@@ -70,9 +69,9 @@ public:
 
 
 	wxString	UI2String		(void);	//From UI to Command String
-	cCmdStepper	UI2DBData		(void);	//From UI to Database
-	void		DBData2UI		(cCmdStepper& vStep);
-	wxString	DBData2String	(cCmdStepper& vStep);
+	sCommand	UI2DBData		(void);	//From UI to Database
+	void		DBData2UI		(sCommand& vStep);
+	wxString	DBData2String	(sCommand& vStep);
 	bool		Cmd2UI			(const char Sys, const char Cmd, const std::vector<long>& ParValues);
 	bool		String2UI		(wxString Cmd);
 

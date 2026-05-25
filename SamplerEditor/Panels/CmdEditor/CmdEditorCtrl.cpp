@@ -23,24 +23,24 @@ void CmdEditorCtrl::OnTextInput(wxCommandEvent&) {
     String2UI(s);
 }
 
-cCmdStepper	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
-    cCmdStepper Cmd;
+sCommand	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
+    sCommand Cmd;
     int Sel = m_cho_StepperCmd->GetSelection();
     if (Sel >= 0) {
         const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
         if (c) {
-            Cmd.m_command.m_SubSystem   = Cmd.m_SubSystem = c->SubSys;
-            Cmd.m_command.m_Cmd         = Cmd.m_Cmd       = c->cmd;
+            Cmd.m_SubSystem   = Cmd.m_SubSystem = c->SubSys;
+            Cmd.m_Cmd         = Cmd.m_Cmd       = c->cmd;
             Cmd.SetPattern(c->ParamPattern);
             for (size_t i = 0; i < c->ParNames.size(); i++) {
-                Cmd.m_command.m_Par[i] = Cmd.m_Par[i] = m_Params[i]->GetValue();
+                Cmd.m_Par[i] = Cmd.m_Par[i] = m_Params[i]->GetValue();
             }
         }
     }
     return Cmd;
 }
 
-wxString CmdEditorCtrl::DBData2String(cCmdStepper& vStep) {
+wxString CmdEditorCtrl::DBData2String(sCommand& vStep) {
     wxString Result = wxEmptyString;    // ToDo
 
     Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
@@ -257,31 +257,41 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
     }
 
     sSampler_Check();
+//#define WRONGMODE
 
-    m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-        m_cho_SubSystem->SetToolTip(_("SubSystems List"));
-        for (size_t i = 0; i < SubSystem_Size(); i++) {
-            m_cho_SubSystem->Append(SubSystem_Get(i)->Descr, (void*)SubSystem_Get(i));
-        }
-        m_cho_SubSystem->SetSelection(4);
-
-    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-    m_cho_StepperCmd->SetToolTip(_("Main Command"));
-    Fill_Commands();
-
-
-    //int DefCmd = 0;
-    //m_cho_StepperCmd->SetSelection(DefCmd);
 
     SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
         sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
         sizDBInfo->Add(m_Txt_StepId, 0, wxALL, 5);
 
     SIZER_STATDEBUG(sizComp, "SubSystems", wxHORIZONTAL);
+#if defined(WRONGMODE)
+    m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+#else
+    m_cho_SubSystem = new wxChoice(sizComp->GetStaticBox(), ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+#endif
+    m_cho_SubSystem->SetToolTip(_("SubSystems List"));
+    for (size_t i = 0; i < SubSystem_Size(); i++) {
+        const sSubSystem* SubSys = SubSystem_GetByIndex(i);
+        if (SubSys)  m_cho_SubSystem->Append(SubSys->Descr, (void*)SubSys);
+    }
+    m_cho_SubSystem->SetSelection(4);
+
+
         sizComp->Add(m_cho_SubSystem, 0, wxALL, 5);
 
     SIZER_STATDEBUG(sizCmd, "Command", wxHORIZONTAL);
-        sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
+#if defined(WRONGMODE)
+    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+#else
+    m_cho_StepperCmd = new wxChoice(sizCmd->GetStaticBox(), ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
+#endif
+    m_cho_StepperCmd->SetToolTip(_("Main Command"));
+    Fill_Commands();
+    sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
+
+
+
 
     SIZER_STATDEBUG(sizTop, "Master", wxHORIZONTAL);
 
@@ -345,7 +355,7 @@ int SelezionaPerClientData(wxChoice* choice, void* targetData) {
     return -1;
 }
 
-void CmdEditorCtrl::DBData2UI(cCmdStepper& vStep) {
+void CmdEditorCtrl::DBData2UI(sCommand& vStep) {
     wxString aa = DBData2String(vStep);
     String2UI(aa);
 }

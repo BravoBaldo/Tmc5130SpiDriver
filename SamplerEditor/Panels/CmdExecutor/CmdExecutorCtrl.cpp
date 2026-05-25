@@ -187,25 +187,29 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 }
 
 #define TX_BINARY_M	//If defined, Tx via USB, Else via SERIAL
+#define CALLSUBSINSTEPS
 
-bool CmdExecutorCtrl::ExecuteStep(cCmdStepper& vStep) {
-	unsigned char	Msg[sizeof(cCmdStepper) + 1];	// + Starting byte
+bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
+#if !defined(CALLSUBSINSTEPS)
+	//Check SubRoutine:
+	if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd=='a') {
+		LogMe(wxString::Format("Execute Subroutine %d\n", vStep.m_Par[0]), false);
+		ExecuteSteps(vStep.m_Par[0]);
+		return true;
+	}
+#endif
+
+	unsigned char	Msg[sizeof(sCommand) + 1];	// + Starting byte
 	size_t			Msg_Len = 0;
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 	int j = 0;
-	vStep.m_CheckSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(cCmdStepper) - sizeof(vStep.m_CheckSum));
+	vStep.m_ChkSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(sCommand) - sizeof(vStep.m_ChkSum));
 	memcpy(&Msg[j], &vStep, sizeof(vStep));
 	j += sizeof(vStep);
 	Msg_Len = sizeof(vStep);
 #else
 #endif
-	/* Soluzione 1
-		If "Exec. Routine"
-			ExecuteSteps(0, m_ptrPrgDetail->GetItemCount());
-			Execute all steps of MasterId = vStep.m_Par[0];
-				...probabimente senza visualizzare (soprattutto senza il parametro -e
-	*/
 
 
 	SendCommand(Msg, Msg_Len);
@@ -214,7 +218,7 @@ bool CmdExecutorCtrl::ExecuteStep(cCmdStepper& vStep) {
 
 bool CmdExecutorCtrl::ExecuteSteps(uint16_t	m_MasterId) {	//Execute Steps from DB
 	int64_t detailProg = 0;
-	cCmdStepper vStep;
+	sCommand vStep;
 	bool recordFound;
 
 #if defined(USE_ODBC)
@@ -241,7 +245,7 @@ m_Btn_ExecStep->Enable(false);
 m_Btn_ExecAll->Enable(false);
 	LogMe(wxString::Format("Start Execution from %ld'\n-----------------------------\n", from), false);
 
-	cCmdStepper vStep;
+	sCommand vStep;
 	wxString CmdStr;			//wxMemoryBuffer
 	m_Running = true;
 	for (long i = from; i < to; i++) {
@@ -250,10 +254,12 @@ m_Btn_ExecAll->Enable(false);
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
-		if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd=='a') {
-			LogMe(wxString::Format("Execute SUbroutine %d\n", vStep.m_Par[0]), false);
+#if defined(CALLSUBSINSTEPS)
+		if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd == 'a') {
+			LogMe(wxString::Format("Execute Subroutine %d\n", vStep.m_Par[0]), false);
 			ExecuteSteps(vStep.m_Par[0]);
 		}else
+#endif
 			ExecuteStep(vStep);
 #else
 		CmdStr = (m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i)) ? m_ptrEditor->DBData2String(vStep) : "------------";
@@ -285,7 +291,7 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 			//Non dal DB ma dall'editor!!!
 			{
 				m_Running = true;
-				cCmdStepper	s = m_ptrEditor->UI2DBData();
+				sCommand	s = m_ptrEditor->UI2DBData();
 				ExecuteStep(s);
 				m_Running = false;
 			}

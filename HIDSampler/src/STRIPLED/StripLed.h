@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <FastLED.h>
+#include "../SysSampler.h"
 
 /*
 Task Dedicato: Poiché l'ESP32 è dual-core, potresti far girare AlwaysRun() su un Task separato (Core 0) per non rallentare il resto del codice.
@@ -18,34 +19,23 @@ Luminosità: Usa FastLED.setBrightness(128); nel setup invece di manipolare i va
 #define MAX_MA      500
 #define DELAYBASE   30
 
+#define NUMSEGMENTS 7
 
 class cStripLed{
-public:
-  typedef enum : uint8_t {eNone,
-                          eFixedItalianFlagL, eFixedItalianFlagR,
-                          eMoveSingle_Sx, eMoveSingle_Dx, 
-                          eMoveDouble_Sx, eMoveDouble_Dx,
-                          eMoveFlagItaly_Sx, eMoveFlagItaly_Dx,
-                          eGraysSx, eGraysDx,
-                          eMoveArrow_Sx, eMoveArrow_Dx,
-                          eFade,
-                          eBouncing,
-                          eTop}StripGame;
+	CRGB			leds[NUM_LEDS];
+	StripGame		m_CurrGame;
+	unsigned long	m_lastUpdate	= 0;
+	int				m_step			= 0;	// Sostituisce i 'j' statici
+	int				m_dir			= 1;	// Per rimbalzi o direzioni
+	bool			m_RunAlways;
+	byte			m_NumShowed		= 0;
 
-private:
-  CRGB leds[NUM_LEDS];
-  StripGame m_CurrGame;
-  unsigned long m_lastUpdate = 0;
-  int m_step = 0;   // Sostituisce i 'j' statici
-  int m_dir = 1;    // Per rimbalzi o direzioni
-  bool m_RunAlways;
-
-  void resetAnimation() {
-      m_step = 0;
-      m_dir = 1;
-      m_lastUpdate = millis();
-      FastLED.clear();
-  }
+	void resetAnimation() {
+		m_step = 0;
+		m_dir = 1;
+		m_lastUpdate = millis();
+		FastLED.clear();
+	}
 
   void fTest_MoveSingle2(bool Dir, int n) {
     FastLED.clear();    // 1. Spegniamo tutti i LED prima di disegnare il nuovo frame
@@ -131,6 +121,23 @@ private:
     }
   }
 
+  void HighlightSegment(int N, int X, CRGB colorSel=CRGB(10, 0, 0), CRGB colorEven=CRGB(2, 2, 4), CRGB colorOdd=CRGB(2, 4, 2)) {
+    if (N <= 0 || X < 0 || X >= N) {
+      FastLED.clear();
+      FastLED.show();
+      return;
+    }
+  
+    int ledAcc = 0;
+    for (int s = 0; s < N; s++) {
+      int nextLed = ((s + 1) * NUM_LEDS) / N;
+      CRGB currColor = (s == X) ? colorSel : ((s & 1) ? colorOdd : colorEven);
+      for (int l = ledAcc; l < nextLed; l++)   leds[l] = currColor;
+      ledAcc = nextLed;  // Il punto di inizio del prossimo segmento è la fine di questo
+    }  
+    FastLED.show();
+  }
+
 public:
   cStripLed() : m_CurrGame(eNone) {}
   StripGame getCurrGame(void)	{return m_CurrGame;};
@@ -167,7 +174,7 @@ public:
 	if(m_Timer==0)	return 0;
     return ( m_Timer-(millis() - m_TimerT)  );
   }
-  
+
   bool SetGame(StripGame Game){
     m_CurrGame = Game;
     resetAnimation();
@@ -206,10 +213,14 @@ public:
       case eMoveArrow_Dx:       fTest_MoveArrow(false);     break;
       case eFade:               fTest_Fade();               break;
       case eBouncing:           fTest_Bouncing();           break;
+	  case eShowNum:			HighlightSegment(NUMSEGMENTS, m_NumShowed);			break;
       //default:                  return;
     }
     FastLED.show();
     yield(); 
     m_lastUpdate = millis();
   }
+  
+  void setNumShowed(byte s){m_NumShowed=s;}
+
 };

@@ -4,24 +4,74 @@
 #define NUMOFPARAMS 10
 typedef int32_t		ParamType;	//See in stdwx
 
-//
 typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError }eCmdAnswer;
-/*
-	c'è differenza tra m_MsgType e m_SubSystem
-*/
 
-typedef enum : uint8_t {	//System in Uppercase
-	eSystemCmd		= 'Q',
-	eADCConverter	= 'A',
-	eBarCode		= 'K',
-	eStripLed		= 'S',
-	ePwReader		= 'P',
-	eExpanders		= 'E',
-	eSteppers		= 'M',
-	eStepDirect		= 'D',
-	eUnused			= 'U',
-}eSubSysAcro;	// See sSampler_Commands.cpp
+#define SUBSYS_LIST \
+    X(eSystemCmd,    'Q', "System") \
+    X(eADCConverter, 'A', "ADC Converter") \
+    X(eBarCode,      'K', "BarCode") \
+    X(eStripLed,     'S', "StripLEDS") \
+    X(ePwReader,     'P', "Power Reader") \
+    X(eExpanders,    'E', "Expanders") \
+    X(eSteppersFSA,  'M', "Steppers FSA") \
+    X(eStepDirect,   'D', "SteppersDirect") \
+    X(eStepNoMotor,	 'F', "Stepper No Motor") \
+    X(eUnused,       'U', "Unused")
 
+#define STEPPERS_LIST \
+    X(eStep_UpDwn,	 6,  7, "Motor A: Up/Dn") \
+    X(eStep_LR,		 4,  5, "Motor B: Left/Right") \
+    X(eStep_Syringe, 2,  3, "Motor C: Syringe/Diluter") \
+    X(eStep_Deposit,12, 13, "Motor D: Depositor") \
+    X(eStep_Needle,	10, 11, "Motor E") \
+    X(eStep_Spare,	 8,  9, "Motor F") \
+    X(eStep_TOP,	 0,  0, "") 
+
+
+//		Id, RulAlwais, Name
+#define STRIPLEDGAMES_LIST \
+    X(eNone,				true,	"None"					) \
+    X(eFixedItalianFlagL,	false,	"FixedItalianFlag_Sx"	) \
+    X(eFixedItalianFlagR,	false,	"FixedItalianFlag_Dx"	) \
+    X(eMoveSingle_Sx,		true,	"MoveSingle_Sx"			) \
+    X(eMoveSingle_Dx,		true,	"MoveSingle_Dx"			) \
+    X(eMoveDouble_Sx,		true,	"MoveDouble_Sx"			) \
+    X(eMoveDouble_Dx,		true,	"MoveDouble_Dx"			) \
+    X(eMoveFlagItaly_Sx,	true,	"MoveFlagItaly_Sx"		) \
+    X(eMoveFlagItaly_Dx,	true,	"MoveFlagItaly_Dx"		) \
+    X(eGraysSx,				false,	"GraysSx"				) \
+    X(eGraysDx,				false,	"GraysDx"				) \
+    X(eMoveArrow_Sx,		true,	"MoveArrow_Sx"			) \
+    X(eMoveArrow_Dx,		true,	"MoveArrow_Dx"			) \
+    X(eFade,				true,	"Fade"					) \
+    X(eBouncing,			true,	"Bouncing"				) \
+    X(eShowNum,				true,	"Show Number"			)
+
+typedef enum : uint8_t {
+#define X(eStripId, eRunAlways, description) eStripId,
+	STRIPLEDGAMES_LIST
+#undef X
+}StripGame;
+
+typedef struct {
+  StripGame		GameId;
+  bool			RunAlways;
+  const char*	Description;
+}sStripLedGames;
+
+
+enum eStep_List : uint8_t {	//Compare with eSteppers in cShowAnswers.h
+#define X(eMotorId, csPin, cePin, description) eMotorId,
+	STEPPERS_LIST
+#undef X
+};
+
+
+enum eSubSysAcro : uint8_t {
+#define X(acronym, character, description) acronym = character,
+	SUBSYS_LIST
+#undef X
+};
 
 typedef enum : uint8_t {	// AnswerType is lowercase
 	eTypCommand			= 'b',
@@ -40,11 +90,11 @@ typedef enum : uint8_t {	// AnswerType is lowercase
 #pragma pack(push, 1)
 typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 	eMessageTypes	m_MsgType				= eTypCommand;	//1
-	eSubSysAcro		m_SubSystem				= eUnused;		//1
-	byte			m_Cmd					= 0;			//1
+	eSubSysAcro		m_SubSystem				= eUnused;		//1		//Come from sSampler_Commands
+	byte			m_Cmd					= 0;			//1		//Come from sSampler_Commands
 	byte			m_PatLen				= 0;			//1
-	byte			m_Pattern[NUMOFPARAMS]	= {'\0'};		//10
-	ParamType  		m_Par[NUMOFPARAMS]		= {0};			//4*10
+	byte			m_Pattern[NUMOFPARAMS]	= {'\0'};		//10	//Come from sSampler_Commands
+	ParamType  		m_Par[NUMOFPARAMS]		= {0};			//4*10	//Come from sSampler_Commands
 	uint16_t		m_MasterId				= 0;			//2
 	uint16_t		m_DetailProg			= 0;			//2
 	uint16_t  		m_ChkSum				= 0;			//2
@@ -86,11 +136,26 @@ typedef struct _sStripAnswer{
 }StripAnswer;
 #pragma pack(pop)
 
-typedef enum : uint8_t	{	eStpShowTime,   eStpShowSpiStatus, eStpShowIoin8,    eStpShowVel, eStpShowPos, 
-							eStpShowTarget, eStpShowCurrents,  eStpShowChopConf, eStpShowDrvStatus, eStpShowMsCurAct,
-							eStpShowCount
-						}eStepShowAnswer;
-                         
+#define STEP_ANSWERS_LIST \
+	X(eStpShowTime,			false, "Time") \
+	X(eStpShowSpiStatus,	false, "Status") \
+	X(eStpShowIoin8,		true, "Ioin") \
+	X(eStpShowVel,			false, "Vel.") \
+	X(eStpShowPos,			false, "Pos.") \
+	X(eStpShowTarget,		false, "Target") \
+	X(eStpShowCurrents,		false, "Currents") \
+	X(eStpShowChopConf,		true, "ChopConf") \
+	X(eStpShowDrvStatus,	true, "DrvStatus") \
+	X(eStpShowMsCurAct,		true, "MSCURACT") \
+	X(eStpShowCount,		true, "--")
+
+typedef enum : uint8_t {
+#define X(eParamId, eIsAlign, eDescription) eParamId,
+	STEP_ANSWERS_LIST
+#undef X
+}eStepShowAnswer;
+
+
 #pragma pack(push, 1)
 typedef struct _sTmcAnswer{
 	byte		m_MsgType	= eTypAnswStepDir;	//1
@@ -117,7 +182,7 @@ static_assert(sizeof(TmcAnswer) <= 64, "Error: TmcAnswer exceeds the maximum siz
 #pragma pack(push, 1)
 typedef struct _sStepAnswer{
 	byte		m_MsgType		= eTypAnswStepper;	//1
-	eSubSysAcro	m_SubSystem		= eSteppers;		//1
+	eSubSysAcro	m_SubSystem		= eSteppersFSA;		//1
 	byte		m_Cmd			= 0;				//1
 	uint16_t	m_MasterId		= 0;				//2
 	uint16_t	m_DetailProg	= 0;				//2

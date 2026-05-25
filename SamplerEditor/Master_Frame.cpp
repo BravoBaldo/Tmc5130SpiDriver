@@ -112,7 +112,7 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 		case wxID_SQLINSERTAFT:
 		case wxID_SQLUPDATE:
 			{
-				cCmdStepper	s = m_CmdEditor->UI2DBData();
+				sCommand	s = m_CmdEditor->UI2DBData();
 				s.m_MasterId = 0;	//Unused Value
 
 				// --- In the Editor there is not the MasterId ------------------------------------------
@@ -559,7 +559,7 @@ void MyFrame::OnListEvent(wxListEvent& evt) {
 				//info.m_mask = wxLIST_MASK_TEXT;	//I want the text!
 				//evt.Skip();
 
-				cCmdStepper	vStep = m_lstPrgDetail->GetSelectedItem();
+				sCommand	vStep = m_lstPrgDetail->GetSelectedItem();
 				m_CmdEditor->Freeze();
 				//............................................
 				m_CmdEditor->DBData2UI(vStep);

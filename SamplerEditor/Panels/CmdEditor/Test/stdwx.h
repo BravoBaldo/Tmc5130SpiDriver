@@ -26,7 +26,7 @@
 	void			g_SetStatusText		( const wxString& text, int nField );
 
 
-typedef int32_t		ParamType;	//See also in cCmdStepper.h
+typedef int32_t		ParamType;	//See also sCommand
 
 #define GET_MAX_SIGNED(T) ((T)((1ULL << (sizeof(T) * 8 - 1)) - 1))
 #define GET_MIN_SIGNED(T) ((T)(-(GET_MAX_SIGNED(T)) - 1))

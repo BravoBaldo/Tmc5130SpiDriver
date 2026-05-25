@@ -6,6 +6,7 @@
 #include "stdwx.h"
 #include "Master_Frame.h"
 #include "cDBSampler.h"
+#include "../../SysSampler.h"
 
 
 #define DBNAME "../SamplerXX.db"
@@ -82,7 +83,7 @@ void Test(cDBSampler& yy,
 	Params.Add(P2);
 	Params.Add(P3);
 	Params.Add(P4);
-	cCmdStepper item(MasterId, DetailProg, SubSystem, Cmd, Pattern, Params);
+	sCommand item(MasterId, DetailProg, SubSystem, Cmd, Pattern, Params);
 	yy.ProgDetail_Insert(item, false);
 }
 

@@ -139,7 +139,11 @@ void cMainListCtrl::DBPrintExport(const wxString& Name, const unsigned int ProgI
 	wxString	 wildcard		 = (PrintOnly) ? "Program files (*.lst)|*.lst|All files (*.*)|*.*" : "Export files (*.xml)|*.xml|All files (*.*)|*.*";
 
 	wxString	 defaultFilename = wxString::Format("%s.%s", Name, (PrintOnly) ? "lst":"xml");
-
+//#define TESTLEAKMODAL
+#if defined(TESTLEAKMODAL)
+	cDBSampler yy(SQLLITEDBPATH);
+	yy.ProgMaster_Export(PrintOnly, ProgId, "Test.txt");
+#else
 	wxFileDialog dialog(this, caption, defaultDir, defaultFilename, wildcard, wxFD_SAVE);
 	if (dialog.ShowModal() == wxID_OK) {
 		wxYield();
@@ -150,7 +154,7 @@ void cMainListCtrl::DBPrintExport(const wxString& Name, const unsigned int ProgI
 			yy.ProgMaster_Export(PrintOnly, ProgId, dialog.GetPath());
 		#endif
 	}
-
+#endif
 
 	Enable();
 }
@@ -165,7 +169,7 @@ cDetailListCtrl::cDetailListCtrl(wxWindow* parent, const wxWindowID id, const wx
 cDetailListCtrl::~cDetailListCtrl() {
 }
 
-void cDetailListCtrl::UpdateItem(cCmdStepper& S, bool InsertAfter) {
+void cDetailListCtrl::UpdateItem(sCommand& S, bool InsertAfter) {
 	if (S.m_MasterId >= 0) {
 		long	CurrentIndex = this->GetFirstSelected();	// 0 based
 		if (InsertAfter) {
@@ -205,7 +209,7 @@ void cDetailListCtrl::PrgDetail_Fill(unsigned int Id) {
 		this->ClearAll();
 }
 
-bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) {
+bool cDetailListCtrl::PrgDetail_FillListItem(sCommand& vStep, long rowIndex) {
 	if (rowIndex < 0 || rowIndex >= this->GetItemCount()) return false;
 
 	vStep.m_DetailProg	= wxAtol(this->GetItemText(rowIndex, eDetailProg));
@@ -219,7 +223,7 @@ bool cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex) 
 	return true;
 }
 
-void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
+void cDetailListCtrl::PrgDetail_FillListItem(sCommand& vStep) {
 	wxListItem info;
 	vStep.m_DetailProg = 0;	//Unused value
 	info.m_itemId = this->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);	//this->GetFocusedItem();
@@ -236,8 +240,8 @@ void cDetailListCtrl::PrgDetail_FillListItem(cCmdStepper& vStep) {
 	}
 }
 
-cCmdStepper	cDetailListCtrl::GetSelectedItem(void) {
-	cCmdStepper 	vStep;
+sCommand	cDetailListCtrl::GetSelectedItem(void) {
+	sCommand 	vStep;
 	PrgDetail_FillListItem(vStep);
 	return vStep;
 }

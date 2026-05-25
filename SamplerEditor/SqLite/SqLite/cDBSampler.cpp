@@ -413,6 +413,23 @@ bool cDBSampler::CreateDB(void) {
     return true;
 }
 
+wxString cDBSampler::getMasterName(unsigned int ProgId) {
+    if (!m_db) return wxEmptyString;
+    sqlite3_stmt* stmtMaster = nullptr;
+    const char* query = "SELECT ProgName FROM " PROGMASTER_TABLENAME " WHERE ProgId = ?;";
+    if (sqlite3_prepare_v2(m_db, query, -1, &stmtMaster, nullptr) != SQLITE_OK) return wxEmptyString;
+    sqlite3_bind_int(stmtMaster, 1, static_cast<int>(ProgId));
+
+    wxString result;
+    if (sqlite3_step(stmtMaster) == SQLITE_ROW) {
+        if (const unsigned char* text = sqlite3_column_text(stmtMaster, 0)) {
+            result = wxString::FromUTF8(reinterpret_cast<const char*>(text));
+        }
+    }
+    sqlite3_finalize(stmtMaster);
+    return result;
+}
+
 bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxString& FilePathName) {
     if (!m_db) return false;
 
@@ -473,12 +490,27 @@ bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxStr
             const sSubSystem        *Ssys = SubSystem_GetByType(S.m_SubSystem);
             const sSampler_Commands *pCmd = Command_GetByCmd((char)S.m_SubSystem, (char)S.m_Cmd, S.m_PatLen);
 
-            // Pacchettizziamo i dati estratti in una struct pulita indipendente dal formato di output
+            // We package the extracted data into a clean struct independent of the output format
             ExportStepData stepData;
             stepData.C = S;
             stepData.subSysName     = wxString::Format("%d-%s", (int)S.m_SubSystem, Ssys ? Ssys->Descr : "?");
-            stepData.commandName    = wxString::Format("%d-%s", (int)S.m_SubSystem, pCmd ? pCmd->Descr : "?");
+            stepData.commandName    = wxString::Format("%d-%s", (int)S.m_Cmd,       pCmd ? pCmd->Descr : "?");
 
+            //.............................
+            stepData.ParamsList.Clear();
+            for (size_t i = 0; i < S.m_PatLen; ++i) {
+                wxString strVal = wxString::Format("%ld", S.m_Par[i]);
+                if (S.m_SubSystem == eSystemCmd && S.m_Cmd == 'a' && S.m_Pattern[i] == 'P') {	//"Exec. Routine"
+                    //strVal+= getMasterName(S.m_Par[i]);
+                    strVal += wxString::Format("=*%s*", getMasterName(S.m_Par[i]));
+                }
+                const sParams* P = Param_Get(S.m_Pattern[i]);
+                if (P && P->ParType == eChoice) {
+                    strVal += "=" + P->ParValues[S.m_Par[i]];
+                }
+                stepData.ParamsList.Add(strVal);
+            }
+            //............................................
             writer->WriteDetailStep(stepData);  // Scrittura agnostica del formato
         }
         sqlite3_finalize(stmtSlave);
@@ -617,7 +649,7 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId, unsigned int Step) {
 }
 
 
-bool cDBSampler::ProgDetail_Insert(const cCmdStepper& item, bool AllowRenum ) {
+bool cDBSampler::ProgDetail_Insert(const sCommand& item, bool AllowRenum ) {
     if (!m_db) return false;
 
     wxString strParNames;
@@ -641,7 +673,7 @@ bool cDBSampler::ProgDetail_Insert(const cCmdStepper& item, bool AllowRenum ) {
         return false;
     }
 
-    // Binding dei parametri dall'oggetto cCmdStepper
+    // Binding dei parametri dall'oggetto sCommand
     sqlite3_bind_int64(stmt, 1, item.m_MasterId);
     sqlite3_bind_int64(stmt, 2, item.m_DetailProg);
     sqlite3_bind_int  (stmt, 3, item.m_SubSystem);
@@ -710,16 +742,13 @@ bool cDBSampler::ProgDetail_Delete2(unsigned int ProgId, unsigned int DetailId) 
     return ExecuteSQL(Sql_Del, true);
 }
 
-bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdStepper& item) {
+bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, sCommand& item) {
     if (!m_db) return false;
 
-    // Genera dinamicamente la lista dei campi "Par0, Par1, ... ParN"
-    wxString strParNames;
-    for (byte i = 0; i < NUMOFPARAMS; i++) {
-        strParNames += wxString::Format(", Par%d", i);
-    }
+    wxString strParNames;   // Generate Par? list dynamically
+    for (byte i = 0; i < NUMOFPARAMS; i++) strParNames += wxString::Format(", Par%d", i);
 
-    // Costruisce la query SQL di selezione basata sulla chiave primaria
+    // Builds the SQL select query based on the primary key
     wxString sql = wxString::Format(
         "SELECT SubSys, Cmd, Pattern %s, DetailProg FROM %s WHERE MasterId = ? AND DetailProg >= ?;",
         strParNames, PROGDETAIL_TABLENAME
@@ -731,7 +760,7 @@ bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdSte
         return false;
     }
 
-    // Binding dei parametri di ricerca (WHERE)
+    // Binding of search parameters (WHERE)
     sqlite3_bind_int64(stmt, 1, masterId);
     sqlite3_bind_int64(stmt, 2, detailProg);
 
@@ -741,11 +770,9 @@ bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, cCmdSte
     if (rc == SQLITE_ROW) {
         recordFound = true;
 
-        // Ripristina le chiavi nell'oggetto
         item.m_MasterId     = masterId;
-        //item.m_DetailProg   = detailProg;
 
-        // Estrazione dei dati standard (colonne 0, 1, 2)
+        // Standard data extraction
         item.m_SubSystem    = (eSubSysAcro)sqlite3_column_int(stmt, 0);
         item.m_Cmd          = sqlite3_column_int(stmt, 1);
         item.m_DetailProg   = sqlite3_column_int(stmt, 13);

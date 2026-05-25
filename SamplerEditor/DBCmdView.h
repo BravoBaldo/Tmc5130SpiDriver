@@ -1,7 +1,6 @@
 #pragma once
 #include "wx/wx.h"
 #include "wx/listctrl.h"
-#include "cCmdStepper.h"
 #include "../SysSampler.h"
 
 
@@ -38,16 +37,16 @@ public:
 		long				style = wxLC_ICON);
 	~cDetailListCtrl();
 	void		PrgDetail_Fill(unsigned int Id);
-	void		UpdateItem(cCmdStepper& S, bool InsertAfter);
+	void		UpdateItem(sCommand& S, bool InsertAfter);
 
 	bool		GetCurrHead(unsigned int* ProgId, unsigned int* DetailId);
 	void		DeleteItem(void);
 
 	void		SwapItem(bool WithNext);
 
-	void		PrgDetail_FillListItem(cCmdStepper& vStep);
-	bool		PrgDetail_FillListItem(cCmdStepper& vStep, long rowIndex);
-	cCmdStepper	GetSelectedItem(void);
+	void		PrgDetail_FillListItem(sCommand& vStep);
+	bool		PrgDetail_FillListItem(sCommand& vStep, long rowIndex);
+	sCommand	GetSelectedItem(void);
 private:
 	void	OnListEvent		(wxListEvent& Evt);
 	void	OnChar			(wxKeyEvent& Evt);

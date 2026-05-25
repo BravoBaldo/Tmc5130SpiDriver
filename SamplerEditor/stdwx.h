@@ -60,7 +60,7 @@ C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
 
 //#define USE_MAIN_LOG	//As a single page, else as a Answers' page
 
-	typedef int32_t		ParamType;	//See also in cCmdStepper.h
+	typedef int32_t		ParamType;	//See also sCommand
 
 #define GET_MAX_SIGNED(T) ((T)((1ULL << (sizeof(T) * 8 - 1)) - 1))
 #define GET_MIN_SIGNED(T) ((T)(-(GET_MAX_SIGNED(T)) - 1))
