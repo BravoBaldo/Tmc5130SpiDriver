@@ -158,6 +158,13 @@ uint32_t TMC5130::readRegUART(uint8_t slave, Reg reg) {
 // ======= SEZIONE STEP/DIR ============================
 // =====================================================
 
+void TMC5130::DisableStops(void){
+	SwMode sw_mode	= getSwMode();  //SW_MODE
+	sw_mode.stop_l_enable	= 0;	//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.stop_r_enable	= 0;	//1: Enables automatic motor stop during active right reference switch input
+	setSwMode(sw_mode);
+}
+
 void TMC5130::setStops(MotorDirection Direction){
 	SwMode sw_mode	= getSwMode();  //SW_MODE
 	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
@@ -407,7 +414,8 @@ void TMC5130::setFirstVelocity(uint32_t v)  {
 }
 
 void TMC5130::setStopVelocity(uint32_t v)  {
-  assert(v>=0 && v<=0x3FFFF);
+  assert(v>=10 && v<=0x3FFFF);	//Attention: Do not set 0 in positioning mode, minimum 10 recommend!
+  if(v<=10) v=10;
   writeReg(VSTOP, v);
   ShadowRegs.VSTOP = v;
 }
@@ -431,7 +439,8 @@ void TMC5130::setFirstDeceleration(uint16_t d) {  //[μsteps / ta²]  0...65535=
 }
 
 void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=0xFFFF
-  assert(d>=1 && d<=0xFFFF);
+  assert(d>=1 && d<=0xFFFF);	//Attention: Do not set 0 in positioning mode, even if V1=0!
+  if(d==0) d=1;
   writeReg(D1, d);
   ShadowRegs.D1 = d;
 }
@@ -440,7 +449,6 @@ void TMC5130::setRampMode(RampMode m) {
   assert(m>=0 && m<=3);
   writeReg(RAMPMODE, m);
 }
-
 
 bool TMC5130::zeroVelocity(void) {
   //return ((readReg(RAMP_STAT) & 0x0400) !=0);

@@ -344,7 +344,7 @@ private:
     GCONF       = 0x00,   // Gconf and GconfBits  RW
     GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
     IFCNT       = 0x02,   // 0xFF                 R      Interface counter
-    NODECONF    = 0x03,   // Nodeconf             W      Slave config (UART)
+    NODECONF    = 0x03,   // Nodeconf             W      SLAVECONF or NODECONF
     IOIN        = 0x04,   // Ioin                 RD      Input pins
     X_COMPARE   = 0x05,   //0xFFFF FFFF           W
 
@@ -471,42 +471,40 @@ public:
   };
 
   struct {
-    Nodeconf NODECONF;        //SLAVECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
-    int32_t X_COMPARE;        //= 0x05,   //0xFFFF FFFF           W
+    Nodeconf	NODECONF	= {.bytes = 0x00000000};	//SLAVECONF or NODECONF   = 0x03,   // Nodeconf             W      Slave config (UART)
+    int32_t		X_COMPARE	= 0;        				//= 0x05,   //0xFFFF FFFF           W
+    IholdIrun	Ihold_Irun	= {.bytes = 0x00071703};    //IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
+    uint32_t	TPowerDown	= 0;			    		//TPOWERDOWN  = 0x11,   //0x00FF                W
+    uint32_t	TPwmThrs	= 0;
+  //    		TCOOLTHRS	= 0,   						//0xFFFFF               W
+    uint32_t	THIGH		= 0;						//= 0x15,   //0xFFFFF               W   
+	uint32_t	VSTART		= 0;						//= 0x23,   //0x0003 FFFF           W
+    uint32_t	A1			= 0;						//= 0x24,   //0xFFFF                W
+    uint32_t	V1			= 0;						//= 0x25,   //0x000F FFFF           W
+    uint32_t	AMAX		= 0;						//= 0x26,   //0xFFFF                W
+    uint32_t	VMAX		= 0;						//= 0x27,   //0x7F FFFF             W
+    uint32_t	DMAX		= 0;						//= 0x28,   //0xFFFF                W
+    uint32_t	D1			= 0;						//= 0x2A,   //0xFFFF                W
+    uint32_t	VSTOP		= 0;						//= 0x2B,   //0x0003 FFFF           W
+    uint32_t	TZEROWAIT	= 0;						//= 0x2C,   //0xFFFF                W
+    uint32_t	VDCMIN		= 0;						//= 0x33,   //0x007F FFFF           W
+    EncConst	ENC_CONST	= {.bytes = 0x0001000};		//= 0x3A,   // EncConst             W
 
-    IholdIrun Ihold_Irun;     //IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
-    uint32_t  TPowerDown;     //TPOWERDOWN  = 0x11,   //0x00FF                W
-    uint32_t  TPwmThrs;
-
-  //    TCOOLTHRS     = 0x14,   //0xFFFFF               W
-    uint32_t  THIGH;			//= 0x15,   //0xFFFFF               W   
-	uint32_t  VSTART;			//= 0x23,   //0x0003 FFFF           W
-    uint32_t  A1;				//= 0x24,   //0xFFFF                W
-    uint32_t  V1;				//= 0x25,   //0x000F FFFF           W
-    uint32_t  AMAX;				//= 0x26,   //0xFFFF                W
-    uint32_t  VMAX;				//= 0x27,   //0x7F FFFF             W
-    uint32_t  DMAX;				//= 0x28,   //0xFFFF                W
-    uint32_t  D1;				//= 0x2A,   //0xFFFF                W
-    uint32_t  VSTOP;			//= 0x2B,   //0x0003 FFFF           W
-    uint32_t  TZEROWAIT;		//= 0x2C,   //0xFFFF                W
-    uint32_t  VDCMIN;			//= 0x33,   //0x007F FFFF           W
-    EncConst  ENC_CONST;		//= 0x3A,   // EncConst             W
-
-  /*    MSLUT_0     = 0x60,   //0sf[0...31]           W
-      MSLUT_1     = 0x61,   //0sf[32...63]          W
-      MSLUT_2     = 0x62,   //0sf[64...95]          W
-      MSLUT_3     = 0x63,   //0sf[96...127]         W
-      MSLUT_4     = 0x64,   //0sf[128...159]        W
-      MSLUT_5     = 0x65,   //0sf[160...191]        W
-      MSLUT_6     = 0x66,   //0sf[192...223]        W
-      MSLUT_7     = 0x67,   //0sf[224...255]        W
-      MSLUTSEL    = 0x68,   // Mslutsel             W
-      MSLUTSTART  = 0x69,   // Mslutstart           W
+  /*	MSLUT_0     = 0xAAAAB554,   //0sf[0...31]           W
+		MSLUT_1     = 0x4A9554AA,   //0sf[32...63]          W
+		MSLUT_2     = 0x24492929,   //0sf[64...95]          W
+		MSLUT_3     = 0x10104222,   //0sf[96...127]         W
+		MSLUT_4     = 0xFBFFFFFF,   //0sf[128...159]        W
+		MSLUT_5     = 0xB5BB777D,   //0sf[160...191]        W
+		MSLUT_6     = 0x49295556,   //0sf[192...223]        W
+		MSLUT_7     = 0x00404222,   //0sf[224...255]        W
+		MSLUTSEL    = 0xFFFF8056,   // Mslutsel             W
+		MSLUTSTART  = 0x00F70000,   // Mslutstart           W
   */
-      Coolconf    CoolConf;   //COOLCONF    = 0x6D,   // Coolconf             W
-      Dcctrl      DcCtrl;     //DCCTRL      = 0x6E,   // Dcctrl               W
-      Pwmconf     PwmConf;    //PWMCONF     = 0x70,   // Pwmconf              W
-      EncmCrtl    ENCM_CTRL;  //= 0x72,   // EncmCrtl             W
+      Coolconf    CoolConf	= {.bytes = 0};				//COOLCONF    = 0x6D,   // Coolconf             W
+      Dcctrl      DcCtrl	= {.bytes = 0};				//DCCTRL      = 0x6E,   // Dcctrl               W
+      Pwmconf     PwmConf	= {.bytes = 0x000500C8};	//PWMCONF     = 0x70,   // Pwmconf              W
+      EncmCrtl    ENCM_CTRL	= {.bytes = 0};				//= 0x72,   // EncmCrtl             W
   }ShadowRegs;
 
   // ====== Ctors ======
@@ -675,6 +673,7 @@ public:
   inline int32_t	getPosition		(void)			{ return (int32_t)readReg(XACTUAL); }
 
   void				setStops		(MotorDirection Direction);
+  void				DisableStops	(void);
   inline void		setTargetBase   (int32_t xTarget)	{ writeReg(XTARGET, xTarget);}
   inline void		setTarget       (int32_t xTarget)	{ setTargetBase( (getMaxSteps()>0) ? min(xTarget, getMaxSteps()) : max(xTarget, getMaxSteps()) ); }
   inline int32_t	getTarget       (void)				{ return (int32_t)readReg(XTARGET);}
@@ -686,11 +685,36 @@ public:
       setMaxVelocity(0);                  //VMAX
   }
 
+	void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop, uint16_t tzerowait = 0){ //SixPoint
+		setStartVelocity		(vstart);	//Set VSTART=0. Higher velocity for abrupt start (limited by motor).
+		setFirstAcceleration	(a1);		//A1 Set acceleration A1 as desired by application
+		setFirstVelocity		(v1);		//V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
+		setSecondAcceleration	(amax);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+		setMaxVelocity			(vmax);  //VMAX  0...8388096=7FFE00
+		setFirstDeceleration	(dmax);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+		setSecondDeceleration	(d1);		//D1: Use same value as A1 or higher
+		setStopVelocity			(vstop);	//Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.
+		setTZeroWait			(tzerowait);
+	}
+
+	void SetRamp(uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t tzerowait=0){	//Trapezoidal
+	  //SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop=0, uint16_t tzerowait = 0){ //SixPoint
+		SetRamp(         0,               0,            0,          amax,          vmax,          dmax,           0,          0,                tzerowait);
+
+		//setSecondAcceleration	(amax);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+		//setFirstDeceleration	(dmax);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+		//setMaxVelocity			(vmax);  //VMAX  0...8388096=7FFE00
+		//setTZeroWait			(tzerowait);
+	}
+
+
   void  SetTrapezoidal(uint16_t a, uint32_t v){
-    setSecondAcceleration  (a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-    setFirstDeceleration   (a);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
-    setMaxVelocity         (v);  //VMAX  0...8388096=7FFE00
-    writeReg(TZEROWAIT, 0);
+	SetRamp(a, v, a, 0);	//Trapezoidal
+	  
+    //setSecondAcceleration  (a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+    //setFirstDeceleration   (a);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+    //setMaxVelocity         (v);  //VMAX  0...8388096=7FFE00
+    //writeReg(TZEROWAIT, 0);
   }
 
 	void SetFreeRunning(uint8_t SpeedFor1RPS, uint8_t mres, bool Positive){ //
@@ -885,6 +909,8 @@ public:
 
   bool IsFSAFree(void){ return FSA.Status == Nothing;};
   bool IsFSABusy(void){ return FSA.Status != Nothing;};
+
+  void SetReg(byte reg, uint32_t value)	{writeReg((Reg)reg, value);  };
 
   //This is the only command that should be executed immediately
   bool Exec_Panic(uint16_t a=1000) {
