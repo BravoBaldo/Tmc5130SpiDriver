@@ -1,5 +1,5 @@
 /*
- * TMC5130.h - Libreria Arduino super-commentata per Trinamic TMC5130A
+ * TMC5130.h - Libreria Arduino per Trinamic TMC5130A
  */
 
 #pragma once
@@ -239,7 +239,6 @@ public:
     };
     uint32_t bytes;
   }IholdIrun;
-
   typedef union  {  //CHOPCONF dd
     struct {
       uint32_t toff           : 4;  //0x 0000000F 00000000000000000000000000001111
@@ -403,10 +402,11 @@ private:
     LOST_STEPS  = 0x73,   //                      R
   }Reg;
 
+//#define INCLUDE_UNTESTED
   enum InterfaceMode {
     MODE_SPI,
     MODE_UART,    //NOT TESTED/USED
-    MODE_STEPDIR  //NOT TESTED/USED
+    MODE_STEPDIR,  //NOT TESTED/USED
   };
 
 
@@ -436,6 +436,17 @@ public:
     int8_t stall_guard_threshold = 0;
     uint32_t cool_step_threshold = 0;
   };
+
+	void TestReset(){
+		Chopconf chopconf;
+		chopconf.bytes = readReg(CHOPCONF);
+		chopconf.toff = 0;
+		writeReg(CHOPCONF, chopconf.bytes);
+		readReg(GSTAT);
+		readReg(DRV_STATUS);
+		chopconf.toff = 3;
+		writeReg(CHOPCONF, chopconf.bytes);
+	}
 
 
   void cacheControllerSettings(ControllerParameters &Ret);
@@ -512,15 +523,17 @@ public:
 
   // ====== Inits ======
   bool beginSPI     (SPIClass &spiRef = SPI, uint32_t spiHz = 1000000);
+
+#if defined(INCLUDE_UNTESTED)
   bool beginUART    (HardwareSerial &serial, uint8_t slaveAddr = 0, long baud = 115200);
   void beginStepDir (uint8_t stepPin, uint8_t dirPin, uint8_t enPin = 0xFF);
-
+  void		writeRegUART(uint8_t slave, Reg reg, uint32_t value);  // UART diretto
+  uint32_t	readRegUART	(uint8_t slave, Reg reg);               // UART diretto
+#endif
   // ====== Registry Access ======
   void		writeReg	(Reg reg, uint32_t value);  // wrapper (SPI o UART)
   uint32_t	readReg		(Reg reg);                  // wrapper (SPI o UART)
 
-  void		writeRegUART(uint8_t slave, Reg reg, uint32_t value);  // UART diretto
-  uint32_t	readRegUART	(uint8_t slave, Reg reg);               // UART diretto
 
   // ====== High level Configs ======
   void Sethold_delay     (uint8_t hold_delay);
@@ -685,37 +698,29 @@ public:
       setMaxVelocity(0);                  //VMAX
   }
 
+	//Set Ramp Six Points
 	void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop, uint16_t tzerowait = 0){ //SixPoint
 		setStartVelocity		(vstart);	//Set VSTART=0. Higher velocity for abrupt start (limited by motor).
 		setFirstAcceleration	(a1);		//A1 Set acceleration A1 as desired by application
 		setFirstVelocity		(v1);		//V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
-		setSecondAcceleration	(amax);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-		setMaxVelocity			(vmax);  //VMAX  0...8388096=7FFE00
-		setFirstDeceleration	(dmax);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
+											//		0: Disables A1 and D1 phase, use AMAX, DMAX only
+		setSecondAcceleration	(amax);		//AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
+		setMaxVelocity			(vmax);		//VMAX  0...8388096=7FFE00
+		setFirstDeceleration	(dmax);		//DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
 		setSecondDeceleration	(d1);		//D1: Use same value as A1 or higher
 		setStopVelocity			(vstop);	//Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.
 		setTZeroWait			(tzerowait);
 	}
-
+	//Set Ramp Trapezoidal
 	void SetRamp(uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t tzerowait=0){	//Trapezoidal
-	  //SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop=0, uint16_t tzerowait = 0){ //SixPoint
-		SetRamp(         0,               0,            0,          amax,          vmax,          dmax,           0,          0,                tzerowait);
-
-		//setSecondAcceleration	(amax);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-		//setFirstDeceleration	(dmax);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
-		//setMaxVelocity			(vmax);  //VMAX  0...8388096=7FFE00
-		//setTZeroWait			(tzerowait);
+		//	if v1==0: Disables A1 and D1 phase, use AMAX, DMAX only
+		//SetRamp(	vstart,	a1,	v1,	amax,	vmax,	dmax,	d1,	vstop,	tzerowait
+		SetRamp(	10,     10, 0,	amax,	vmax,	dmax,	10,	10,		tzerowait);
 	}
-
-
-  void  SetTrapezoidal(uint16_t a, uint32_t v){
-	SetRamp(a, v, a, 0);	//Trapezoidal
-	  
-    //setSecondAcceleration  (a);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-    //setFirstDeceleration   (a);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
-    //setMaxVelocity         (v);  //VMAX  0...8388096=7FFE00
-    //writeReg(TZEROWAIT, 0);
-  }
+	//Set Trapezoidal
+	void  SetTrapezoidal(uint16_t a, uint32_t v){
+		SetRamp(a, v, a, 0);	//Trapezoidal
+	}
 
 	void SetFreeRunning(uint8_t SpeedFor1RPS, uint8_t mres, bool Positive){ //
 		setMicrosteps(mres);
@@ -775,11 +780,17 @@ public:
   void endHome                  (void);
 
   // ====== Utilities Step/Dir ======
+#if defined(INCLUDE_UNTESTED)
   void stepOnce           (void);
   void setDirection       (bool dirCW);
   void enableDriver       (bool en);
-
+#endif
   int32_t   Init_MicroSteps (uint8_t ms);
+  void setMotorDirection	(bool dir)	{
+	Gconf gconf	= getGconf();
+	gconf.shaft	= (dir)?1:0;
+	setGconf(gconf.bytes);
+  };
   inline SpiStatus   GetLastSpiStatus   (void)                                            {return SPI_Status;}
 
   uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);
@@ -832,7 +843,9 @@ private:
   uint8_t         uartAddr  = 0;
   long            uartBaud  = 115200;
 
+#if defined(INCLUDE_UNTESTED)
   uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
+#endif
   uint16_t OverSteps = 0; //Num of steps to exit from Limit Switch
   bool    Calibrated = true;//false; ToDo set to false
 
@@ -870,8 +883,10 @@ private:
   // Private Methods
   void      spiWrite(Reg reg, uint32_t value);
   uint32_t  spiRead(Reg reg);
+#if defined(INCLUDE_UNTESTED)
   void      sendUART(uint8_t addr, bool write, Reg reg, uint32_t data);
   bool      recvUART(uint8_t addr, Reg reg, uint32_t &data);
+#endif
   void      enableRegBit(bool en, Reg reg, uint32_t Mask);
 private:
   typedef enum : uint8_t {
@@ -1010,18 +1025,7 @@ public:
     setSecondDeceleration (1000); //D1: Use same value as A1 or higher
     setFirstVelocity      (0);    //V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
     setCurrent            (15, 31, 7);  //IHOLD_IRUN
-
-
     SetTrapezoidal(5000, goHomeVelocity);//AMAX, DMAX, VMAX setSecondAcceleration=setFirstDeceleration, setMaxVelocity
-/*
-  void  SetTrapezoidal(uint16_t a, uint32_t v){
-    setSecondAcceleration  (5000);  //AMAX  [μsteps / ta²]  0...1048575=0xFFFFF Second acceleration between V1 and VMAX (unsigned)
-    setFirstDeceleration   (4000);  //DMAX  [μsteps / ta²]  0...1048575=0xFFFFF Deceleration between VMAX and V1 (unsigned)
-    setMaxVelocity         (goHomeVelocity);  //VMAX  0...8388096=7FFE00
-    writeReg(TZEROWAIT, 0);
-  }
-*/
-
     setPosition(0);                     //XACTUAL, from here...
     setTargetBase( -getMaxSteps()*2 );  //XTARGET Ignore the limitations, they can surely be overcome
 

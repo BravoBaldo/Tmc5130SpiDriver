@@ -89,6 +89,7 @@ static uint8_t calcCRC8(uint8_t *data, uint8_t len) {
   return crc;
 }
 
+#if defined(INCLUDE_UNTESTED)
 // Inizializza UART
 bool TMC5130::beginUART(HardwareSerial &serial, uint8_t slaveAddr, long baud) {
   mode = MODE_UART;
@@ -145,7 +146,6 @@ bool TMC5130::recvUART(uint8_t addr, Reg reg, uint32_t &data) {
 void TMC5130::writeRegUART(uint8_t slave, Reg reg, uint32_t value) {
   sendUART(slave, true, reg, value);
 }
-
 // Legge un registro via UART
 uint32_t TMC5130::readRegUART(uint8_t slave, Reg reg) {
   sendUART(slave, false, reg, 0);
@@ -153,31 +153,12 @@ uint32_t TMC5130::readRegUART(uint8_t slave, Reg reg) {
   if (recvUART(slave, reg, val)) return val;
   else return 0xFFFFFFFF; // errore
 }
+#endif
 
 // =====================================================
 // ======= SEZIONE STEP/DIR ============================
 // =====================================================
-
-void TMC5130::DisableStops(void){
-	SwMode sw_mode	= getSwMode();  //SW_MODE
-	sw_mode.stop_l_enable	= 0;	//1: Enables automatic motor stop during active left reference switch input
-	sw_mode.stop_r_enable	= 0;	//1: Enables automatic motor stop during active right reference switch input
-	setSwMode(sw_mode);
-}
-
-void TMC5130::setStops(MotorDirection Direction){
-	SwMode sw_mode	= getSwMode();  //SW_MODE
-	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
-	sw_mode.stop_l_enable	= 1;	//1: Enables automatic motor stop during active left reference switch input
-	sw_mode.pol_stop_l		= 1;	//0=non-inverted, high active, 1=inverted, low active
-
-	sw_mode.stop_r_enable	= 1;	//1: Enables automatic motor stop during active right reference switch input
-	sw_mode.pol_stop_r		= 1;	//0=non-inverted, high active, 1=inverted, low active
-	sw_mode.sg_stop			= 0;	//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
-	sw_mode.en_softstop		= 0;	//0: Hard stop 1: Soft stop    
-	setSwMode(sw_mode);
-}
-
+#if defined(INCLUDE_UNTESTED)
 void TMC5130::beginStepDir(uint8_t stepPin, uint8_t dirPin, uint8_t enPin) {
   mode = MODE_STEPDIR;
   pinSTEP = stepPin;
@@ -211,6 +192,30 @@ void TMC5130::enableDriver(bool en) {
   if (pinEN == 0xFF) return;
   digitalWrite(pinEN, en ? LOW : HIGH); // attivo basso
 }
+#endif
+
+
+
+
+void TMC5130::DisableStops(void){
+	SwMode sw_mode	= getSwMode();  //SW_MODE
+	sw_mode.stop_l_enable	= 0;	//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.stop_r_enable	= 0;	//1: Enables automatic motor stop during active right reference switch input
+	setSwMode(sw_mode);
+}
+
+void TMC5130::setStops(MotorDirection Direction){
+	SwMode sw_mode	= getSwMode();  //SW_MODE
+	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
+	sw_mode.stop_l_enable	= 1;	//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.pol_stop_l		= 1;	//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.stop_r_enable	= 1;	//1: Enables automatic motor stop during active right reference switch input
+	sw_mode.pol_stop_r		= 1;	//0=non-inverted, high active, 1=inverted, low active
+	sw_mode.sg_stop			= 0;	//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
+	sw_mode.en_softstop		= 0;	//0: Hard stop 1: Soft stop    
+	setSwMode(sw_mode);
+}
 
 // =====================================================
 // ======= CONFIGURAZIONI COMUNI =======================
@@ -218,12 +223,16 @@ void TMC5130::enableDriver(bool en) {
 
 void TMC5130::writeReg(Reg reg, uint32_t value) {
   if (mode == MODE_SPI) spiWrite(reg, value);
+#if defined(INCLUDE_UNTESTED)
   else if (mode == MODE_UART) writeRegUART(uartAddr, reg, value);
+#endif
 }
 
 uint32_t TMC5130::readReg(Reg reg) {
   if (mode == MODE_SPI) return spiRead(reg);
+#if defined(INCLUDE_UNTESTED)
   else if (mode == MODE_UART) return readRegUART(uartAddr, reg);
+#endif
   else return 0;
 }
 
