@@ -263,7 +263,7 @@ bool cDetailListCtrl::GetCurrHead(unsigned int* ProgId, unsigned int* DetailId) 
 void cDetailListCtrl::DeleteItem(void) {
 	unsigned int ProgId = 0, DetailId = 0;
 	/*bool b =*/ GetCurrHead(&ProgId, &DetailId);
-	if (wxMessageBox(wxString::Format("%s %d %d", _("Are you sure to delete record"), ProgId, DetailId), _("Warning"), wxNO_DEFAULT | wxYES_NO | wxICON_EXCLAMATION, NULL) == wxYES) {
+	if (wxMessageBox(wxString::Format("%s %u %u", _("Are you sure to delete record"), ProgId, DetailId), _("Warning"), wxNO_DEFAULT | wxYES_NO | wxICON_EXCLAMATION, NULL) == wxYES) {
 #if defined(USE_ODBC)
 		Next_DB* MyDB = g_NazarDB_Get(); if (MyDB == NULL) return;
 		MyDB->ProgDetail_Delete2(ProgId, DetailId);

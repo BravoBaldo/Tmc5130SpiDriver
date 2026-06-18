@@ -10,13 +10,14 @@
 
 
 class CmdExecutorCtrl : public wxPanel {
-	wxButton*	m_Btn_ExecAll = nullptr;
-	wxButton*	m_Btn_ExecStep = nullptr;
-	wxButton*	m_Btn_Panic = nullptr;
-	wxTimer*	m_timer;
+	wxButton*	m_Btn_ExecAll	= nullptr;
+	wxButton*	m_Btn_ExecStep	= nullptr;
+	wxButton*	m_Btn_Panic		= nullptr;
+	wxTimer*	m_timer			= nullptr;
 	cHIDAPI		m_HidExec;
 	sVID_PID	m_HidInfo;
-	bool		m_Running = false;
+	bool		m_Running		= false;
+	bool		m_PoolMotors	= false;
 	//....................................
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
 	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
@@ -54,4 +55,5 @@ public:
 	bool		ExecuteSteps(long from, long to);
 	bool		ExecuteSteps(uint16_t	m_MasterId);
 	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
+	void		SetPoolMotors(bool s) { m_PoolMotors = s; }
 };

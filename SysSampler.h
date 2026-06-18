@@ -28,7 +28,7 @@ typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError }eCmdAnswer;
     X(eStep_TOP,	 0,  0, "") 
 
 
-//		Id, RulAlwais, Name
+//		Id, RunAlwais, Name
 #define STRIPLEDGAMES_LIST \
     X(eNone,				true,	"None"					) \
     X(eFixedItalianFlagL,	false,	"FixedItalianFlag_Sx"	) \
@@ -75,6 +75,7 @@ enum eSubSysAcro : uint8_t {
 
 typedef enum : uint8_t {	// AnswerType is lowercase
 	eTypCommand			= 'b',
+	eTypAnswVer			= 'v',
 	eTypAnswStd			= 'u',
 	eTypAnswConverter	= 'a',
 	eTypAnswBarCode		= 'k',	
@@ -98,7 +99,10 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 	uint16_t		m_MasterId				= 0;			//2
 	uint16_t		m_DetailProg			= 0;			//2
 	uint16_t  		m_ChkSum				= 0;			//2
-	inline const char* GetPatternAsChars(void) const { return (char*)m_Pattern; }
+	//inline const char* GetPatternAsChars(void) const { return (char*)m_Pattern; }
+	inline const char* GetPatternAsChars() const noexcept {
+		return reinterpret_cast<const char*>(m_Pattern);
+	}
 	void	SetPattern(const char* s) {
 		m_PatLen = s ? strlen(s) : 0;
 		for (byte i = 0; i < NUMOFPARAMS; ++i) {
@@ -109,16 +113,30 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 #pragma pack(pop)
 
 #pragma pack(push, 1)
+typedef struct _sVerAnswer{
+	byte	m_MsgType			= eTypAnswVer;	//1
+	byte	Y;
+	byte	M;
+	byte	D;
+	byte	h;
+	byte	m;
+	byte	s;
+}sAnswerVersion;
+#pragma pack(pop)
+
+
+#pragma pack(push, 1)
 typedef struct _sStdAnswer{
-	byte			m_MsgType				= eTypAnswStd;	//1
-	eSubSysAcro		m_SubSystem				= eUnused;		//1
-	byte			m_Cmd					= 0;			//1
-	eMessageTypes	m_UnknownMsg			= eTypCommand;	//1
-	eCmdAnswer		m_Result				= eCmdOk;
-	byte			m_AnswLen				= 0;			//1
-	char			m_Msg[40]				= "No Answer";	//	
+	byte			m_MsgType			= eTypAnswStd;	//1
+	eSubSysAcro		m_SubSystem			= eUnused;		//1
+	byte			m_Cmd				= 0;			//1
+	eMessageTypes	m_UnknownMsg		= eTypCommand;	//1
+	eCmdAnswer		m_Result			= eCmdOk;
+	byte			m_AnswLen			= 0;			//1
+	char			m_Msg[40]			= "No Answer";	//	
 }sAnswerStandard;
 #pragma pack(pop)
+
 
 #pragma pack(push, 1)
 typedef struct _sExpAnswer{
@@ -136,18 +154,45 @@ typedef struct _sStripAnswer{
 }StripAnswer;
 #pragma pack(pop)
 
+
+
+
+#define SHOW_SWMODE
+//#define SHOW_GCONF
+#define SHOW_CHOPCONF
+
+#ifdef SHOW_SWMODE
+    #define X_SHOW_SWMODE X(eStpShowSWMODE, true, "SWMODE")
+#else
+    #define X_SHOW_SWMODE
+#endif
+
+#ifdef SHOW_GCONF
+    #define X_SHOW_GCONF X(eStpShowGCONF, true, "GCONF")
+#else
+    #define X_SHOW_GCONF
+#endif
+
+#ifdef SHOW_CHOPCONF
+    #define X_SHOW_CHOPCONF X(eStpShowChopConf, true, "ChopConf")
+#else
+    #define X_SHOW_CHOPCONF
+#endif
+
 #define STEP_ANSWERS_LIST \
-	X(eStpShowTime,			false, "Time") \
-	X(eStpShowSpiStatus,	false, "Status") \
-	X(eStpShowIoin8,		true, "Ioin") \
-	X(eStpShowVel,			false, "Vel.") \
-	X(eStpShowPos,			false, "Pos.") \
-	X(eStpShowTarget,		false, "Target") \
-	X(eStpShowCurrents,		false, "Currents") \
-	X(eStpShowChopConf,		true, "ChopConf") \
-	X(eStpShowDrvStatus,	true, "DrvStatus") \
-	X(eStpShowMsCurAct,		true, "MSCURACT") \
-	X(eStpShowCount,		true, "--")
+	X_SHOW_SWMODE \
+	X(eStpShowSpiStatus,	false,	"Status") \
+	X(eStpShowIoin8,		true,	"Ioin") \
+	X(eStpShowVel,			true,	"Velocities") \
+	X(eStpShowAccels,		true,	"Accelerations") \
+	X(eStpShowPos,			true,	"Positions") \
+	X(eStpShowCurrents,		false,	"Currents") \
+	X_SHOW_CHOPCONF \
+	X(eStpShowDrvStatus,	true,	"DrvStatus") \
+	X(eStpShowMsCurAct,		true,	"MSCURACT") \
+	X_SHOW_GCONF \
+	X(eStpShowTime,			false,	"Time") \
+	X(eStpShowCount,		true,	"--")
 
 typedef enum : uint8_t {
 #define X(eParamId, eIsAlign, eDescription) eParamId,
@@ -157,7 +202,7 @@ typedef enum : uint8_t {
 
 
 #pragma pack(push, 1)
-typedef struct _sTmcAnswer{
+typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 	byte		m_MsgType	= eTypAnswStepDir;	//1
 	eCmdAnswer	m_Result	= eCmdOk;
 
@@ -166,13 +211,31 @@ typedef struct _sTmcAnswer{
 	uint16_t	m_Remaining	= 0;
 	uint8_t		m_spiStatus;
 	uint8_t		m_Ioin8;
-	uint32_t	m_Velocity;
 	int32_t  	m_Position;
 	int32_t		m_xTarget;
 	uint16_t	m_Currents;		//irun, ihold, holdDelay;
+#if defined(X_SHOW_CHOPCONF)
 	uint32_t	m_CHOPCONF;		//Chopconf		getMicrosteps
+#endif
 	uint32_t	m_DRV_STATUS;	//DrvStatus  getDrvStatus
 	uint32_t	m_MSCURACT;
+	
+	uint16_t	m_A1;		//16 bits
+	uint16_t	m_AMAX;		//16 bits
+	uint16_t	m_DMAX;		//16 bits
+	uint16_t	m_D1;		//16 bits
+	
+	uint16_t	m_VSTART;	//18 bits limited to 16
+	uint16_t	m_V1;		//20 bits limited to 16
+	uint16_t	m_VMAX;		//23 bits limited to 16
+	uint16_t	m_VSTOP;	//18 bits limited to 16
+	 int16_t	m_VACTUAL;	//see m_Velocity  23 bits
+#if defined(SHOW_GCONF)
+	uint16_t	m_GCONF		= 0;	//18 bits !!! missing direct_mode and test_mode
+#endif
+#if defined(SHOW_SWMODE)
+	uint16_t	m_SWMODE	= 0;	//12 bits
+#endif
 	//ChipEnabled
 }TmcAnswer;
 #pragma pack(pop)

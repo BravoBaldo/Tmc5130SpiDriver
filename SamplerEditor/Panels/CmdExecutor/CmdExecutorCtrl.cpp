@@ -68,23 +68,23 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
 //ToDo: Separate Tx and Rx each with own TimeOut
 /*
 template <typename Typ>
-eCmdAnswer CallExecutor() {
+eCmdAnswer CallAnswerParser() {
 	Typ Answer;
 	std::memcpy(&Answer, m_HidExec.GetBuffer(), sizeof(Typ));
 	return ParseAnswer(Answer);
 }
 */
 
-#define CALLEXECUTOR(Typ)	{	Typ Answer;														\
+#define CALLANSWERPARSER(Typ)	{	Typ Answer;														\
 								std::memcpy(&Answer, (Typ*)m_HidExec.GetBuffer(), sizeof(Typ));	\
 								Success = (ParseAnswer(Answer)==eCmdOk);										\
 							}
 
 void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
-	bool Success	= false;
-	int res			= 0;
-	int retryCount	= 0;
-	wxStopWatch sw2;
+	bool		Success		= false;
+	int			res			= 0;
+	int			retryCount	= 0;
+	wxStopWatch	sw2;
 	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
 	while (!Success && m_Running) {		// 1. Transmission
@@ -104,7 +104,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
 			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
 			if (res <= 0) {
-				wxYield();
+				::wxYield();
 			}
 		}
 
@@ -124,9 +124,9 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 							Success = false;
 					}
 					break;
-				case eTypAnswExpander:	CALLEXECUTOR(sExpanderStandard);	break;
-				case eTypAnswStepper:	CALLEXECUTOR(StepperAnswer);		break;
-				case eTypAnswStepDir:	CALLEXECUTOR(TmcAnswer);			break;
+				case eTypAnswExpander:	CALLANSWERPARSER(sExpanderStandard);	break;
+				case eTypAnswStepper:	CALLANSWERPARSER(StepperAnswer);		break;
+				case eTypAnswStepDir:	CALLANSWERPARSER(TmcAnswer);			break;
 				default:
 					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
 					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);
@@ -204,7 +204,13 @@ bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 	int j = 0;
-	vStep.m_ChkSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(sCommand) - sizeof(vStep.m_ChkSum));
+	//vStep.m_ChkSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(sCommand) - sizeof(vStep.m_ChkSum));
+	vStep.m_ChkSum = add_checksum_fast(
+		reinterpret_cast<const uint8_t*>(&vStep),
+		sizeof(vStep) - sizeof(vStep.m_ChkSum)
+	);
+
+
 	memcpy(&Msg[j], &vStep, sizeof(vStep));
 	j += sizeof(vStep);
 	Msg_Len = sizeof(vStep);
@@ -250,7 +256,7 @@ m_Btn_ExecAll->Enable(false);
 	m_Running = true;
 	for (long i = from; i < to; i++) {
 		m_ptrPrgDetail->Select(i, true);	//Select instruction on the display and get MasterId/
-		wxYield();
+		::wxYield();;
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
@@ -304,7 +310,7 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 			break;
 		case ID_Btn_Panic:
 			m_Running = false;
-			wxYield();
+			::wxYield();
 			break;
 		default:
 			LogMe(wxString::Format("(???) Event=%0X\n", event.GetId()), true);
@@ -314,26 +320,32 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 
 void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 	m_timer->Stop();
-
-	// 1. Verifica presenza fisica del dispositivo
 	struct hid_device_info* devs = hid_enumerate(m_HidInfo.vendor_id, m_HidInfo.product_id);
 
 	bool isPresent = (devs != nullptr);
 	if (devs) hid_free_enumeration(devs);
-	//hid_exit();	//Avoid Memory Leak about error_buffer
 
 	// 2. Gestione connessione
 	if (isPresent) {
-		if (!m_HidExec.IsOpened()) m_HidExec.Open(m_HidInfo);	// Tenta l'apertura solo se non aperto
+		if (!m_HidExec.IsOpened()) m_HidExec.Open(m_HidInfo);	// Attempt to open only if not open
 	} else {
-		if (m_HidExec.IsOpened()) m_HidExec.Close();	// Se non presente ma era aperto, chiudilo pulitamente
+		if (m_HidExec.IsOpened()) m_HidExec.Close();	// If not present but it was open, close it cleanly
 	}
 
 	bool isReady = isPresent && m_HidExec.IsOpened();
-	// Set UI Status
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
-		LogMe(isReady ? "Dispositivo Connesso." : "Dispositivo Disconnesso.", true);	// Logga il cambio di stato per debug
+		LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
+	}
+
+	static ParamType Mot = 2;
+	Mot++; if (Mot > 2) Mot = 0;
+	sCommand AskMotor = { eTypCommand, eStepDirect, '0', 1, "M", {Mot}, 0, 0, 0 };
+	if (isReady && m_PoolMotors && !m_Running) {
+		m_Running = true;
+		ExecuteStep(AskMotor);
+		m_Running = false;
+		::wxYield();
 	}
 
 	m_timer->Start(250);	// Restart timer

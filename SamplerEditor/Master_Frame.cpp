@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 
  * 
  */
@@ -47,7 +47,10 @@ enum {
 	ID_MNU_PRGMDET_EXECFROM,
 	ID_MNU_PRGMDET_EXECTO,
 	ID_MNU_PRGMDET_EXECSTEP,
+#if defined(USE_MAIN_LOG)
 	ID_TXT_LOG,
+#endif
+	ID_MNU_POLL_MOTORS,
 };
 
 
@@ -77,8 +80,10 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_MENU			( ID_MNU_PRGMAIN_PRINT,		OnMenu )
 	EVT_MENU			( ID_MNU_PRGMAIN_Export,	OnMenu )
 
-	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP, OnMenu)
-	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM, OnMenu)
+	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP,	OnMenu)
+	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM,	OnMenu)
+	EVT_MENU			(ID_MNU_POLL_MOTORS,		OnMenu)
+	
 
 	EVT_TIMER			( ID_TMR_TIMER,	OnTimer)
 	EVT_BUTTON			( -1, MyFrame::OnBtnCommands )
@@ -94,7 +99,7 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_LIST_ITEM_RIGHT_CLICK	( ID_LST_PRGDETAIL,	OnListEvent )
 	EVT_LIST_ITEM_SELECTED		( ID_LST_PRGDETAIL,	OnListEvent )
 	EVT_LIST_ITEM_DESELECTED	( ID_LST_PRGDETAIL,	OnListEvent )
-	END_EVENT_TABLE()
+END_EVENT_TABLE()
 
 void MyFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
 	#if defined(USE_MAIN_LOG)
@@ -178,9 +183,12 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 		menuPerspect->Append( ID_MNU_Perspect_FromClip,	_("Load Layout From Clipboard")	+"\tCtrl+V"	);
 	wxMenu *menuTools	= new wxMenu;
 	menuTools->Append( ID_MNU_Perspect,				_("Layout..."), menuPerspect );
-
-	menuBar->Append( menuTools, _("&Tools") );
 #endif
+	menuTools->AppendCheckItem(ID_MNU_POLL_MOTORS, "&Motors Polling\tF10", "Enable/Disable Polling");
+
+	menuBar->Append(menuTools, _("&Tools"));
+
+	//		
 
 
 	SetMenuBar( menuBar );
@@ -260,6 +268,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 
 	m_PanExec = new CmdExecutorCtrl(this);
 	m_PanExec->SetEditorAndDB(m_CmdEditor, m_lstPrgDetail);
+	m_PanExec->SetPoolMotors(false);
 
 	m_PanAnswers = new cAnswersShow(this);
 	m_PanExec->SetAnswerHandler(m_PanAnswers);
@@ -309,9 +318,10 @@ void MyFrame::SetLayouts ( void ) {
 }
 
 MyFrame::~MyFrame() {
-	wxDELETE(m_locale);
-	//wxDELETE(m_menuPopUp);
+	if(m_PanExec)	m_PanExec->SetPoolMotors(false);
 	wxDELETE(m_timer);
+	wxMilliSleep(100);	//Wait for the current command to finish, if any
+	wxDELETE(m_locale);
 #ifdef USE_AUI
 	m_mgr.UnInit();
 #endif
@@ -474,6 +484,9 @@ void MyFrame::OnMenu( wxCommandEvent& event ) {
 			}
 			break;
 #endif
+		case ID_MNU_POLL_MOTORS:
+			m_PanExec->SetPoolMotors(event.IsChecked());
+			break;
 		default:
 			wxMessageBox( wxString( _("Undefined event: ") ) << event.GetId(), m_FrameTitle, wxOK | wxICON_INFORMATION, this);
 			break;

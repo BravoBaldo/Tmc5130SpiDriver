@@ -23,7 +23,7 @@ wxString ShowBuffer ( byte* Buffer, unsigned int LenBuf ) {
 			TB_H = "";
 			TB_A = "";
 		}
-		byte c = ((byte*)Buffer)[i];
+		byte c = reinterpret_cast<const byte*>(Buffer)[i];	//byte c = ((byte*)Buffer)[i];
 		TB_H << wxString::Format ( "%02X ", c );
 		TB_A << wxString::Format ( "%c", (wxIsprint ( c ) ? c : '.') );
 	}

@@ -9,7 +9,7 @@ Specify include file as follows:
 Specify link file in C++ project as follows:
 C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
 */
-#include "vld.h"
+//#include "vld.h"
 
 
 	#define PRG_UNIQUE_FIRM					"SamplerProgramEditor"

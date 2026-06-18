@@ -66,7 +66,7 @@ wxString cHIDAPI::GetBuffAsHex( void ){
 	for(size_t i=0; i<L; i++ ){
 		RetVal += wxString::Format("%02x ", (unsigned int)Ptr[i] );
 	}
-	RetVal += wxString::Format("(%d bytes)", (unsigned int)L );
+	RetVal += wxString::Format("(%u bytes)", (unsigned int)L );
 	return RetVal;
 }
 

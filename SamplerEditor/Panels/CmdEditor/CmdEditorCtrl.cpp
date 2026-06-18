@@ -120,7 +120,7 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
 
                             //Qui deve cambiare il tipo di input
                             eParType Ty = (eParType)p->ParType;
-                            wxString parName = wxString::Format("%s", (ParIdx < c->ParNames.size()) ? c->ParNames[ParIdx] : "--NoName--");
+                            wxString parName = wxString::Format("%s", (ParIdx < c->ParNames.size()) ? c->ParNames[ParIdx] : wxString("--NoName--"));
                             switch (Ty) {
                                 case eTime:
                                     m_Params[ParIdx]->ChangeType(parName, wxDateTime(0, 0, 12));

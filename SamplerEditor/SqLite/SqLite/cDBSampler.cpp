@@ -92,7 +92,7 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
 
         // SQLite e' dinamico, ma possiamo tentare di dedurre il tipo dalla definizione
         const char* declType = sqlite3_column_decltype(stmt, i);
-        wxString typeStr = (declType) ? wxString(declType).Upper() : "";
+        wxString typeStr = (declType) ? wxString(declType).Upper() : wxString("");
 
         // Dimensionamento: 50 per numerici (INT, REAL, DOUBLE, FLOAT), 190 per altri
         int width = (   typeStr.Contains("INT") ||
@@ -112,7 +112,7 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
         for (int col = 0; col < colCount; col++) {
             const char* val = (const char*)sqlite3_column_text(stmt, col);
            // Translation = ((col == Fld2Translate) ? _(val) : val);
-            wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            wxString cellValue = (val) ? wxString::FromUTF8(val) : wxString("");
             /*if (col > 6) {
                 //listCtrl->SetItemBackgroundColour(itemIndex, *wxLIGHT_GREY);
                 wxListItem item;
@@ -156,7 +156,7 @@ void cDBSampler::DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxSt
     for (int i = 0; i < colCount; i++) {
         wxString colName = wxString::FromUTF8(sqlite3_column_name(stmt, i));
         const char* declType = sqlite3_column_decltype(stmt, i);
-        wxString typeStr = (declType) ? wxString(declType).Upper() : "";
+        wxString typeStr = (declType) ? wxString(declType).Upper() : wxString("");
 
         // Calcolo larghezza
         int width = (typeStr.Contains("INT") || typeStr.Contains("REAL") ||
@@ -172,7 +172,7 @@ void cDBSampler::DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxSt
         wxVector<wxVariant> data; // Contenitore per la riga
         for (int col = 0; col < colCount; col++) {
             const char* val = (const char*)sqlite3_column_text(stmt, col);
-            wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            wxString cellValue = (val) ? wxString::FromUTF8(val) : wxString("");
             data.push_back(wxVariant(cellValue));
         }
         dvCtrl->AppendItem(data);
@@ -237,7 +237,7 @@ void cDBSampler::ProgDetail_ReadAll(unsigned int ProgId, std::function<void(cons
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         for (int col = 0; col < colCount; col++) {
             const char* val = (const char*)sqlite3_column_text(stmt, col);
-            wxString cellValue = (val) ? wxString::FromUTF8(val) : "";
+            wxString cellValue = (val) ? wxString::FromUTF8(val) : wxString("");
             logFunc(cellValue, false);
             logFunc(" | ", false);
         }
@@ -265,7 +265,7 @@ wxString cDBSampler::SqlQuery_Detail(const unsigned int ProgId) {
                 break;
         }
     }
-    SqlQuery += wxString::Format("MasterId FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d ORDER BY DetailProg", ProgId);
+    SqlQuery += wxString::Format("MasterId FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u ORDER BY DetailProg", ProgId);
     return SqlQuery;
 }
 
@@ -274,7 +274,7 @@ void cDBSampler::ProgDetail_Fill(unsigned int ProgId, wxListCtrl* ListCtrl, bool
     ListCtrl_FillFromSql(ListCtrl, SqlQuery_Detail(ProgId), DoResize, Fld2Translate);
 }
 
-wxString cDBSampler::SQLStrPrepare(wxString str) {
+wxString cDBSampler::SQLStrPrepare(const wxString & str) {
     wxString	SqlStr = str;
     SqlStr.Replace("'", "''", true);
     return SqlStr;
@@ -315,9 +315,9 @@ bool cDBSampler::ProgMaster_Insert(const wxString& ProgName, unsigned int Id) {
     if (Id == 0) {
        if ((Id = ProgMaster_GetNextId(NewProgName.Left(4).IsSameAs("SUB_", false) ? 2000 : 0)) <= 0)	return false;
     }
-    wxString SqlTest = wxString::Format("SELECT 1 FROM "	PROGMASTER_TABLENAME " WHERE ProgId = %d", Id);
-    wxString SqlIns = wxString::Format("INSERT INTO "		PROGMASTER_TABLENAME " (ProgName, ProgId) VALUES ('%s', %d)", NewProgName, Id);
-    wxString SqlUpd = wxString::Format("UPDATE "			PROGMASTER_TABLENAME " SET ProgName = '%s' WHERE ProgId = %d", NewProgName, Id);
+    wxString SqlTest = wxString::Format("SELECT 1 FROM "	PROGMASTER_TABLENAME " WHERE ProgId = %u", Id);
+    wxString SqlIns = wxString::Format("INSERT INTO "		PROGMASTER_TABLENAME " (ProgName, ProgId) VALUES ('%s', %u)", NewProgName, Id);
+    wxString SqlUpd = wxString::Format("UPDATE "			PROGMASTER_TABLENAME " SET ProgName = '%s' WHERE ProgId = %u", NewProgName, Id);
     return ExecuteSQL(RecordExists(SqlTest) ? SqlUpd : SqlIns);
 }
 
@@ -352,8 +352,8 @@ bool cDBSampler::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProg
         wxString SqlCmd = wxString::Format(
             "INSERT INTO " PROGDETAIL_TABLENAME 
                            " (MasterId, DetailProg, SubSys, Cmd, Pattern %s ) "
-                            "SELECT %d, DetailProg, SubSys, Cmd, Pattern %s "
-            "FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d;",
+                            "SELECT %u, DetailProg, SubSys, Cmd, Pattern %s "
+            "FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u;",
             strParNames, ProgIdNew,
             strParNames, ProgIdOld
         );
@@ -493,7 +493,7 @@ bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxStr
             // We package the extracted data into a clean struct independent of the output format
             ExportStepData stepData;
             stepData.C = S;
-            stepData.subSysName     = wxString::Format("%d-%s", (int)S.m_SubSystem, Ssys ? Ssys->Descr : "?");
+            stepData.subSysName     = wxString::Format("%d-%s", (int)S.m_SubSystem, Ssys ? Ssys->Descr : wxString("?"));
             stepData.commandName    = wxString::Format("%d-%s", (int)S.m_Cmd,       pCmd ? pCmd->Descr : "?");
 
             //.............................
@@ -708,9 +708,9 @@ bool cDBSampler::ProgDetail_Swap(unsigned int ProgId, unsigned int iFrom, bool W
     long	neighborId =-1;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         neighborId = (long)sqlite3_column_int64(stmt, 0);
-        wxString sqlCurrent  = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %d WHERE MasterId = %d AND DetailProg = %d", 99999, ProgId, iFrom);
-        wxString sqlNext     = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %d WHERE MasterId = %d AND DetailProg = %d", iFrom, ProgId, neighborId);
-        wxString sqlCurrent2 = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %d WHERE MasterId = %d AND DetailProg = %d", neighborId, ProgId, 99999);
+        wxString sqlCurrent  = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %u WHERE MasterId = %u AND DetailProg = %u", (unsigned int)99999, ProgId, iFrom);
+        wxString sqlNext     = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %u WHERE MasterId = %u AND DetailProg = %ld", iFrom, ProgId, neighborId);
+        wxString sqlCurrent2 = wxString::Format("UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = %ld WHERE MasterId = %u AND DetailProg = %u", neighborId, ProgId, (unsigned int)99999);
 
         bool	Result = false;
         if ((Result = ExecuteSQL(sqlCurrent, false)) == true) {
@@ -727,10 +727,10 @@ bool cDBSampler::ProgDetail_Swap(unsigned int ProgId, unsigned int iFrom, bool W
 }
 
 bool cDBSampler::ProgDetail_Delete(unsigned int ProgId, bool DelFather) {
-    wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d", ProgId);
+    wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u", ProgId);
     if (ExecuteSQL(Sql_Del, true) == true) {
         if (DelFather) {
-            Sql_Del = wxString::Format("DELETE FROM " PROGMASTER_TABLENAME " WHERE ProgId = %d", ProgId);
+            Sql_Del = wxString::Format("DELETE FROM " PROGMASTER_TABLENAME " WHERE ProgId = %u", ProgId);
             return ExecuteSQL(Sql_Del, true);
         }
     }
@@ -738,7 +738,7 @@ bool cDBSampler::ProgDetail_Delete(unsigned int ProgId, bool DelFather) {
 }
 
 bool cDBSampler::ProgDetail_Delete2(unsigned int ProgId, unsigned int DetailId) {
-    wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d AND DetailProg = %d", ProgId, DetailId);
+    wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u AND DetailProg = %u", ProgId, DetailId);
     return ExecuteSQL(Sql_Del, true);
 }
 

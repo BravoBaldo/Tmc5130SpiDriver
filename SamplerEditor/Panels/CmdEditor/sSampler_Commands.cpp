@@ -45,6 +45,7 @@ static const sParams SamplerParams[]{
 	{ 'n', eNumber,	"ShowedNumber",	0,				6,				"Show Number"},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
 	{ 'p', eNumber,	"Process",		0,				5,				"Laser Game"},
+	{ 'q', eChoice,	"Left/Right/None",	0,				2,			"Direction"					, RetArray2({"Left", "Right", "None"})},
 	{ 's', eNumber,	"Speed",		500,			25000																			},
 	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
 	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
@@ -75,12 +76,17 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepNoMotor,	'1', "Set Current Motor",	"M",		RetArray2({"Stepper"								})},
 
 	{eStepNoMotor,	'a', "ChipEnable",			"e",		RetArray2({"Chip Abilitation"				})},
-	{eStepNoMotor,	'b', "Set Stops",			"l",		RetArray2({"Direction"						})},
+	{eStepNoMotor,	'b', "Set Stops NONE",		"",			RetArray2({									})},
+	{eStepNoMotor,	'b', "Set Stops",			"q",		RetArray2({"Direction"						})},
 	{eStepNoMotor,	'c', "Set Currents",		"iij",		RetArray2({"IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepNoMotor,	'd', "Set Position",		"S",		RetArray2({"Position"						})},
 	{eStepNoMotor,	'e', "Set Microsteps",		"m",		RetArray2({"MicroSteps"						})},
 	{eStepNoMotor,	'f', "Set Target",			"S",		RetArray2({"Final Position"					})},
-	{eStepNoMotor,	'g', "Set Trapezoidal",		"AV",		RetArray2({"Acceleration", "Max Velocity"	})},
+
+	{eStepNoMotor,	'g', "Set Trapezoidal 2",	"AV",		RetArray2({"Acceleration", "Max Velocity"	})},
+	{eStepNoMotor,	'g', "Set SixPoint",		"VAVAVAAV",	RetArray2({"vstart", "a1", "v1", "amax", "vmax", "dmax", "d1", "vstop"	})},
+	{eStepNoMotor,	'g', "Set Trapezoidal 3",	"AVA",		RetArray2({"amax", "vmax", "dmax"	})},
+
 	{eStepNoMotor,	'h', "Set Ramp Mode",		"R",		RetArray2({"Ramp Mode"						})},
 	{eStepNoMotor,	'i', "Set Timer",			"t",		RetArray2({"Time"							})},
 	{eStepNoMotor,	'j', "Wait",				"wb",		RetArray2({"Wait for", "Check Timer"		})},
@@ -94,12 +100,20 @@ static const sSampler_Commands Sampler_Commands[] = {
 	//---------------------------------------------------------------------------------------------------------
 	{eStepDirect,	'0', "Do Nothing",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'a', "ChipEnable",			"Me",		RetArray2({"Stepper", "Chip Abilitation"			})},
-	{eStepDirect,	'b', "Set Stops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
+
+	{eStepDirect,	'b', "Set Stops NONE",		"M",		RetArray2({"Stepper", 									})},
+	{eStepNoMotor,	'b', "Set Stops",			"Mq",		RetArray2({"Stepper", "Direction"						})},
+//	{eStepDirect,	'b', "Set Stops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
+
 	{eStepDirect,	'c', "Set Currents",		"Miij",		RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepDirect,	'd', "Set Position",		"MS",		RetArray2({"Stepper", "Position"					})},
 	{eStepDirect,	'e', "Set Microsteps",		"Mm",		RetArray2({"Stepper", "MicroSteps"					})},
 	{eStepDirect,	'f', "Set Target",			"MS",		RetArray2({"Stepper", "Final Position"				})},
-	{eStepDirect,	'g', "Set Trapezoidal",		"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
+
+	{eStepDirect,	'g', "Set Trapezoidal 2",	"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
+	{eStepDirect,	'g', "Set SixPoint",		"MVAVAVAAV",RetArray2({"Stepper", "vstart", "a1", "v1", "amax", "vmax", "dmax", "d1", "vstop"	})},
+	{eStepDirect,	'g', "Set Trapezoidal 3",	"MAVA",		RetArray2({"Stepper", "amax", "vmax", "dmax"	})},
+
 	{eStepDirect,	'h', "Set Ramp Mode",		"MR",		RetArray2({"Stepper", "Ramp Mode"					})},
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
 
@@ -162,17 +176,17 @@ void sSampler_Check(void) {
 		unsigned int ToTest_PatLen	= strlen(Sampler_Commands[i].ParamPattern);
 
 		if (ToTest_PatLen > 10 )	//WXSIZEOF(CmdParLabel) defined in CmdEditorCtrl.h
-			wxMessageBox(wxString::Format("Too many parameters for ['%c' %d] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
+			wxMessageBox(wxString::Format("Too many parameters for ['%c' %u] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
 
 		if(ToTest_PatLen!= Sampler_Commands[i].ParNames.size())
-			wxMessageBox(wxString::Format("Not enaugh names for ['%c' %d] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
+			wxMessageBox(wxString::Format("Not enaugh names for ['%c' %u] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
 
 		for (size_t j = i+1; j < WXSIZEOF(Sampler_Commands); j++) {
 			if (   ToTest_Cmd == Sampler_Commands[j].cmd
 				&& ToTest_PatLen == strlen(Sampler_Commands[j].ParamPattern)
 				&& ToTest_SubSys == Sampler_Commands[j].SubSys
 			) {
-				wxMessageBox(wxString::Format("Duplicated command ['%c' %d] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
+				wxMessageBox(wxString::Format("Duplicated command ['%c' %u] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
 			}
 		}
 	}

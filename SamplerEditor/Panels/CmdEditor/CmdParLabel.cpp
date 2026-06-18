@@ -19,59 +19,136 @@ void CmdParLabel::ChangeType(const wxString& name) {		//Unknown
 }
 
 void CmdParLabel::SetCurrentValue(long t) {
+	if (!m_gen_Param) return;
 	switch (m_type) {
-		case eChoice:	((wxChoice*)m_gen_Param)->SetSelection(t);	break;
-		case eNumber:	((wxSpinCtrl*)m_gen_Param)->SetValue(t);	break;
-		case eTime:
+//		case eChoice:	((wxChoice*)m_gen_Param)->SetSelection(t);	break;
+		case eChoice: {
+			if (auto* cho = wxDynamicCast(m_gen_Param, wxChoice)) {
+				if (t >= 0 && t < static_cast<long>(cho->GetCount())) {
+					cho->SetSelection(static_cast<int>(t));
+				} else if (t == -1) {
+					cho->SetSelection(wxNOT_FOUND);
+				}
+			}
+			break;
+		}
+
+//		case eNumber:	((wxSpinCtrl*)m_gen_Param)->SetValue(t);	break;
+		case eNumber: {
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)) {
+				int minVal = spinCtrl->GetMin();
+				int maxVal = spinCtrl->GetMax();
+				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
+				spinCtrl->SetValue(static_cast<int>(safeVal));
+			}
+			break;
+		}
+
+		/*case eTime:
 			{
 				unsigned int s = t % 60;		t /= 60;
 				unsigned int m = t % 60;		t /= 60;
 				unsigned int h = t % 24;	//	t/=24;
 				((wxTimePickerCtrl*)m_gen_Param)->SetTime(h, m, s);
 			}
+			break;*/
+		case eTime: {
+			if (auto* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl)) {
+				unsigned long absTime = (t < 0) ? 0 : static_cast<unsigned long>(t);
+
+				unsigned int s = absTime % 60;          absTime /= 60;
+				unsigned int m = absTime % 60;          absTime /= 60;
+				unsigned int h = absTime % 24;
+
+				timePicker->SetTime(h, m, s);
+			}
 			break;
+		}
+
 		default:
 			return;
 	}
 }
 
+long CmdParLabel::GetValue(void) {
+	if (!m_gen_Param) return 0;
+	switch (m_type) {
+		case eChoice:
+			{
+				if (auto* cho = wxDynamicCast(m_gen_Param, wxChoice)) {
+					int sel = cho->GetSelection();
+					if (sel == wxNOT_FOUND)		return -1;
+					wxUIntPtr data = reinterpret_cast<wxUIntPtr>(cho->GetClientData(sel));
+					return static_cast<long>(data);
+				}
+			}
+			break;
+		case eNumber:
+			{
+				if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl))
+					return static_cast<long>(spinCtrl->GetValue());
+			}
+			break;
+		case eTime:
+			if (auto* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl)) {
+				int h = 0, m = 0, s = 0;
+				timePicker->GetTime(&h, &m, &s);
+				long secondiTotali = static_cast<long>(h) * 3600 + static_cast<long>(m) * 60 + s;
+				return secondiTotali;
+			}
+			break;
+		default:
+			break;
+	}
+	return 0;
+}
+
+
 void CmdParLabel::SetValue(wxArrayString Names, wxArrayInt WXUNUSED(Codes)) {	//eChoice
-	wxChoice* Cho = (wxChoice*)m_gen_Param;
+	wxChoice* Cho = wxDynamicCast(m_gen_Param, wxChoice);
+	if (!Cho) return;
 	Cho->Clear();
 	size_t Cnt = Names.Count();
 	for (size_t i = 0; i < Cnt; i++) {
-		Cho->Append(Names[i], (void*)i/*Codes[i]*/);
+		//Cho->Append(Names[i], (void*)i/*Codes[i]*/);
+		//wxUIntPtr dataValue = useCodes ? static_cast<wxUIntPtr>(Codes[i]) : static_cast<wxUIntPtr>(i);
+		Cho->Append(Names[i], reinterpret_cast<void*>(i));
+
+
 	}
-	Cho->SetSelection(0);
+	if (Cnt > 0)	Cho->SetSelection(0);
 }
 
 void CmdParLabel::SetValue(int Val, int Min, int Max) {	//eNumber
-	((wxSpinCtrl*)m_gen_Param)->SetRange(Min, Max);
-	((wxSpinCtrl*)m_gen_Param)->SetValue(Val);
+	wxSpinCtrl* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl);
+	if (!spinCtrl) return;
+	spinCtrl->SetRange(Min, Max);
+	int safeVal = std::max(Min, std::min(Val, Max));
+	spinCtrl->SetValue(safeVal);
+	//((wxSpinCtrl*)m_gen_Param)->SetRange(Min, Max);
+	//((wxSpinCtrl*)m_gen_Param)->SetValue(Val);
 }
 
 void CmdParLabel::SetValue(wxUint32 t) {
-	unsigned int s = t % 60;		t /= 60;
-	unsigned int m = t % 60;		t /= 60;
-	unsigned int h = t % 24;	//	t/=24;
-	((wxTimePickerCtrl*)m_gen_Param)->SetTime(h, m, s);
+	wxTimePickerCtrl* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl);
+	if (!timePicker) return;
+	wxUint32 timeRemain = t;
+	unsigned int s = timeRemain % 60;          timeRemain /= 60;
+	unsigned int m = timeRemain % 60;          timeRemain /= 60;
+	unsigned int h = timeRemain % 24;
+	timePicker->SetTime(h, m, s);
 }
 
 void CmdParLabel::ChangeType(const wxString& name, const wxDateTime& dt) {	//eTime
 	m_type = eTime;	InitLabel(name);
 
-	wxDELETE(m_gen_Param);
+	if (m_gen_Param) {	// do not use wxDELETE(m_gen_Param);
+		m_gen_Param->Destroy();
+		m_gen_Param = nullptr;
+	}
 	m_gen_Param = new wxTimePickerCtrl(this, wxID_ANY, dt);
-	/* //---------------------------------------------------------------------
-	HWND hwnd = (HWND)m_gen_Param->GetHWND();
-	//m_gen_Param->SetFocus();
-	//::SendMessage(hwnd, WM_KEYDOWN, VK_HOME, 0);
-	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
-	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
-	::SendMessage(hwnd, WM_KEYDOWN, VK_RIGHT, 0);
-	*/
-	//--------------------------------------------------------------------------
 	SetSizers();
+//	m_gen_Param->SetFocus();	//
 }
 
 CmdParLabel::CmdParLabel(wxWindow* parent, const wxString& name) : wxPanel(parent, wxID_ANY) {	//neutral
@@ -82,13 +159,19 @@ CmdParLabel::CmdParLabel(wxWindow* parent, const wxString& name) : wxPanel(paren
 
 void CmdParLabel::ChangeType(const wxString& name, wxArrayString Names, wxArrayInt WXUNUSED(Codes)) {	//eChoice
 	m_type = eChoice;	InitLabel(name);
-	wxDELETE(m_gen_Param);
-	m_gen_Param = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SIMPLE/*| wxCB_SORT*/);
-	size_t Cnt = Names.Count();
-	for (size_t i = 0; i < Cnt; i++) {
-		((wxChoice*)m_gen_Param)->Append(Names[i], (void*)i/*Codes[i]*/);
+	
+	if (m_gen_Param) {	//Do not use wxDELETE(m_gen_Param);
+		m_gen_Param->Destroy();
+		m_gen_Param = nullptr;
 	}
-	((wxChoice*)m_gen_Param)->SetSelection(0);
+	wxChoice* cho = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL/*, wxCB_SIMPLE/*| wxCB_SORT*/);
+	m_gen_Param = cho;
+	size_t cnt = Names.Count();
+	for (size_t i = 0; i < cnt; i++) {
+		wxUIntPtr dataValue = static_cast<wxUIntPtr>(i);
+		cho->Append(Names[i], reinterpret_cast<void*>(dataValue));
+	}
+	if (cnt > 0)	cho->SetSelection(0);
 	SetSizers();
 }
 

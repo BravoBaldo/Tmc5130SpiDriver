@@ -368,7 +368,7 @@ int Next_DB::ProgDetail_Fill(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoR
 //		"SELECT DetailProg AS[% s], Motor, Cmd AS[%s], Pattern, Cnt AS[%s], Par1, Par2, Par3, Par4, Par5, Par6, Par7 "
 		"SELECT DetailProg AS[% s], Motor, Cmd AS[%s], CAST(Pattern AS VARCHAR(5)) AS Pattern, Cnt AS[%s], Par1, Par2, Par3, Par4, Par5, Par6, Par7 "
 //		"SELECT DetailProg AS [%s], Name AS [%s], CmdTyp AS Board, SubCmd, Par1, Par2, Par3, Par4, MasterId, I2CAdd AS [%s] "
-		" FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d ORDER BY DetailProg"
+		" FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u ORDER BY DetailProg"
 		, _("N")
 		, _("Command")
 		, _("Address")
@@ -383,10 +383,10 @@ long Next_DB::ProgMaster_GetNextId(unsigned int StartIdx) {
 		" FROM ("
 		"	SELECT ProgId"
 		" 	FROM " PROGMASTER_TABLENAME ""
-		" 	UNION SELECT COUNT(*)+%d FROM " PROGMASTER_TABLENAME " WHERE 1=0"
+		" 	UNION SELECT COUNT(*)+%u FROM " PROGMASTER_TABLENAME " WHERE 1=0"
 		" ) AS A"
 		" WHERE NOT EXISTS (SELECT 1 FROM " PROGMASTER_TABLENAME " B WHERE B.ProgId = A.ProgId+1)"
-		" AND A.ProgId>=%d"
+		" AND A.ProgId>=%u"
 		, StartIdx, StartIdx
 	);
 
@@ -426,9 +426,9 @@ bool Next_DB::ProgMaster_Insert(const wxString& NewProgNameIn, unsigned int Id) 
 	if (Id == 0) {
 		if ((Id = ProgMaster_GetNextId(NewProgNameIn.Left(4).IsSameAs("SUB_", false) ? 2000 : 0)) <= 0)	return false;
 	}
-	wxString SqlTest = wxString::Format("SELECT 1 FROM "	PROGMASTER_TABLENAME " WHERE ProgId = %d", Id);
-	wxString SqlIns = wxString::Format("INSERT INTO "		PROGMASTER_TABLENAME " (ProgName, ProgId) VALUES ('%s', %d)", NewProgName, Id);
-	wxString SqlUpd = wxString::Format("UPDATE "			PROGMASTER_TABLENAME " SET ProgName = '%s' WHERE ProgId = %d", NewProgName, Id);
+	wxString SqlTest = wxString::Format("SELECT 1 FROM "	PROGMASTER_TABLENAME " WHERE ProgId = %u", Id);
+	wxString SqlIns = wxString::Format("INSERT INTO "		PROGMASTER_TABLENAME " (ProgName, ProgId) VALUES ('%s', %u)", NewProgName, Id);
+	wxString SqlUpd = wxString::Format("UPDATE "			PROGMASTER_TABLENAME " SET ProgName = '%s' WHERE ProgId = %u", NewProgName, Id);
 
 	DBIterator i(1, SqlTest, AriesConn);
 	return ExecuteSQL((i.eof()) ? SqlIns : SqlUpd, true);
@@ -443,9 +443,9 @@ bool Next_DB::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProgNam
 		//3) Copy data
 		wxString SqlIns = wxString::Format("INSERT INTO " PROGDETAIL_TABLENAME
 			" (Name, I2CAdd, CmdTyp, Cmd, Par1, Par2, Par3, Par4, MasterId, DetailProg, SubCmd)"
-			" SELECT Name, I2CAdd, CmdTyp, Cmd, Par1, Par2, Par3, Par4, %d, DetailProg, SubCmd"
+			" SELECT Name, I2CAdd, CmdTyp, Cmd, Par1, Par2, Par3, Par4, %u, DetailProg, SubCmd"
 			" FROM " PROGDETAIL_TABLENAME
-			" WHERE MasterId = %d", ProgIdNew, ProgIdOld)
+			" WHERE MasterId = %u", ProgIdNew, ProgIdOld)
 			;
 
 		return ExecuteSQL(SqlIns, true);
@@ -454,10 +454,10 @@ bool Next_DB::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProgNam
 }
 
 bool Next_DB::ProgDetail_Delete(unsigned int ProgId, bool DelFather) {
-	wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %d", ProgId);
+	wxString Sql_Del = wxString::Format("DELETE FROM " PROGDETAIL_TABLENAME " WHERE MasterId = %u", ProgId);
 	if (ExecuteSQL(Sql_Del, true) == true) {
 		if (DelFather) {
-			Sql_Del = wxString::Format("DELETE FROM " PROGMASTER_TABLENAME " WHERE ProgId = %d", ProgId);
+			Sql_Del = wxString::Format("DELETE FROM " PROGMASTER_TABLENAME " WHERE ProgId = %u", ProgId);
 			return ExecuteSQL(Sql_Del, true);
 		}
 	}
@@ -467,8 +467,8 @@ bool Next_DB::ProgDetail_Delete(unsigned int ProgId, bool DelFather) {
 DBIterator* Next_DB::ProgDetail_Open(unsigned int	ProgramId, unsigned int StepStart) {
 	wxString	strSQL = wxString::Format("SELECT MasterId, DetailProg, Name, I2CAdd, CmdTyp, SubCmd, Par1, Par2, Par3, Par4"
 		" FROM " PROGDETAIL_TABLENAME
-		" WHERE MasterId = %d"
-		"   AND DetailProg >= %d"
+		" WHERE MasterId = %u"
+		"   AND DetailProg >= %u"
 		" ORDER BY DetailProg"
 		, ProgramId, StepStart
 	);

@@ -1,4 +1,4 @@
-#include "stdwx.h"
+﻿#include "stdwx.h"
 #include "cShowAnswers.h"
 
 void cAnswersShow::Grid_AutoSizeAll(wxGrid* Grid, bool setAsMin) {
@@ -19,23 +19,6 @@ void cAnswersShow::Log_Generic_InitEnd(wxGrid* Grid) {
 	Grid->SetDefaultCellAlignment(wxALIGN_CENTRE, wxALIGN_CENTRE);
 	Grid_AllReadOnly(Grid);
 	Grid_AutoSizeAll(Grid);
-}
-
-
-StepperAnswer SetStepperDemo(void) {
-	StepperAnswer SA;
-	SA.m_Motor = 2;
-	SA.m_spiStatus = 0xAA;	//GetSpiStatus().bytes
-	SA.m_Ioin8 = 0xBB;	//(getIoin().bytes & 0xFF)
-	SA.m_FsaStatus = 0x95;	//FSA_Status	FSA.Status
-	SA.m_Velocity = 2456;
-	SA.m_Position = 328909;
-	SA.m_xTarget = 30000;
-	SA.m_irun = 8;
-	SA.m_ihold = 10;
-	SA.m_holdDelay = 12;
-
-	return SA;
 }
 
 void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
@@ -63,6 +46,8 @@ void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
 	LeftAlign->DecRef();
 
 	Log_Generic_InitEnd(grid);
+	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+
 }
 
 void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
@@ -83,7 +68,6 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 
 
 
-//	grid->SetCellValue(R, eStpShowIoin8, wxString::Format("%d", SA.m_Ioin8));
 	grid->SetCellValue(R, eStpShowIoin8, wxString::Format("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"	//"%s|%s|%s|%s|%s|%s|%s|%s"
 		, (SA.m_spiStatus & 0x01) ? "REFL_STEP"			: "   "
 		, (SA.m_spiStatus & 0x02) ? "REFR_DIR"			: "   "
@@ -95,21 +79,129 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 		, (SA.m_spiStatus & 0x80) ? "SWCOMP_IN"			: "   "
 	));
 
+	wxString S;
+
+#ifdef SHOW_SWMODE
+	S = wxEmptyString;
+	S += wxString::Format("stop_l_enable....:%d\n", (SA.m_SWMODE & 0x001)?1:0 );
+	S += wxString::Format("stop_r_enable....:%d\n", (SA.m_SWMODE & 0x002)?1:0 );
+	S += wxString::Format("pol_stop_l.......:%d\n", (SA.m_SWMODE & 0x004)?1:0 );
+	S += wxString::Format("pol_stop_r.......:%d\n", (SA.m_SWMODE & 0x008)?1:0 );
+	S += wxString::Format("swap_lr..........:%d\n", (SA.m_SWMODE & 0x010)?1:0 );
+	S += wxString::Format("latch_l_active...:%d\n", (SA.m_SWMODE & 0x020)?1:0 );
+	S += wxString::Format("latch_l_inactive.:%d\n", (SA.m_SWMODE & 0x040)?1:0 );
+	S += wxString::Format("latch_r_active...:%d\n", (SA.m_SWMODE & 0x080)?1:0 );
+	S += wxString::Format("latch_r_inactive.:%d\n", (SA.m_SWMODE & 0x100)?1:0 );
+	S += wxString::Format("en_latch_encoder.:%d\n", (SA.m_SWMODE & 0x200)?1:0 );
+	S += wxString::Format("sg_stop..........:%d\n", (SA.m_SWMODE & 0x400)?1:0 );
+	S += wxString::Format("en_softstop......:%d\n", (SA.m_SWMODE & 0x800)?1:0 );
+	grid->SetCellValue(R, eStpShowSWMODE, S);
+#endif
+
+#if defined(SHOW_GCONF)
+	S = wxEmptyString;	
+	S += wxString::Format("recalibrate_i_scale_analog.....:%d\n", (SA.m_GCONF & 0x00001) ? 1 : 0);
+	S += wxString::Format("faststandstill_internal_rsense.:%d\n", (SA.m_GCONF & 0x00002) ? 1 : 0);
+	S += wxString::Format("en_pwm_mode....................:%d\n", (SA.m_GCONF & 0x00004) ? 1 : 0);
+	S += wxString::Format("multistep_filt_enc_commutation.:%d\n", (SA.m_GCONF & 0x00008) ? 1 : 0);
+	S += wxString::Format("shaft..........................:%d\n", (SA.m_GCONF & 0x00010) ? 1 : 0);
+	S += wxString::Format("diag0_error....................:%d\n", (SA.m_GCONF & 0x00020) ? 1 : 0);
+	S += wxString::Format("diag0_otpw.....................:%d\n", (SA.m_GCONF & 0x00040) ? 1 : 0);
+	S += wxString::Format("diag0_stall_int_step...........:%d\n", (SA.m_GCONF & 0x00080) ? 1 : 0);
+	S += wxString::Format("diag1_stall_poscomp_dir........:%d\n", (SA.m_GCONF & 0x00100) ? 1 : 0);
+	S += wxString::Format("diag1_index....................:%d\n", (SA.m_GCONF & 0x00200) ? 1 : 0);
+	S += wxString::Format("diag1_onstate..................:%d\n", (SA.m_GCONF & 0x00400) ? 1 : 0);
+	S += wxString::Format("diag1_steps_skipped............:%d\n", (SA.m_GCONF & 0x00800) ? 1 : 0);
+	S += wxString::Format("diag0_int_pushpull.............:%d\n", (SA.m_GCONF & 0x01000) ? 1 : 0);
+	S += wxString::Format("diag1_poscomp_pushpull.........:%d\n", (SA.m_GCONF & 0x02000) ? 1 : 0);
+	S += wxString::Format("small_hysteresis...............:%d\n", (SA.m_GCONF & 0x04000) ? 1 : 0);
+	S += wxString::Format("stop_enable....................:%d\n", (SA.m_GCONF & 0x08000) ? 1 : 0);
+	S += wxString::Format("direct_mode....................:%d\n", (SA.m_GCONF & 0x10000) ? 1 : 0);
+	S += wxString::Format("test_mode......................:%d\n", (SA.m_GCONF & 0x20000) ? 1 : 0);
+	grid->SetCellValue(R, eStpShowGCONF, S);
+#endif
+
+
+	S = wxEmptyString;
+	S += wxString::Format("VSTART.:%u\n", SA.m_VSTART);
+    S += wxString::Format("V1.....:%u\n", SA.m_V1);
+    S += wxString::Format("VMAX...:%u\n", SA.m_VMAX);
+    S += wxString::Format("VSTOP..:%u\n", SA.m_VSTOP);
+    S += wxString::Format("VACTUAL:%d\n", SA.m_VACTUAL);
+	grid->SetCellValue(R, eStpShowVel,	S);
+
+	S = wxEmptyString;
+	S += wxString::Format("A1...:%u\n", SA.m_A1);
+	S += wxString::Format("AMAX.:%u\n", SA.m_AMAX);
+	S += wxString::Format("DMAX.:%u\n", SA.m_DMAX);
+	S += wxString::Format("D1...:%u\n", SA.m_D1);
+	grid->SetCellValue(R, eStpShowAccels, S);
+
+	S = wxEmptyString;
+	S += wxString::Format("CurPos.:%ld\n", SA.m_Position);
+	S += wxString::Format("Target.:%ld\n", SA.m_xTarget);
+	grid->SetCellValue(R, eStpShowPos, S);
+
+//	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%d", SA.m_Position));
+//	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld", SA.m_xTarget));
 
 
 
-	//eStpShowFsaStatus
-	grid->SetCellValue(R, eStpShowVel,			wxString::Format("%d", SA.m_Velocity));
-	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%d", SA.m_Position));
-	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%d", SA.m_xTarget));
 	grid->SetCellValue(R, eStpShowCurrents,		wxString::Format("%d-%d-%d"
 													, (SA.m_Currents) & 0x1F
 													, (SA.m_Currents >>  5) & 0x1F
 													, (SA.m_Currents >> 10) & 0x0F
 												));
 
-	uint8_t mstep = (SA.m_CHOPCONF >> 24) & 0x0F;
-	grid->SetCellValue(R, eStpShowChopConf, wxString::Format("MicroStep..:%d\n%X", mstep, SA.m_CHOPCONF));
+
+#ifdef SHOW_CHOPCONF
+	S = wxEmptyString;
+  typedef union  {  //CHOPCONF dd
+    struct {
+      uint32_t toff           : 4;
+      uint32_t HSTRT          : 3;
+      uint32_t HEND           : 4;
+      uint32_t fd3            : 1;
+      uint32_t disfdcc        : 1;
+      uint32_t rndtf          : 1;
+      uint32_t chm            : 1;
+      uint32_t tbl            : 2;
+      uint32_t vsense         : 1;
+      uint32_t vhighfs        : 1;
+      uint32_t vhighchm       : 1;
+      uint32_t sync           : 4;
+      uint32_t mres           : 4;
+      uint32_t interpol       : 1;
+      uint32_t dedge          : 1;
+      uint32_t diss2g         : 1;
+      uint32_t reserved2      : 1;
+    }reg;
+    uint32_t bytes;
+  }Chopconf;
+	Chopconf ch = { .bytes = static_cast<uint32_t>(SA.m_CHOPCONF) };
+	ch.bytes = SA.m_CHOPCONF;
+	S += wxString::Format("toff.....:%u\n", ch.reg.toff);
+	S += wxString::Format("HSTRT....:%u\n", ch.reg.HSTRT);
+	S += wxString::Format("HEND.....:%u\n", ch.reg.HEND);
+	S += wxString::Format("fd3......:%u\n", ch.reg.fd3);
+	S += wxString::Format("disfdcc..:%u\n", ch.reg.disfdcc);
+	S += wxString::Format("rndtf....:%u\n", ch.reg.rndtf);
+	S += wxString::Format("chm......:%u\n", ch.reg.chm);
+	S += wxString::Format("tbl......:%u\n", ch.reg.tbl);
+	S += wxString::Format("vsense...:%u\n", ch.reg.vsense);
+	S += wxString::Format("vhighfs..:%u\n", ch.reg.vhighfs);
+	S += wxString::Format("vhighchm.:%u\n", ch.reg.vhighchm);
+	S += wxString::Format("sync.....:%u\n", ch.reg.sync);
+	S += wxString::Format("µStep....:%u\n", ch.reg.mres);	//"\u00B5Step....:%d\n"  
+	S += wxString::Format("interpol.:%u\n", ch.reg.interpol);
+	S += wxString::Format("dedge....:%u\n", ch.reg.dedge);
+	S += wxString::Format("diss2g...:%u\n", ch.reg.diss2g);
+
+	grid->SetCellValue(R, eStpShowChopConf, wxString::FromUTF8(S));
+#endif
+
+
+
 
 	int16_t	SgRes	= (SA.m_DRV_STATUS)		& 0x3FF;	//10 bits
 	uint8_t csAct	= (SA.m_DRV_STATUS>>16) & 0x1F;		// 5 bits
@@ -131,7 +223,13 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 																SA.m_MSCURACT));
 
 	grid->AutoSize();
+	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+
+	grid->MakeCellVisible(R, 0);
+	grid->SelectRow(R);
+	grid->SetGridCursor(R, 0);
 	grid->EndBatch();
+
 	::wxYield();
 }
 
@@ -146,9 +244,12 @@ void cAnswersShow::Log_Stepper_Fill(const StepperAnswer& SA) {
 	grid->SetCellValue(R, eStpShowIoin8,		wxString::Format("%02X",	SA.m_Ioin8));
 	grid->SetCellValue(R, eStpShowVel,			wxString::Format("%ld",		SA.m_Velocity));
 	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%ld",		SA.m_Position));	grid->SetCellBackgroundColour(R, eStpShowPos, *wxGREEN);
-	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld",		SA.m_xTarget));		grid->SetCellBackgroundColour(R, eStpShowTarget, *wxRED);
+//	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld",		SA.m_xTarget));		grid->SetCellBackgroundColour(R, eStpShowTarget, *wxRED);
 
 	//eStpShowCurrents
+	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+
+
 	::wxYield();
 }
 

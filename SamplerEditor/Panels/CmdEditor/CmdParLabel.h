@@ -31,28 +31,5 @@ public:
 	void SetValue(int Val, int Min, int Max);						//eNumber
 	void SetValue(wxUint32 t);										//eTime
 	void SetCurrentValue(long t);
-
-	long GetValue(void) {
-		switch (m_type) {
-			case eChoice:
-				{
-					wxChoice* Cho = (wxChoice*)m_gen_Param;
-					int Sel = Cho->GetSelection();
-					if (Sel < 0)
-						return -1;// Sel = 0;
-					return (int)(unsigned long long)Cho->GetClientData(Sel);
-				}
-				break;
-			case eNumber:
-				return ((wxSpinCtrl*)m_gen_Param)->GetValue();
-			case eTime:
-				{
-					int h, m, s;
-					((wxTimePickerCtrl*)m_gen_Param)->GetTime(&h, &m, &s);
-					return /*1000L * */ (h * 60 * 60 + m * 60 + s);
-				}
-			default:
-				return 0;
-		}
-	}
+	long GetValue(void);
 };
