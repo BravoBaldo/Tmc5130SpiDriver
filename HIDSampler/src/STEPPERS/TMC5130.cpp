@@ -204,16 +204,35 @@ void TMC5130::DisableStops(void){
 	setSwMode(sw_mode);
 }
 
-void TMC5130::setStops(MotorDirection Direction){
+void TMC5130::setStops(bool SwapLR, bool EnStopL, bool EnPoolL, bool EnStopR, bool EnPoolR, bool EnSg, bool EnSoft){	//
 	SwMode sw_mode	= getSwMode();  //SW_MODE
-	sw_mode.swap_lr			= (Direction==ForwardDirection)?1:0;    //1: Swap the left and the right reference switch input REFL and REFR
-	sw_mode.stop_l_enable	= 1;	//1: Enables automatic motor stop during active left reference switch input
-	sw_mode.pol_stop_l		= 1;	//0=non-inverted, high active, 1=inverted, low active
 
-	sw_mode.stop_r_enable	= 1;	//1: Enables automatic motor stop during active right reference switch input
-	sw_mode.pol_stop_r		= 1;	//0=non-inverted, high active, 1=inverted, low active
-	sw_mode.sg_stop			= 0;	//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
-	sw_mode.en_softstop		= 0;	//0: Hard stop 1: Soft stop    
+	sw_mode.swap_lr			= (SwapLR)	?1:0;	//1: Swap the left and the right reference switch input REFL and REFR
+
+	sw_mode.stop_l_enable	= (EnStopL)	?1:0;			//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.pol_stop_l		= (EnPoolL)	?1:0;			//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.stop_r_enable	= (EnStopR)	?1:0;			//1: Enables automatic motor stop during active right reference switch input
+	sw_mode.pol_stop_r		= (EnPoolR)	?1:0;			//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.sg_stop			= (EnSg)	?1:0;			//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
+	sw_mode.en_softstop		= (EnSoft)	?1:0;			//0: Hard stop 1: Soft stop    
+
+	setSwMode(sw_mode);
+}
+
+void TMC5130::setStops(bool Swap){	//enable both side, but I suppose switch only 1.
+	SwMode sw_mode	= getSwMode();  //SW_MODE
+	sw_mode.swap_lr			= (Swap)?1:0;	//1: Swap the left and the right reference switch input REFL and REFR
+
+	sw_mode.stop_l_enable	= 1;			//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.pol_stop_l		= 1;			//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.stop_r_enable	= 1;			//1: Enables automatic motor stop during active right reference switch input
+	sw_mode.pol_stop_r		= 1;			//0=non-inverted, high active, 1=inverted, low active
+
+	sw_mode.sg_stop			= 0;			//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
+	sw_mode.en_softstop		= 0;			//0: Hard stop 1: Soft stop    
 	setSwMode(sw_mode);
 }
 

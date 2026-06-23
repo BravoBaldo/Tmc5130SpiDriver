@@ -10,6 +10,10 @@
 
 #define wxSIZEOF(a) (sizeof(a)/sizeof(a[0]))
 
+// Sostituzione sicura in C++ moderno di wxSIZEOF
+template <typename T, size_t N>
+constexpr size_t arraySize(const T (&)[N]) noexcept { return N; }
+
 
 typedef std::function<void(uint8_t, bool)> SPI_ENABLER_CB;
 extern void EnableSpiOnChip(uint8_t csPin, bool en);	//extern SPI_ENABLER_CB EnableSpiOnChip;
@@ -195,7 +199,7 @@ public:
 
   typedef union  {  //SW_MODE
     struct {
-      uint32_t stop_l_enable    : 1;	  //0x001    SW_MODE_STOP_L_ENABLE     
+      uint32_t stop_l_enable    : 1;	//0x001    SW_MODE_STOP_L_ENABLE     
       uint32_t stop_r_enable    : 1;    //0x002    SW_MODE_STOP_R_ENABLE     
       uint32_t pol_stop_l       : 1;    //0x004    SW_MODE_POL_STOP_L        
       uint32_t pol_stop_r       : 1;    //0x008    SW_MODE_POL_STOP_R        
@@ -685,8 +689,10 @@ public:
   inline void		setPosition		(int32_t x)		{ writeReg(XACTUAL, x); }
   inline int32_t	getPosition		(void)			{ return (int32_t)readReg(XACTUAL); }
 
-  void				setStops		(MotorDirection Direction);
-  void				DisableStops	(void);
+	void			setStops		(bool Swap);
+	void			setStops		(bool SwapLR, bool EnStopL, bool EnPoolL, bool EnStopR, bool EnPoolR, bool EnSg, bool EnSoft);
+	void			DisableStops	(void);
+	
   inline void		setTargetBase   (int32_t xTarget)	{ writeReg(XTARGET, xTarget);}
   inline void		setTarget       (int32_t xTarget)	{ setTargetBase( (getMaxSteps()>0) ? min(xTarget, getMaxSteps()) : max(xTarget, getMaxSteps()) ); }
   inline int32_t	getTarget       (void)				{ return (int32_t)readReg(XTARGET);}
@@ -710,6 +716,11 @@ public:
 		setSecondDeceleration	(d1);		//D1: Use same value as A1 or higher
 		setStopVelocity			(vstop);	//Set VSTOP=10, but not below VSTART. Higher velocity for abrupt stop.
 		setTZeroWait			(tzerowait);
+	}
+
+	//Set Ramp Six Points Simple (Symmetric)
+	void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t tzerowait = 0){ //SixPoint
+		SetRamp(vstart, a1, v1, amax, vmax, amax, a1, vstart, tzerowait); //SixPoint
 	}
 	//Set Ramp Trapezoidal
 	void SetRamp(uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t tzerowait=0){	//Trapezoidal
@@ -786,11 +797,6 @@ public:
   void enableDriver       (bool en);
 #endif
   int32_t   Init_MicroSteps (uint8_t ms);
-  void setMotorDirection	(bool dir)	{
-	Gconf gconf	= getGconf();
-	gconf.shaft	= (dir)?1:0;
-	setGconf(gconf.bytes);
-  };
   inline SpiStatus   GetLastSpiStatus   (void)                                            {return SPI_Status;}
 
   uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);

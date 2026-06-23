@@ -41,12 +41,6 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sExpanderStandard& Answ) {
 	return eCmdOk;	//ToDo
 }
 
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StepperAnswer& Answ) {
-	LogMe("Answer from Steppers\n", true);
-	LogMe(wxString::Format("\tm_Motor......: %d\n", Answ.m_Motor), false);
-	return eCmdOk;	//ToDo
-}
-
 eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
 	LogMe("Answer from StripLED\n", true);
 	LogMe(wxString::Format("\tm_CurrGame.: %d\n", Answ.m_CurrGame), false);
@@ -63,6 +57,12 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
 		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
 
 	return Answ.m_Result;
+}
+
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerVersion& Answ) {
+	LogMe("Firmware Version: ", true);
+	LogMe(wxString::Format("%02d-%02d-%02d %02d:%02d:%02d\n", Answ.Y, Answ.M, Answ.D, Answ.h, Answ.m, Answ.s), false);
+	return eCmdOk;
 }
 
 //ToDo: Separate Tx and Rx each with own TimeOut
@@ -115,6 +115,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			Success = true;
 			eMessageTypes Tipo = ((eMessageTypes*)m_HidExec.GetBuffer())[0];
 			switch (Tipo) {
+				case eTypAnswVer:	CALLANSWERPARSER(sAnswerVersion);	break;
 				case eTypAnswStd:
 					{
 						LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
@@ -125,7 +126,6 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 					}
 					break;
 				case eTypAnswExpander:	CALLANSWERPARSER(sExpanderStandard);	break;
-				case eTypAnswStepper:	CALLANSWERPARSER(StepperAnswer);		break;
 				case eTypAnswStepDir:	CALLANSWERPARSER(TmcAnswer);			break;
 				default:
 					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
@@ -187,7 +187,7 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 }
 
 #define TX_BINARY_M	//If defined, Tx via USB, Else via SERIAL
-#define CALLSUBSINSTEPS
+//#define CALLSUBSINSTEPS
 
 bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 #if !defined(CALLSUBSINSTEPS)
@@ -235,6 +235,8 @@ bool CmdExecutorCtrl::ExecuteSteps(uint16_t	m_MasterId) {	//Execute Steps from D
 			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
 			if (recordFound) {
 				LogMe(wxString::Format("\t Step %d\n", vStep.m_DetailProg), false);
+
+
 				ExecuteStep(vStep);
 				detailProg = vStep.m_DetailProg + 1;
 			}

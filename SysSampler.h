@@ -60,7 +60,7 @@ typedef struct {
 }sStripLedGames;
 
 
-enum eStep_List : uint8_t {	//Compare with eSteppers in cShowAnswers.h
+enum eStep_List : uint8_t {
 #define X(eMotorId, csPin, cePin, description) eMotorId,
 	STEPPERS_LIST
 #undef X
@@ -74,17 +74,16 @@ enum eSubSysAcro : uint8_t {
 };
 
 typedef enum : uint8_t {	// AnswerType is lowercase
-	eTypCommand			= 'b',
-	eTypAnswVer			= 'v',
-	eTypAnswStd			= 'u',
-	eTypAnswConverter	= 'a',
-	eTypAnswBarCode		= 'k',	
-	eTypAnswStripLed	= 's',
+	eTypCommand			= 'b',	//sCommand
+	eTypAnswVer			= 'v',	//sAnswerVersion
+	eTypAnswStd			= 'u',	//sAnswerStandard
+	eTypAnswConverter	= 'a',	//
+	eTypAnswBarCode		= 'k',	//
+	eTypAnswStripLed	= 's',	//StripAnswer
 	eTypAnswPwReader	= 'p',
-	eTypAnswExpander	= 'e',
-	eTypAnswStepper		= 'm',	
-	eTypAnswStepDir		= 'd',
-	eTypStepperRegs		= 'r',
+	eTypAnswExpander	= 'e',	//sExpanderStandard
+	eTypAnswStepDir		= 'd',	//TmcAnswer
+//	eTypStepperRegs		= 'r',	//StepperRegsAnswer
 }eMessageTypes;
 
 
@@ -158,8 +157,9 @@ typedef struct _sStripAnswer{
 
 
 #define SHOW_SWMODE
+#define SHOW_SWMODE_HIDELATCH
 //#define SHOW_GCONF
-#define SHOW_CHOPCONF
+//#define SHOW_CHOPCONF
 
 #ifdef SHOW_SWMODE
     #define X_SHOW_SWMODE X(eStpShowSWMODE, true, "SWMODE")
@@ -241,30 +241,6 @@ typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 #pragma pack(pop)
 
 static_assert(sizeof(TmcAnswer) <= 64, "Error: TmcAnswer exceeds the maximum size of 64 bytes!");
-
-#pragma pack(push, 1)
-typedef struct _sStepAnswer{
-	byte		m_MsgType		= eTypAnswStepper;	//1
-	eSubSysAcro	m_SubSystem		= eSteppersFSA;		//1
-	byte		m_Cmd			= 0;				//1
-	uint16_t	m_MasterId		= 0;				//2
-	uint16_t	m_DetailProg	= 0;				//2
-	eCmdAnswer	m_Result		= eCmdOk;			//1
-
-	uint8_t		m_Motor;
-//	uint16_t	m_Remaining	= 0;
-	uint8_t		m_spiStatus;	//GetSpiStatus().bytes
-	uint8_t		m_Ioin8;		//(getIoin().bytes & 0xFF)
-	uint32_t	m_Velocity;
-	int32_t  	m_Position;
-	int32_t		m_xTarget;
-	uint8_t		m_irun;
-	uint8_t		m_ihold;
-	uint8_t		m_holdDelay;
-	uint8_t		m_FsaStatus;	//FSA_Status	FSA.Status
-}StepperAnswer;	// AAA To Remove see TmcAnswer
-#pragma pack(pop)
-static_assert(sizeof(StepperAnswer) <= 64, "Error: StepperAnswer exceeds the maximum size of 64 bytes!");
 
 /*
 #pragma pack(push, 1)

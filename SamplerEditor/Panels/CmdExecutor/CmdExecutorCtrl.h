@@ -34,9 +34,9 @@ class CmdExecutorCtrl : public wxPanel {
 
 	eCmdAnswer	ParseAnswer(const sAnswerStandard&		Answ);
 	eCmdAnswer	ParseAnswer(const sExpanderStandard&	Answ);
-	eCmdAnswer	ParseAnswer(const StepperAnswer& Answ);
 	eCmdAnswer	ParseAnswer(const StripAnswer& Answ);
 	eCmdAnswer	ParseAnswer(const TmcAnswer& Answ);
+	eCmdAnswer	ParseAnswer(const sAnswerVersion& Answ);
 
 
 public:

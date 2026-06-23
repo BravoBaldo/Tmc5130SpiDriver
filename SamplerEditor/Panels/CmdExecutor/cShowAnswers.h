@@ -9,18 +9,6 @@ enum eGrids {
 
     eGrid_TOP
 };
-/*
-enum eSteppers {    //
-    eStep_UpDwn,
-    eStep_LR,
-    eStep_Syringe,  
-    eStep_Deposit,
-    eStep_Needle,
-    eStep_Spare,
-
-    eStep_TOP
-};
-*/
 
 class cAnswersShow : public wxAuiNotebook {
     wxGrid* m_Grids[eGrid_TOP];
@@ -37,9 +25,8 @@ class cAnswersShow : public wxAuiNotebook {
 	eCmdAnswer ShowAnswer_A(void* Answer, size_t AnswerLen);
 public:
     cAnswersShow(wxWindow* parent);
-    void Log_Stepper_Fill(const StepperAnswer& Answer);
     void Log_Stepper_Fill(const TmcAnswer& Answer);
 
-	bool SetAnswer(void* Answer, size_t AnswerLen);
+    bool SetAnswer(void* Answer, size_t AnswerLen);
     void AddSamplePages();
 };

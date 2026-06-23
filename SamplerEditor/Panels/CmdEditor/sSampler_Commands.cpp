@@ -33,6 +33,7 @@ static const sParams SamplerParams[]{
 	{ 'c', eNumber,	"Char",			(-128),			127																				},
 	{ 'd', eChoice,	"Velocities",	0,				3,				"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
 	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "Enable"})							},
+	{ 'f', eNumber,	"Register",		0,			  115,				"TMC5130 Register"																		},
 	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({
 																												#define X(eStripId, eRunAlways, description) description,
 																													STRIPLEDGAMES_LIST
@@ -41,14 +42,14 @@ static const sParams SamplerParams[]{
 	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
 	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
 	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "Right"})								},
-	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200", "1=25600", "2=12800", "3=6400", "4=3200", "5=1600", "6=800", "7=400", "8=200"})},
+	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200=1/256", "1=25600=1/128", "2=12800=1/64", "3=6400=1/32", "4=3200=1/16", "5=1600=1/8", "6=800=1/4", "7=400=1/2", "8=200=1/1"})},
 	{ 'n', eNumber,	"ShowedNumber",	0,				6,				"Show Number"},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
-	{ 'p', eNumber,	"Process",		0,				5,				"Laser Game"},
+//	{ 'p', eNumber,	"Process",		0,				5,				"Laser Game"},
 	{ 'q', eChoice,	"Left/Right/None",	0,				2,			"Direction"					, RetArray2({"Left", "Right", "None"})},
 	{ 's', eNumber,	"Speed",		500,			25000																			},
 	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
-	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
+//	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
 	{ 'v', eChoice,	"Output",		0,				0,				"Outputs"					, RetArray2({"All/None", "A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
 	{ 'w', eChoice,	"Waitings",		0,				5,				"Waiting Motor"				, RetArray2({"eWaitVelocity", "eWaitPosition", "eWaitHome", "eWaitPosAndVel", "eWaitTimer"})							},
 
@@ -70,14 +71,19 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eSystemCmd, 'a',	"Exec. Routine",		"P",		RetArray2({"Program Id"					})},
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
+	{eSystemCmd, '0',	"Get Version",			"",			RetArray2({								})},
 
 
 	{eStepNoMotor,	'0', "Do Nothing",			"",			RetArray2({											})},
 	{eStepNoMotor,	'1', "Set Current Motor",	"M",		RetArray2({"Stepper"								})},
+	{eStepNoMotor,	'2', "Set Register",		"fL",		RetArray2({"Register", "Value"					})},
 
 	{eStepNoMotor,	'a', "ChipEnable",			"e",		RetArray2({"Chip Abilitation"				})},
-	{eStepNoMotor,	'b', "Set Stops NONE",		"",			RetArray2({									})},
-	{eStepNoMotor,	'b', "Set Stops",			"q",		RetArray2({"Direction"						})},
+
+	{eStepNoMotor,	'b', "EndStops NONE (DoNotUse)",	"",			RetArray2({									})},
+	{eStepNoMotor,	'b', "EndStops (DoNotUse)",			"q",		RetArray2({"Direction"						})},
+	{eStepNoMotor,	'b', "Set EndStops",					"eeeeeee",	RetArray2({"SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
+
 	{eStepNoMotor,	'c', "Set Currents",		"iij",		RetArray2({"IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepNoMotor,	'd', "Set Position",		"S",		RetArray2({"Position"						})},
 	{eStepNoMotor,	'e', "Set Microsteps",		"m",		RetArray2({"MicroSteps"						})},
@@ -85,6 +91,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepNoMotor,	'g', "Set Trapezoidal 2",	"AV",		RetArray2({"Acceleration", "Max Velocity"	})},
 	{eStepNoMotor,	'g', "Set SixPoint",		"VAVAVAAV",	RetArray2({"vstart", "a1", "v1", "amax", "vmax", "dmax", "d1", "vstop"	})},
+	{eStepNoMotor,	'g', "Set SixPoint Simple",	"VAVAV",	RetArray2({"vstart/vstop", "a1/d1", "v1", "amax/dmax", "vmax"	})},
 	{eStepNoMotor,	'g', "Set Trapezoidal 3",	"AVA",		RetArray2({"amax", "vmax", "dmax"	})},
 
 	{eStepNoMotor,	'h', "Set Ramp Mode",		"R",		RetArray2({"Ramp Mode"						})},
@@ -96,14 +103,20 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepNoMotor,	'n', "Set Accelerations",	"aA",		RetArray2({"Acc/De-celeration type", "Accel. Value"		})},
 	{eStepNoMotor,	'o', "Set Velocities",		"dV",		RetArray2({"Velocity type", "Velocity Value"			})},
 
+	{eStepNoMotor,	'p', "Set Direction",		"l",		RetArray2({"Direction"			})},
+
+	{eStepNoMotor,	'q', "Set GCONF 1",		"bbbbb",		RetArray2({"I_scale_analog", "internal_Rsense", "en_pwm_mode", "enc_commutation", "shaft"					})},
+	{eStepNoMotor,	'q', "Set GCONF 2",		"bbbbbbb",		RetArray2({"diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
+	{eStepNoMotor,	'q', "Set GCONF 3",		"bbbb",			RetArray2({"small_hysteresis", "stop_enable", "direct_mode", "test_mode"																			})},
 
 	//---------------------------------------------------------------------------------------------------------
 	{eStepDirect,	'0', "Do Nothing",			"M",		RetArray2({"Stepper"								})},
+	{eStepDirect,	'2', "Set Register",		"MfL",		RetArray2({"Stepper", "Register", "Value"			})},
 	{eStepDirect,	'a', "ChipEnable",			"Me",		RetArray2({"Stepper", "Chip Abilitation"			})},
 
-	{eStepDirect,	'b', "Set Stops NONE",		"M",		RetArray2({"Stepper", 									})},
-	{eStepNoMotor,	'b', "Set Stops",			"Mq",		RetArray2({"Stepper", "Direction"						})},
-//	{eStepDirect,	'b', "Set Stops",			"Ml",		RetArray2({"Stepper", "Direction"					})},
+	{eStepDirect,	'b', "EndStops NONE (DoNotUse)",	"M",		RetArray2({"Stepper", 								})},
+	{eStepDirect,	'b', "EndStops (DoNotUse)",			"Mq",		RetArray2({"Stepper", "Direction"					})},
+	{eStepDirect,	'b', "Set EndStops",					"Meeeeeee",	RetArray2({"Stepper", "SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
 
 	{eStepDirect,	'c', "Set Currents",		"Miij",		RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepDirect,	'd', "Set Position",		"MS",		RetArray2({"Stepper", "Position"					})},
@@ -112,12 +125,13 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepDirect,	'g', "Set Trapezoidal 2",	"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
 	{eStepDirect,	'g', "Set SixPoint",		"MVAVAVAAV",RetArray2({"Stepper", "vstart", "a1", "v1", "amax", "vmax", "dmax", "d1", "vstop"	})},
+	{eStepDirect,	'g', "Set SixPoint Simple",	"MVAVAV",	RetArray2({"Stepper", "vstart/vstop", "a1/d1", "v1", "amax/dmax", "vmax"	})},
 	{eStepDirect,	'g', "Set Trapezoidal 3",	"MAVA",		RetArray2({"Stepper", "amax", "vmax", "dmax"	})},
 
 	{eStepDirect,	'h', "Set Ramp Mode",		"MR",		RetArray2({"Stepper", "Ramp Mode"					})},
-	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
+	{eStepDirect,	'i', "Set Generic Wait",	"Mt",		RetArray2({"Stepper", "Time"						})},
 
-	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
+	{eStepDirect,	'j', "Wait Stop",			"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
 	{eStepDirect,	'j', "Wait Timer",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
 
@@ -125,10 +139,11 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
 	{eStepDirect,	'n', "Set Accelerations",	"MaA",		RetArray2({"Stepper", "Acc/De-celeration type", "Accel. Value"		})},
 	{eStepDirect,	'o', "Set Velocities",		"MdV",		RetArray2({"Stepper", "Velocity type", "Velocity Value"				})},
+	{eStepDirect,	'p', "Set Direction",		"Ml",		RetArray2({"Stepper", "Direction"			})},
 
-
-
-
+	{eStepDirect,	'q', "Set GCONF 1",		"Mbbbbb",		RetArray2({"Stepper", "I_scale_analog", "internal_Rsense", "en_pwm_mode", "enc_commutation", "shaft"})},
+	{eStepDirect,	'q', "Set GCONF 2",		"Mbbbbbbb",		RetArray2({"Stepper", "diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
+	{eStepDirect,	'q', "Set GCONF 3",		"Mbbbb",			RetArray2({"Stepper", "small_hysteresis", "stop_enable", "direct_mode", "test_mode"																				})},
 
 
 	{eSteppersFSA,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
@@ -169,7 +184,6 @@ static const sSampler_Commands Sampler_Commands[] = {
 };
 
 void sSampler_Check(void) {
-	//Non ci devono essere
 	for (size_t i = 0; i < WXSIZEOF(Sampler_Commands); i++) {
 		const char	ToTest_SubSys	= Sampler_Commands[i].SubSys;
 		const char	ToTest_Cmd		= Sampler_Commands[i].cmd;
@@ -189,6 +203,16 @@ void sSampler_Check(void) {
 				wxMessageBox(wxString::Format("Duplicated command ['%c' %u] in 'sSampler_Commands'", ToTest_Cmd, ToTest_PatLen), "Error", wxOK | wxICON_INFORMATION, NULL);
 			}
 		}
+	}
+	//Check Unused SamplerParams
+	for (size_t p = 0; p < WXSIZEOF(SamplerParams); p++) {
+		bool Chk = false;
+		for (size_t i = 0; i < WXSIZEOF(Sampler_Commands); i++) {
+			if (std::strchr(Sampler_Commands[i].ParamPattern, SamplerParams[p].ParId) != nullptr)
+				Chk = true;
+		}
+		if(Chk==false)
+			wxMessageBox(wxString::Format("Parameter '%c' not used!", SamplerParams[p].ParId), "Warning", wxOK | wxICON_INFORMATION, NULL);
 	}
 }
 unsigned int Commands_Size(void) { return WXSIZEOF(Sampler_Commands); };

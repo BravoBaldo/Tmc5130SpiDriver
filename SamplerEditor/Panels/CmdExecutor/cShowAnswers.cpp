@@ -83,18 +83,23 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 
 #ifdef SHOW_SWMODE
 	S = wxEmptyString;
+	S += wxString::Format("swap_lr..........:%d\n\n", (SA.m_SWMODE & 0x010) ? 1 : 0);
+
 	S += wxString::Format("stop_l_enable....:%d\n", (SA.m_SWMODE & 0x001)?1:0 );
+	S += wxString::Format("pol_stop_l.......:%d\n\n", (SA.m_SWMODE & 0x004) ? 1 : 0);
+
 	S += wxString::Format("stop_r_enable....:%d\n", (SA.m_SWMODE & 0x002)?1:0 );
-	S += wxString::Format("pol_stop_l.......:%d\n", (SA.m_SWMODE & 0x004)?1:0 );
-	S += wxString::Format("pol_stop_r.......:%d\n", (SA.m_SWMODE & 0x008)?1:0 );
-	S += wxString::Format("swap_lr..........:%d\n", (SA.m_SWMODE & 0x010)?1:0 );
-	S += wxString::Format("latch_l_active...:%d\n", (SA.m_SWMODE & 0x020)?1:0 );
+	S += wxString::Format("pol_stop_r.......:%d\n\n", (SA.m_SWMODE & 0x008)?1:0 );
+
+	S += wxString::Format("sg_stop..........:%d\n", (SA.m_SWMODE & 0x400) ? 1 : 0);
+	S += wxString::Format("en_softstop......:%d\n", (SA.m_SWMODE & 0x800) ? 1 : 0);
+#if !defined(SHOW_SWMODE_HIDELATCH)
+	S += wxString::Format("\nlatch_l_active...:%d\n", (SA.m_SWMODE & 0x020)?1:0 );
 	S += wxString::Format("latch_l_inactive.:%d\n", (SA.m_SWMODE & 0x040)?1:0 );
 	S += wxString::Format("latch_r_active...:%d\n", (SA.m_SWMODE & 0x080)?1:0 );
 	S += wxString::Format("latch_r_inactive.:%d\n", (SA.m_SWMODE & 0x100)?1:0 );
 	S += wxString::Format("en_latch_encoder.:%d\n", (SA.m_SWMODE & 0x200)?1:0 );
-	S += wxString::Format("sg_stop..........:%d\n", (SA.m_SWMODE & 0x400)?1:0 );
-	S += wxString::Format("en_softstop......:%d\n", (SA.m_SWMODE & 0x800)?1:0 );
+#endif
 	grid->SetCellValue(R, eStpShowSWMODE, S);
 #endif
 
@@ -233,26 +238,6 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 	::wxYield();
 }
 
-void cAnswersShow::Log_Stepper_Fill(const StepperAnswer& SA) {
-	wxGrid* grid = m_Grids[eGrid_Motors];
-	if (grid == NULL)	return;
-	unsigned int	R = 0;
-	R = SA.m_Motor;
-
-	grid->SetCellValue(R, eStpShowTime,			wxString::Format("%02X",	SA.m_spiStatus));
-	grid->SetCellValue(R, eStpShowSpiStatus,	wxString::Format("%02X",	SA.m_spiStatus));
-	grid->SetCellValue(R, eStpShowIoin8,		wxString::Format("%02X",	SA.m_Ioin8));
-	grid->SetCellValue(R, eStpShowVel,			wxString::Format("%ld",		SA.m_Velocity));
-	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%ld",		SA.m_Position));	grid->SetCellBackgroundColour(R, eStpShowPos, *wxGREEN);
-//	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld",		SA.m_xTarget));		grid->SetCellBackgroundColour(R, eStpShowTarget, *wxRED);
-
-	//eStpShowCurrents
-	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
-
-
-	::wxYield();
-}
-
 cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_NB_DEFAULT_STYLE) {
 	wxFont HeadFont;
 	HeadFont.SetNativeFontInfo("0;-13;0;0;0;700;0;0;0;0;3;2;1;34;Arial");
@@ -260,7 +245,6 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 		HeadFont = wxFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false);
 
 	wxFont fixedFont(wxFontInfo(8).Family(wxFONTFAMILY_TELETYPE).Bold());
-
 
 #if !defined(USE_MAIN_LOG)
 	m_txt_Log = new wxTextCtrl(this, wxID_ANY, _("Hello\n"), wxPoint(100, 6), wxSize(50, -1), wxTE_MULTILINE);
