@@ -50,13 +50,13 @@ class Next_DB : public wxObject {
 	otl_stream* GP_Open(const wxString& Sql_Select, const wxString& Sql_From, const wxString& Sql_Where, const wxString& Sql_OrderBy, long* Count);
 	bool			GP_Close(otl_stream* i);
 	void			Open(void);
-	void			Open(wxString ConnectionString);
+	void			Open(const wxString& ConnectionString);
 	void			Close(void);
 	bool			IsClosed(void);
 
 	static wxDateTime	wxDate2Dt(const otl_datetime& dt);
 	static void			ErrorShow(otl_exception& p);
-	static wxString		SQLStrPrepare(wxString str);
+	static wxString		SQLStrPrepare(const wxString & str);
 	static wxString		SQLStrPrepare(float f);
 	static otl_datetime	Dt2wxDate2(const wxDateTime& wxD);
 	static void			Dt2wxDate(otl_datetime& dt, wxDateTime& wxD);

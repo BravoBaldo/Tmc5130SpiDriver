@@ -417,6 +417,8 @@ TMC5130::TMC5130(SPIClass &spiRef, uint8_t csPin, uint8_t cePin, SPI_ENABLER_CB 
   spi = &spiRef;
   spiFreq = spiHz;
   writeReg(GSTAT, 0x07);  // Reset Error flag writing 1 in GSTAT
+  Default_sw_mode	= {.bytes=0};
+  Default_Chopconf	= {.bytes=0};
 }
 
 // ====================================================
@@ -449,25 +451,25 @@ void TMC5130::setStopVelocity(uint32_t v)  {
 }
 
 void TMC5130::setFirstAcceleration(uint16_t a) {  //[μsteps / ta²]  0...65535=0xFFFF
-  assert(a>=0 && a<=0xFFFF);
+  //assert(a>=0 && a<=0xFFFF);
   writeReg(A1, a);
   ShadowRegs.A1 = a;
 }
 
 void TMC5130::setSecondAcceleration (uint16_t a) {  //[μsteps / ta²]  0...65535=0xFFFF
-  assert(a>=0 && a<=0xFFFFF);
+  //assert(a>=0 && a<=0xFFFFF);
   writeReg(AMAX, a);
   ShadowRegs.AMAX = a;
 }
 
 void TMC5130::setFirstDeceleration(uint16_t d) {  //[μsteps / ta²]  0...65535=0xFFFF
-  assert(d>=0 && d<=0xFFFF);
+  //assert(d>=0 && d<=0xFFFF);
   writeReg(DMAX, d);
   ShadowRegs.DMAX = d;
 }
 
 void TMC5130::setSecondDeceleration(uint16_t d) { //[μsteps / ta²]  0...65535=0xFFFF
-  assert(d>=1 && d<=0xFFFF);	//Attention: Do not set 0 in positioning mode, even if V1=0!
+  //assert(d>=1 && d<=0xFFFF);	//Attention: Do not set 0 in positioning mode, even if V1=0!
   if(d==0) d=1;
   writeReg(D1, d);
   ShadowRegs.D1 = d;

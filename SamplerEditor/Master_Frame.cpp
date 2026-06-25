@@ -51,10 +51,12 @@ enum {
 	ID_TXT_LOG,
 #endif
 	ID_MNU_POLL_MOTORS,
+	ID_MNU_POLL_CURRENT,
+	ID_MNU_POLL_NEXT,
 };
 
 
-BEGIN_EVENT_TABLE(MyFrame, wxFrame)
+BEGIN_EVENT_TABLE(SamplerFrame, wxFrame)
 	EVT_MOUSE_EVENTS	(				OnMouseEvent )
 //	EVT_RIGHT_DOWN		(				OnMouseEvent )
 //	EVT_RIGHT_DOWN		(				OnClearLog )
@@ -83,10 +85,12 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP,	OnMenu)
 	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM,	OnMenu)
 	EVT_MENU			(ID_MNU_POLL_MOTORS,		OnMenu)
-	
+	EVT_MENU			(ID_MNU_POLL_CURRENT,		OnMenu)
+	EVT_MENU			(ID_MNU_POLL_NEXT,			OnMenu)
+
 
 	EVT_TIMER			( ID_TMR_TIMER,	OnTimer)
-	EVT_BUTTON			( -1, MyFrame::OnBtnCommands )
+	EVT_BUTTON			( -1, SamplerFrame::OnBtnCommands )
 //	EVT_PAINT			(				OnPaint )
 
 	EVT_LIST_ITEM_SELECTED		(ID_LST_MASTER, OnListEvent)
@@ -101,13 +105,13 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_LIST_ITEM_DESELECTED	( ID_LST_PRGDETAIL,	OnListEvent )
 END_EVENT_TABLE()
 
-void MyFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
+void SamplerFrame::OnClearLog(wxMouseEvent& /*Evt*/) {
 	#if defined(USE_MAIN_LOG)
 		m_txt_Log->SetValue("");
 	#endif
 }
 
-void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
+void SamplerFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	wxButton* btn = static_cast<wxButton*>(event.GetEventObject());
 	int EvtId = btn->GetId();
 	int	id_b = event.GetId();
@@ -148,7 +152,7 @@ void MyFrame::OnBtnCommands( wxCommandEvent&	event ) {
 	}
 }
 
-MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, wxLocale* locale)
+SamplerFrame::SamplerFrame(const wxString& title, const wxPoint& pos, const wxSize& size, wxLocale* locale)
 	: wxFrame((wxFrame *)NULL, -1, title, pos, size)
 {
 	SetBackgroundColour( wxColour(236, 233, 216) );
@@ -184,7 +188,9 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	wxMenu *menuTools	= new wxMenu;
 	menuTools->Append( ID_MNU_Perspect,				_("Layout..."), menuPerspect );
 #endif
-	menuTools->AppendCheckItem(ID_MNU_POLL_MOTORS, "&Motors Polling\tF10", "Enable/Disable Polling");
+	menuTools->AppendCheckItem(ID_MNU_POLL_MOTORS,	"&Motors Polling\tF10",				"Enable/Disable Polling");
+	menuTools->Append(ID_MNU_POLL_NEXT,	"&Poll Next Motor\tShift-F10",		"Enable/Disable Polling");
+	menuTools->AppendCheckItem(ID_MNU_POLL_CURRENT, "&Poll Current Motor\tCtrl-F10",	"Enable/Disable Polling");
 
 	menuBar->Append(menuTools, _("&Tools"));
 
@@ -261,7 +267,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 
 	m_lstPrgDetail = new cDetailListCtrl(this, ID_LST_PRGDETAIL, wxDefaultPosition, wxSize(48, 50), wxLC_REPORT | wxLC_SINGLE_SEL | wxLC_HRULES | wxLC_VRULES);
 	m_lstPrgDetail->SetToolTip(_("List Of Commands"));
-	m_lstPrgDetail->Bind(wxEVT_MOTION, &MyFrame::OnMouseMotion, this);
+	m_lstPrgDetail->Bind(wxEVT_MOTION, &SamplerFrame::OnMouseMotion, this);
 
 
 	m_CmdEditor = new CmdEditorCtrl(this, wxID_ANY);
@@ -284,7 +290,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 
 }
 
-void MyFrame::SetLayouts ( void ) {
+void SamplerFrame::SetLayouts ( void ) {
 #ifdef USE_AUI
 	m_mgr.AddPane(m_lstPrgMaster,	wxAuiPaneInfo().Name(wxT("m_lstPrgMaster"))	.Caption(_("DBMaster"))		.Left()			.PaneBorder(false));
 	m_mgr.AddPane(m_lstPrgDetail,	wxAuiPaneInfo().Name(wxT("m_lstPrgDetail"))	.Caption(_("Detail"))		.CenterPane()	.PaneBorder(false));
@@ -317,7 +323,7 @@ void MyFrame::SetLayouts ( void ) {
 #endif
 }
 
-MyFrame::~MyFrame() {
+SamplerFrame::~SamplerFrame() {
 	if(m_PanExec)	m_PanExec->SetPoolMotors(false);
 	wxDELETE(m_timer);
 	wxMilliSleep(100);	//Wait for the current command to finish, if any
@@ -327,7 +333,7 @@ MyFrame::~MyFrame() {
 #endif
 }
 
-void MyFrame::OnMenu( wxCommandEvent& event ) {
+void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 	switch( event.GetId() ){
 		case ID_MNU_Quit:
 			Close(true);
@@ -455,7 +461,7 @@ void MyFrame::OnMenu( wxCommandEvent& event ) {
 						case ID_MNU_Perspect_Fact:
 							{
 								wxString Persp("layout3|name=m_lstPrgMaster;caption=DBMaster;state=2098684;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=421;besth=204;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;floatw_cli=-1;floath_cli=-1|name=m_lstPrgDetail;caption=Detail;state=2098684;dir=5;layer=0;row=0;pos=0;prop=141395;bestw=404;besth=204;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;floatw_cli=-1;floath_cli=-1|name=m_CmdEditor;caption=m_CmdEditor;state=2098684;dir=3;layer=0;row=0;pos=0;prop=178300;bestw=20;besth=20;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;floatw_cli=-1;floath_cli=-1|name=m_PanEditor;caption=Editor;state=2098684;dir=2;layer=0;row=0;pos=0;prop=100000;bestw=110;besth=145;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;floatw_cli=-1;floath_cli=-1|name=m_txt_Log;caption=m_txt_Log;state=256;dir=5;layer=0;row=0;pos=1;prop=58605;bestw=158;besth=128;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;floatw_cli=-1;floath_cli=-1|name=m_PanExec;caption=Execution;state=2098684;dir=3;layer=0;row=0;pos=1;prop=21700;bestw=96;besth=93;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=1414;floaty=870;floatw=-1;floath=-1;floatw_cli=96;floath_cli=93|dock_size(4,0,0)=294|dock_size(5,0,0)=294|dock_size(3,0,0)=259|dock_size(2,0,0)=179|");
-								if(Persp.Len()>0)	this->Perspective_Set( Persp );
+								this->Perspective_Set( Persp );
 							}
 							break;
 					case ID_MNU_Perspect_ToClip:
@@ -484,16 +490,19 @@ void MyFrame::OnMenu( wxCommandEvent& event ) {
 			}
 			break;
 #endif
-		case ID_MNU_POLL_MOTORS:
-			m_PanExec->SetPoolMotors(event.IsChecked());
+		case ID_MNU_POLL_MOTORS:	m_PanExec->SetPoolMotors(event.IsChecked()); break;
+		case ID_MNU_POLL_NEXT:		
+			m_PanExec->IncPoolIdx();
+		case ID_MNU_POLL_CURRENT:	m_PanExec->SetPoolMotors(true, false); break;
 			break;
+
 		default:
 			wxMessageBox( wxString( _("Undefined event: ") ) << event.GetId(), m_FrameTitle, wxOK | wxICON_INFORMATION, this);
 			break;
 	}
 }
 
-void MyFrame::OnMouseEvent(wxMouseEvent& event) {
+void SamplerFrame::OnMouseEvent(wxMouseEvent& event) {
 	wxPoint		pt(event.GetPosition() );
 	/*
 	if( m_menuPopUp!=NULL && event.Button(wxMOUSE_BTN_RIGHT) ){
@@ -513,18 +522,18 @@ void MyFrame::OnMouseEvent(wxMouseEvent& event) {
 	SetStatusText( Str );
 }
 
-void MyFrame::OnTimer(wxTimerEvent& WXUNUSED(event) ) {
+void SamplerFrame::OnTimer(wxTimerEvent& WXUNUSED(event) ) {
 	SetStatusText( wxDateTime::UNow().Format(_T("%Y-%m-%d %H:%M:%S")), 2 );
 }
 
-void MyFrame::OnPaint(wxPaintEvent& WXUNUSED(event) ) {
+void SamplerFrame::OnPaint(wxPaintEvent& WXUNUSED(event) ) {
 	if( m_bitmap.IsOk() ){
 		wxPaintDC dc( this );
 		dc.DrawBitmap( m_bitmap, 0, 0, true /* use mask */ );
 	}
 }
 
-void MyFrame::OnListEvent(wxListEvent& evt) {
+void SamplerFrame::OnListEvent(wxListEvent& evt) {
 	int			Id = evt.GetId();
 	wxEventType	EvTyp = evt.GetEventType();
 	switch (Id) {

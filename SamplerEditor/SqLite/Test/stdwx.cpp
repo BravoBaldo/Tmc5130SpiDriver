@@ -15,7 +15,7 @@ void LogMe( const wxString & ToLog, bool PrependTime ) {
 	}
 }
 
-wxString ShowBuffer ( byte* Buffer, unsigned int LenBuf ) {
+wxString ShowBuffer ( const byte* Buffer, unsigned int LenBuf ) {
 	wxString TB = "", TB_H = "", TB_A = "";
 	for(unsigned int i = 0; i < LenBuf; i++) {
 		if(i != 0 && (i % 16) == 0) {

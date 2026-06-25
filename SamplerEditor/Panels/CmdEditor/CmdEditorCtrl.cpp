@@ -41,13 +41,13 @@ sCommand	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
 }
 
 wxString CmdEditorCtrl::DBData2String(sCommand& vStep) {
-    wxString Result = wxEmptyString;    // ToDo
+	wxString Result = wxEmptyString;    // ToDo
 
-    Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
-    for (size_t i = 0; i < vStep.m_PatLen; i++) {
-        Result += wxString::Format(",%ld", vStep.m_Par[i]);
-    }
-    return Result;
+	Result += wxString::Format("c%c,%c", vStep.m_SubSystem, vStep.m_Cmd);
+	for (size_t i = 0; i < vStep.m_PatLen; i++) {
+		Result += wxString::Format(",%ld", vStep.m_Par[i]);
+	}
+	return Result;
 }
 
 wxString CmdEditorCtrl::UI2String(void) {

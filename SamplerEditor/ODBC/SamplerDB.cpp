@@ -75,7 +75,7 @@ otl_stream* Next_DB::GP_Open(const wxString& Sql_Select, const wxString& Sql_Fro
 bool Next_DB::GP_Close(otl_stream* i) {
 	if (i) {
 		i->close();
-		wxDELETE(i);
+		delete i; //wxDELETE(i);	//See Cppcheck
 	}
 	return true;
 }
@@ -95,13 +95,12 @@ void Next_DB::Open(void) {
 		exit(-1);
 	}
 }
-void Next_DB::Open(wxString ConnectionString) {
+void Next_DB::Open(const wxString& ConnectionString) {
 	m_ConnectionString = ConnectionString;
 	Open();
 }
 
-Next_DB::Next_DB(const wxString& ConnectionString) {
-	m_ConnectionString = ConnectionString;
+Next_DB::Next_DB(const wxString& ConnectionString) : m_ConnectionString(ConnectionString) {
 	otl_connect::otl_initialize(); // initialize ODBC environment
 	Open();
 }
@@ -193,7 +192,7 @@ void Next_DB::Dt2wxDate(otl_datetime& dt, wxDateTime& wxD) {
 }
 
 //Handle "'" in SQL
-wxString Next_DB::SQLStrPrepare(wxString str) {
+wxString Next_DB::SQLStrPrepare(const wxString& str) {
 	wxString	SqlStr = str;
 
 	SqlStr.Replace("'", "''", true);

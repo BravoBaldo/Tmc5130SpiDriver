@@ -67,7 +67,18 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 												));
 
 
-
+	wxString S;
+	S = wxEmptyString;	//(SPI_MODE=1, SD_MODE=0)
+	S += wxString::Format("REFL_step......:%d\n", (SA.m_spiStatus & 0x01) ? 1 : 0);
+	S += wxString::Format("REFR_dir.......:%d\n", (SA.m_spiStatus & 0x02) ? 1 : 0);
+	S += wxString::Format("ENCB_dcen_cfg4.:%d\n", (SA.m_spiStatus & 0x04) ? 1 : 0);
+	S += wxString::Format("ENCA_dcin_cfg5.:%d\n", (SA.m_spiStatus & 0x08) ? 1 : 0);
+	S += wxString::Format("DRV_ENN_cfg6...:%d\n", (SA.m_spiStatus & 0x10) ? 1 : 0);
+	S += wxString::Format("ENC_N_dco......:%d\n", (SA.m_spiStatus & 0x20) ? 1 : 0);
+	S += wxString::Format("SD_MODE........:%d\n", (SA.m_spiStatus & 0x40) ? 1 : 0);
+	S += wxString::Format("SWCOMP_IN......:%d\n", (SA.m_spiStatus & 0x80) ? 1 : 0);
+	grid->SetCellValue(R, eStpShowIoin8, S);
+/*
 	grid->SetCellValue(R, eStpShowIoin8, wxString::Format("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"	//"%s|%s|%s|%s|%s|%s|%s|%s"
 		, (SA.m_spiStatus & 0x01) ? "REFL_STEP"			: "   "
 		, (SA.m_spiStatus & 0x02) ? "REFR_DIR"			: "   "
@@ -78,27 +89,25 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 		, (SA.m_spiStatus & 0x40) ? "SD_MODE"			: "   "
 		, (SA.m_spiStatus & 0x80) ? "SWCOMP_IN"			: "   "
 	));
-
-	wxString S;
+*/
 
 #ifdef SHOW_SWMODE
 	S = wxEmptyString;
-	S += wxString::Format("swap_lr..........:%d\n\n", (SA.m_SWMODE & 0x010) ? 1 : 0);
+	S += wxString::Format("swap_lr..........:%d\n\n",	(SA.m_SWMODE & 0x010) ? 1 : 0);
+	S += wxString::Format("stop_l_enable....:%d\n",		(SA.m_SWMODE & 0x001)?1:0 );
+	S += wxString::Format("pol_stop_l.......:%d\n\n",	(SA.m_SWMODE & 0x004) ? 1 : 0);
 
-	S += wxString::Format("stop_l_enable....:%d\n", (SA.m_SWMODE & 0x001)?1:0 );
-	S += wxString::Format("pol_stop_l.......:%d\n\n", (SA.m_SWMODE & 0x004) ? 1 : 0);
+	S += wxString::Format("stop_r_enable....:%d\n",		(SA.m_SWMODE & 0x002)?1:0 );
+	S += wxString::Format("pol_stop_r.......:%d\n\n",	(SA.m_SWMODE & 0x008)?1:0 );
 
-	S += wxString::Format("stop_r_enable....:%d\n", (SA.m_SWMODE & 0x002)?1:0 );
-	S += wxString::Format("pol_stop_r.......:%d\n\n", (SA.m_SWMODE & 0x008)?1:0 );
-
-	S += wxString::Format("sg_stop..........:%d\n", (SA.m_SWMODE & 0x400) ? 1 : 0);
-	S += wxString::Format("en_softstop......:%d\n", (SA.m_SWMODE & 0x800) ? 1 : 0);
+	S += wxString::Format("sg_stop..........:%d\n",		(SA.m_SWMODE & 0x400) ? 1 : 0);
+	S += wxString::Format("en_softstop......:%d\n",		(SA.m_SWMODE & 0x800) ? 1 : 0);
 #if !defined(SHOW_SWMODE_HIDELATCH)
-	S += wxString::Format("\nlatch_l_active...:%d\n", (SA.m_SWMODE & 0x020)?1:0 );
-	S += wxString::Format("latch_l_inactive.:%d\n", (SA.m_SWMODE & 0x040)?1:0 );
-	S += wxString::Format("latch_r_active...:%d\n", (SA.m_SWMODE & 0x080)?1:0 );
-	S += wxString::Format("latch_r_inactive.:%d\n", (SA.m_SWMODE & 0x100)?1:0 );
-	S += wxString::Format("en_latch_encoder.:%d\n", (SA.m_SWMODE & 0x200)?1:0 );
+	S += wxString::Format("\nlatch_l_active...:%d\n",	(SA.m_SWMODE & 0x020)?1:0 );
+	S += wxString::Format("latch_l_inactive.:%d\n",		(SA.m_SWMODE & 0x040)?1:0 );
+	S += wxString::Format("latch_r_active...:%d\n",		(SA.m_SWMODE & 0x080)?1:0 );
+	S += wxString::Format("latch_r_inactive.:%d\n",		(SA.m_SWMODE & 0x100)?1:0 );
+	S += wxString::Format("en_latch_encoder.:%d\n",		(SA.m_SWMODE & 0x200)?1:0 );
 #endif
 	grid->SetCellValue(R, eStpShowSWMODE, S);
 #endif

@@ -340,10 +340,12 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 		LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
 	}
 
-	static ParamType Mot = 2;
-	Mot++; if (Mot > 2) Mot = 0;
-	sCommand AskMotor = { eTypCommand, eStepDirect, '0', 1, "M", {Mot}, 0, 0, 0 };
 	if (isReady && m_PoolMotors && !m_Running) {
+		if (m_RotatePool) {
+			IncPoolIdx();
+		}
+		sCommand AskMotor = { eTypCommand, eStepDirect, '0', 1, "M", {m_PoolIdx}, 0, 0, 0 };
+
 		m_Running = true;
 		ExecuteStep(AskMotor);
 		m_Running = false;

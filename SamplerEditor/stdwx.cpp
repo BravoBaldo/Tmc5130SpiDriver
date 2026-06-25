@@ -16,17 +16,26 @@ void LogMe( const wxString & ToLog, bool PrependTime ) {
 	}
 }
 
-wxString ShowBuffer ( byte* Buffer, unsigned int LenBuf ) {
-	wxString TB = "", TB_H = "", TB_A = "";
+wxString ShowBuffer ( const byte* Buffer, unsigned int LenBuf ) {
+	if (!Buffer || LenBuf == 0) return wxEmptyString;
+	wxString TB;	TB.reserve((LenBuf / 16 + 1) * 75);
+	wxString TB_H;	TB_H.reserve(50);
+	wxString TB_A;	TB_A.reserve(20);
 	for(unsigned int i = 0; i < LenBuf; i++) {
 		if(i != 0 && (i % 16) == 0) {
 			TB << TB_H << " " << TB_A << "\n";
-			TB_H = "";
-			TB_A = "";
+			TB_H.clear();
+			TB_A.clear();
 		}
-		byte c = reinterpret_cast<const byte*>(Buffer)[i];	//byte c = ((byte*)Buffer)[i];
+		byte c = Buffer[i];
 		TB_H << wxString::Format ( "%02X ", c );
 		TB_A << wxString::Format ( "%c", (wxIsprint ( c ) ? c : '.') );
+	}
+	if (LenBuf % 16 != 0) {
+		unsigned int missing = 16 - (LenBuf % 16);
+		for (unsigned int j = 0; j < missing; j++) {
+			TB_H << "   "; // Restore visual alignement of ASCII chars
+		}
 	}
 	TB << TB_H << " " << TB_A << "\n";
 	return TB;

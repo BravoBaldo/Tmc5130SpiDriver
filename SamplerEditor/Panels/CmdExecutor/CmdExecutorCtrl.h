@@ -17,7 +17,10 @@ class CmdExecutorCtrl : public wxPanel {
 	cHIDAPI		m_HidExec;
 	sVID_PID	m_HidInfo;
 	bool		m_Running		= false;
+
+	ParamType	m_PoolIdx		= 0;
 	bool		m_PoolMotors	= false;
+	bool		m_RotatePool	= true;
 	//....................................
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
 	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
@@ -55,5 +58,9 @@ public:
 	bool		ExecuteSteps(long from, long to);
 	bool		ExecuteSteps(uint16_t	m_MasterId);
 	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
-	void		SetPoolMotors(bool s) { m_PoolMotors = s; }
+	void		SetPoolMotors	(bool s, bool r = true) { m_PoolMotors = s; m_RotatePool = r; }
+	void		IncPoolIdx		(void) { 
+		m_PoolIdx = (m_PoolIdx + 1) % 3; 
+	}
+		
 };

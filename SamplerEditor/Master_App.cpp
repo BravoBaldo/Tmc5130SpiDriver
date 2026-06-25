@@ -161,7 +161,7 @@ bool MyApp::OnInit () {
 	//wxFileSystem::AddHandler(new wxMemoryFSHandler);	// Init MemoryFileSystem
 
 
-	MyFrame *frame = new MyFrame (
+	SamplerFrame*frame = new SamplerFrame(
 		PRG_LONG_NAME,
 		wxPoint ( 50, 50 ),
 		wxSize ( 1600, 1000 ),

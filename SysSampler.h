@@ -19,8 +19,8 @@ typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError }eCmdAnswer;
     X(eUnused,       'U', "Unused")
 
 #define STEPPERS_LIST \
-    X(eStep_UpDwn,	 6,  7, "Motor A: Up/Dn") \
-    X(eStep_LR,		 4,  5, "Motor B: Left/Right") \
+    X(eStep_UpDwn,	 6,  7, "Motor A: Left/Right") \
+    X(eStep_LR,		 4,  5, "Motor B: Up/Dn") \
     X(eStep_Syringe, 2,  3, "Motor C: Syringe/Diluter") \
     X(eStep_Deposit,12, 13, "Motor D: Depositor") \
     X(eStep_Needle,	10, 11, "Motor E") \
@@ -206,30 +206,30 @@ typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 	byte		m_MsgType	= eTypAnswStepDir;	//1
 	eCmdAnswer	m_Result	= eCmdOk;
 
-	uint8_t		m_Motor;
+	uint8_t		m_Motor		= 0;
 	
 	uint16_t	m_Remaining	= 0;
-	uint8_t		m_spiStatus;
-	uint8_t		m_Ioin8;
-	int32_t  	m_Position;
-	int32_t		m_xTarget;
-	uint16_t	m_Currents;		//irun, ihold, holdDelay;
+	uint8_t		m_spiStatus	= 0;
+	uint8_t		m_Ioin8		= 0;
+	int32_t		m_Position	= 0;
+	int32_t		m_xTarget	= 0;
+	uint16_t	m_Currents	= 0;		//irun, ihold, holdDelay;
 #if defined(X_SHOW_CHOPCONF)
-	uint32_t	m_CHOPCONF;		//Chopconf		getMicrosteps
+	uint32_t	m_CHOPCONF	= 0;		//Chopconf		getMicrosteps
 #endif
-	uint32_t	m_DRV_STATUS;	//DrvStatus  getDrvStatus
-	uint32_t	m_MSCURACT;
+	uint32_t	m_DRV_STATUS= 0;	//DrvStatus  getDrvStatus
+	uint32_t	m_MSCURACT	= 0;
 	
-	uint16_t	m_A1;		//16 bits
-	uint16_t	m_AMAX;		//16 bits
-	uint16_t	m_DMAX;		//16 bits
-	uint16_t	m_D1;		//16 bits
+	uint16_t	m_A1		= 0;		//16 bits
+	uint16_t	m_AMAX		= 0;		//16 bits
+	uint16_t	m_DMAX		= 0;		//16 bits
+	uint16_t	m_D1		= 0;		//16 bits
 	
-	uint16_t	m_VSTART;	//18 bits limited to 16
-	uint16_t	m_V1;		//20 bits limited to 16
-	uint16_t	m_VMAX;		//23 bits limited to 16
-	uint16_t	m_VSTOP;	//18 bits limited to 16
-	 int16_t	m_VACTUAL;	//see m_Velocity  23 bits
+	uint16_t	m_VSTART	= 0;	//18 bits limited to 16
+	uint16_t	m_V1		= 0;		//20 bits limited to 16
+	uint16_t	m_VMAX		= 0;		//23 bits limited to 16
+	uint16_t	m_VSTOP		= 0;	//18 bits limited to 16
+	 int16_t	m_VACTUAL	= 0;	//see m_Velocity  23 bits
 #if defined(SHOW_GCONF)
 	uint16_t	m_GCONF		= 0;	//18 bits !!! missing direct_mode and test_mode
 #endif

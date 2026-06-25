@@ -24,15 +24,15 @@
 #endif
 //*****************************************
 
-class MyFrame: public wxFrame {
+class SamplerFrame: public wxFrame {
 public:
-    MyFrame		(	const wxString&	title,
+	SamplerFrame		(	const wxString&	title,
 					const wxPoint&	pos,
 					const wxSize&	size,
 						  wxLocale*	locale
 
 				);
-    ~MyFrame();
+    ~SamplerFrame();
 
 private:
 	void OnMouseEvent	( wxMouseEvent&		Evt );

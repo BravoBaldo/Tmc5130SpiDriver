@@ -856,8 +856,8 @@ private:
   bool    Calibrated = true;//false; ToDo set to false
 
   //Default Settings
-  SwMode    Default_sw_mode;
-  Chopconf   Default_Chopconf;
+  SwMode	Default_sw_mode;
+  Chopconf	Default_Chopconf;
   //uint8_t Default_mres;
   int32_t MaxSteps        = 0;  //Max number of Full Steps. From 0... to
   uint32_t goHomeVelocity = 100;
@@ -907,21 +907,21 @@ private:
   }FSA_Status;
 
 volatile  struct Fsa {  //Finite State Machine for each Motors
-    FSA_Status      Status;       //Finite State Automata
-    uint16_t        SecondA;      //AMAX
-    uint32_t        StartV;       //VSTART
-    uint32_t        MaxVelocity;  //VMAX
-    uint32_t        StopV;        //VSTOP
-    uint16_t        FirstA;       //A1
-    uint16_t        SecondD;      //D1
-    uint16_t        FirstD;       //DMAX
-    uint32_t        FirstV;       //V1
-    uint8_t         Curr_irun;      //IHOLD_IRUN
-    uint8_t         Curr_ihold;     //IHOLD_IRUN
-    uint8_t         Curr_holdDelay; //IHOLD_IRUN
-    int32_t         xTarget;        ////XTARGET
-    ulong           LastCallTime = millis();
-    ulong           MaxTime      = 0;
+    FSA_Status      Status			= Nothing;       //Finite State Automata
+    uint16_t        SecondA			=  0;	//AMAX
+    uint32_t        StartV			= 10;	//VSTART
+    uint32_t        MaxVelocity		= 10;	//VMAX
+    uint32_t        StopV			= 10;	//VSTOP
+    uint16_t        FirstA			= 10;	//A1
+    uint16_t        SecondD			= 10;	//D1
+    uint16_t        FirstD			= 10;	//DMAX
+    uint32_t        FirstV			= 10;	//V1
+    uint8_t         Curr_irun		= 0;	//IHOLD_IRUN
+    uint8_t         Curr_ihold		= 0;	//IHOLD_IRUN
+    uint8_t         Curr_holdDelay	= 0;	//IHOLD_IRUN
+    int32_t         xTarget			= 0;	//XTARGET
+    ulong           LastCallTime	= millis();
+    ulong           MaxTime			= 0;
   }FSA;
 
 public:

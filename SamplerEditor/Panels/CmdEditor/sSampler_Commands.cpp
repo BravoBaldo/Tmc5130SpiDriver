@@ -29,10 +29,10 @@ const sSubSystem* SubSystem_GetByType(eSubSysAcro Type) {
 static const sParams SamplerParams[]{
 	//ParId	ParType	ParName			MinValue	MaxValue			ToolTip						ParValues;
 	{ 'a', eChoice,	"Accelerations",0,				3,				"(Ac)(De)celerations"		, RetArray2({"FirstAcceleration (A1)", "SecondAcceleration (AMAX)", "FirstDeceleration (DMAX)", "SecondDeceleration (D1)"})								},
-	{ 'b', eChoice,	"Boolean",		0,				1,				"True or False"				, RetArray2({"False", "True"})								},
+	{ 'b', eChoice,	"Boolean",		0,				1,				"True or False"				, RetArray2({"False", "TRUE"})								},
 	{ 'c', eNumber,	"Char",			(-128),			127																				},
 	{ 'd', eChoice,	"Velocities",	0,				3,				"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
-	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "Enable"})							},
+	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "ENABLE"})							},
 	{ 'f', eNumber,	"Register",		0,			  115,				"TMC5130 Register"																		},
 	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({
 																												#define X(eStripId, eRunAlways, description) description,
@@ -41,7 +41,7 @@ static const sParams SamplerParams[]{
 																											})},
 	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
 	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
-	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "Right"})								},
+	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "RIGHT"})								},
 	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200=1/256", "1=25600=1/128", "2=12800=1/64", "3=6400=1/32", "4=3200=1/16", "5=1600=1/8", "6=800=1/4", "7=400=1/2", "8=200=1/1"})},
 	{ 'n', eNumber,	"ShowedNumber",	0,				6,				"Show Number"},
 	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
@@ -82,7 +82,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepNoMotor,	'b', "EndStops NONE (DoNotUse)",	"",			RetArray2({									})},
 	{eStepNoMotor,	'b', "EndStops (DoNotUse)",			"q",		RetArray2({"Direction"						})},
-	{eStepNoMotor,	'b', "Set EndStops",					"eeeeeee",	RetArray2({"SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
+	{eStepNoMotor,	'b', "Set EndStops",				"eeeeeee",	RetArray2({"SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
 
 	{eStepNoMotor,	'c', "Set Currents",		"iij",		RetArray2({"IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepNoMotor,	'd', "Set Position",		"S",		RetArray2({"Position"						})},
@@ -95,6 +95,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepNoMotor,	'g', "Set Trapezoidal 3",	"AVA",		RetArray2({"amax", "vmax", "dmax"	})},
 
 	{eStepNoMotor,	'h', "Set Ramp Mode",		"R",		RetArray2({"Ramp Mode"						})},
+
 	{eStepNoMotor,	'i', "Set Timer",			"t",		RetArray2({"Time"							})},
 	{eStepNoMotor,	'j', "Wait",				"wb",		RetArray2({"Wait for", "Check Timer"		})},
 
@@ -129,11 +130,11 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'g', "Set Trapezoidal 3",	"MAVA",		RetArray2({"Stepper", "amax", "vmax", "dmax"	})},
 
 	{eStepDirect,	'h', "Set Ramp Mode",		"MR",		RetArray2({"Stepper", "Ramp Mode"					})},
-	{eStepDirect,	'i', "Set Generic Wait",	"Mt",		RetArray2({"Stepper", "Time"						})},
 
-	{eStepDirect,	'j', "Wait Stop",			"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
-	{eStepDirect,	'j', "Wait Timer",			"M",		RetArray2({"Stepper"								})},
-	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
+	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
+	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
+
+//	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
 
 	{eStepDirect,	'l', "InitGoto",			"MVVAAV",	RetArray2({"Stepper", "StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
 	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
@@ -214,6 +215,19 @@ void sSampler_Check(void) {
 		if(Chk==false)
 			wxMessageBox(wxString::Format("Parameter '%c' not used!", SamplerParams[p].ParId), "Warning", wxOK | wxICON_INFORMATION, NULL);
 	}
+
+	//Check eStepNoMotor/eStepDirect
+	for (size_t i = 0; i < WXSIZEOF(Sampler_Commands); i++) {
+		if (Sampler_Commands[i].SubSys == eStepNoMotor && Sampler_Commands[i].cmd!='1') {
+			//Search if exists the same in eStepDirect
+			wxString Pattern = "M"; Pattern.Append(Sampler_Commands[i].ParamPattern);
+			const sSampler_Commands*P=Command_GetByCmd(eStepDirect, Sampler_Commands[i].cmd, Pattern.Len());
+			if(!P || P->ParamPattern!=Pattern)
+				wxMessageBox(wxString::Format("Missing eStepDirect commad '%c'!", Sampler_Commands[i].cmd), "Warning", wxOK | wxICON_INFORMATION, NULL);
+
+		}
+	}
+
 }
 unsigned int Commands_Size(void) { return WXSIZEOF(Sampler_Commands); };
 

@@ -6,7 +6,7 @@
 #define USE_STRIPLED
 #define USE_EXPANDERS
 #define USE_SPI
-#define USE_TMC5130  //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC5130     //Require USE_EXPANDERS and USE_SPI
 //#define USE_STEPPERS  //Require USE_EXPANDERS and USE_SPI
 
 
@@ -293,7 +293,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
 
           case 'i': Serial.print("Set Timer");      Answer.m_Result = (Steppers[CurrentMotor].SetTimer(Cmd.m_Par[pr++]*1000) ?eCmdOk : eCmdRetry);                                            break;
           case 'j': Serial.print("Generic Wait");   Answer.m_Result = (Steppers[CurrentMotor].WaitMotor((TMC5130::eWaitingMotor)Cmd.m_Par[pr++], Cmd.m_Par[pr++]!=0)  ?eCmdOk : eCmdRetry);   break;
-          case 'k': Serial.print("Wait Stop");      Answer.m_Result = (Steppers[CurrentMotor].FSA_WaitEndOfSteps()                                                    ?eCmdOk : eCmdRetry);   break;
+//          case 'k': Serial.print("Wait Stop");      Answer.m_Result = (Steppers[CurrentMotor].FSA_WaitEndOfSteps()                                                    ?eCmdOk : eCmdRetry);   break;
           case 'l': Serial.print("Init GoTo");      Answer.m_Result = eCmdOk; Steppers[CurrentMotor].InitGoTo         (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]); break;
           case 'm': Serial.print("FreeRunning");    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetFreeRunning   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                          break;
           case 'n': Serial.print("Set Accel..s");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setAccelerations ( (TMC5130::eAccelerations)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                 break;
