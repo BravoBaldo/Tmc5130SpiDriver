@@ -18,7 +18,7 @@
 #include "TMC5130.h"
 
 //Default routine for Chip Selection
-void  EnableSpiOnChip(uint8_t csPin, bool en)     { digitalWrite(csPin, en?LOW:HIGH);  }
+void  EnableSpiOnChip(uint8_t csPin, bool en)	{ digitalWrite(csPin, en?LOW:HIGH);  }
 
 // =====================================================
 // ======= SEZIONE SPI (Serial Peripheral Interface) ====
@@ -656,3 +656,59 @@ void TMC5130::enableAutomaticCurrentControl(bool en) {  //PWMCONF
 //pwmconf.pwm_reg = pwm_reg;      //pwm_reg does not exists in 5130
   setPwmconf(pwmconf.bytes);
 }
+
+
+bool TMC5130::InitX(unsigned int Offset){
+	//Cmd="97-ChipEnable" PatLen="2" Pattern="Me" Par0="0=X (Left/Right)" Par1="1=ENABLE"/>
+		SetChipEnable(true);
+        TestReset();
+        getGstat();
+	//Cmd="112-Set Direction" PatLen="2" Pattern="Ml" Par0="0=X (Left/Right)" Par1="1=RIGHT"/>
+		setMotorDirection(ReverseDirection);
+	//Cmd="98-Set EndStops" PatLen="8" Pattern="Meeeeeee" Par0="0=X (Left/Right)" Par1="0=Disable" Par2="1=ENABLE" Par3="1=ENABLE" Par4="0=Disable" Par5="0=Disable" Par6="0=Disable" Par7="0=Disable"/>
+		setStops(false, true, true, false, false, false, false);
+	//Cmd="99-Set Currents" PatLen="4" Pattern="Miij" Par0="0=X (Left/Right)" Par1="20" Par2="20" Par3="0"/>
+		setCurrent   (20, 20, 0);
+	//Cmd="109-Set Free Running" PatLen="4" Pattern="MVml" Par0="0=X (Left/Right)" Par1="6" Par2="8=8=200=1/1" Par3="0=Left"/>
+		SetFreeRunning(6, 8, false);
+	//Cmd="105-Set Timer" PatLen="2" Pattern="Mt" Par0="0=X (Left/Right)" Par1="8"/>
+		SetTimer(8*1000);
+	//Cmd="106-Wait" PatLen="3" Pattern="Mwb" Par0="0=X (Left/Right)" Par1="2=eWaitHomeL" Par2="1=TRUE"/>
+		while (!WaitMotor(eWaitHomeL, true));
+	//Cmd="106-Wait" PatLen="3" Pattern="Mwb" Par0="0=X (Left/Right)" Par1="2=eWaitHomeL" Par2="1=TRUE"/>
+		while (!WaitMotor(eWaitHomeL, true));
+	//Cmd="111-Set Velocities" PatLen="3" Pattern="MdV" Par0="0=X (Left/Right)" Par1="2=VMAX" Par2="0"/>
+		setVelocities( eVMAX, 0);
+	//Cmd="106-Wait" PatLen="3" Pattern="Mwb" Par0="0=X (Left/Right)" Par1="0=eWaitVelocity" Par2="0=False"/>
+		while (!WaitMotor(eWaitVelocity, false));
+	//Cmd="104-Set Ramp Mode" PatLen="2" Pattern="MR" Par0="0=X (Left/Right)" Par1="0=PositionMode"/>
+		setRampMode(PositionMode);
+	//Cmd="100-Set Position" PatLen="2" Pattern="MS" Par0="0=X (Left/Right)" Par1="0"/>
+		setPosition(0);
+	//Cmd="102-Set Target" PatLen="2" Pattern="MS" Par0="0=X (Left/Right)" Par1="0"/>
+		setTargetBase(0);
+	//Cmd="103-Set SixPoint Simple" PatLen="6" Pattern="MVAVAV" Par0="0=X (Left/Right)" Par1="10" Par2="10" Par3="10" Par4="10" Par5="5000"/>
+		SetRamp(10, 10, 10, 10, 5000, 0);
+		
+	//Cmd="48-Do Nothing" PatLen="1" Pattern="M" Par0="0=X (Left/Right)"/>	
+	//Cmd="102-Set Target" PatLen="2" Pattern="MS" Par0="0=X (Left/Right)" Par1="12"/>
+		setTargetBase(Offset);
+	//Cmd="106-Wait" PatLen="3" Pattern="Mwb" Par0="0=X (Left/Right)" Par1="1=eWaitPosition" Par2="0=False"/>
+		while (!WaitMotor(eWaitPosition, false));
+	//Cmd="111-Set Velocities" PatLen="3" Pattern="MdV" Par0="0=X (Left/Right)" Par1="2=VMAX" Par2="0"/>
+		setVelocities( eVMAX, 0);
+	//Cmd="48-Do Nothing" PatLen="1" Pattern="M" Par0="0=X (Left/Right)"/>
+	//Cmd="100-Set Position" PatLen="2" Pattern="MS" Par0="0=X (Left/Right)" Par1="0"/>
+		setPosition(0);	
+	//Cmd="102-Set Target" PatLen="2" Pattern="MS" Par0="0=X (Left/Right)" Par1="0"/>
+		setTargetBase(0);
+	//Cmd="103-Set SixPoint Simple" PatLen="6" Pattern="MVAVAV" Par0="0=X (Left/Right)" Par1="10" Par2="30" Par3="10" Par4="50" Par5="5000"/>
+	//Cmd="103-Set Trapezoidal 2" PatLen="3" Pattern="MAV" Par0="0=X (Left/Right)" Par1="60" Par2="6000"/>
+		SetTrapezoidal(60, 6000);
+	//Cmd="99-Set Currents" PatLen="4" Pattern="Miij" Par0="0=X (Left/Right)" Par1="0" Par2="0" Par3="0"/>
+		setCurrent   (0, 0, 0);
+	
+return true;
+}
+//bool InitY(unsigned int Offset);
+//bool InitR(unsigned int Offset);

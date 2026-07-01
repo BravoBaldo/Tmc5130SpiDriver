@@ -123,8 +123,13 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                             wxString parName = wxString::Format("%s", (ParIdx < c->ParNames.size()) ? c->ParNames[ParIdx] : wxString("--NoName--"));
                             switch (Ty) {
                                 case eTime:
+#if defined(USE_DATE_TIME_CTRL)
                                     m_Params[ParIdx]->ChangeType(parName, wxDateTime(0, 0, 12));
-                                    m_Params[ParIdx]->SetToolTip(wxString::Format("Time"));
+                                    m_Params[ParIdx]->SetToolTip("Time");
+#else
+                                    m_Params[ParIdx]->ChangeType(parName, 0, MAXSECS);
+                                    m_Params[ParIdx]->SetToolTip(wxString::Format("Seconds from %d to %d", p->MinValue, p->MaxValue));
+#endif
                                     break;
                                 case eNumber:
                                     m_Params[ParIdx]->ChangeType(parName, p->MinValue, p->MaxValue);

@@ -692,11 +692,12 @@ public:
 	void			setStops		(bool Swap);
 	void			setStops		(bool SwapLR, bool EnStopL, bool EnPoolL, bool EnStopR, bool EnPoolR, bool EnSg, bool EnSoft);
 	void			DisableStops	(void);
-	
-  inline void		setTargetBase   (int32_t xTarget)	{ writeReg(XTARGET, xTarget);}
-  inline void		setTarget       (int32_t xTarget)	{ setTargetBase( (getMaxSteps()>0) ? min(xTarget, getMaxSteps()) : max(xTarget, getMaxSteps()) ); }
-  inline int32_t	getTarget       (void)				{ return (int32_t)readReg(XTARGET);}
-  inline void		moveBy			(int32_t dx)		{ setTarget(getPosition() + dx); }
+
+	inline void		Advance			(int32_t xAdv)		{ setTarget(getPosition()+xAdv);}
+	inline void		setTargetBase   (int32_t xTarget)	{ writeReg(XTARGET, xTarget);}
+	inline void		setTarget       (int32_t xTarget)	{ setTargetBase( (getMaxSteps()>0) ? min(xTarget, getMaxSteps()) : max(xTarget, getMaxSteps()) ); }
+	inline int32_t	getTarget       (void)				{ return (int32_t)readReg(XTARGET);}
+	inline void		moveBy			(int32_t dx)		{ setTarget(getPosition() + dx); }
 
   inline void     StopMotor   (uint16_t a=10) { //Method A
       setRampMode(VelocityPositiveMode);  //RAMPMODE
@@ -790,6 +791,9 @@ public:
 
   void endHome                  (void);
 
+	bool InitX(unsigned int Offset=12);
+//	bool InitY(unsigned int Offset);
+//	bool InitR(unsigned int Offset);
   // ====== Utilities Step/Dir ======
 #if defined(INCLUDE_UNTESTED)
   void stepOnce           (void);
@@ -865,8 +869,8 @@ private:
   unsigned long m_TimerSet = 0;
   unsigned long m_TimerStart = 0;
 public:
-  bool			SetTimer		(unsigned long Timer)	{ m_TimerSet = Timer; m_TimerStart = millis(); return true; }
-  bool			WaitTimer		(void){return( (millis() - m_TimerStart) >= m_TimerSet ); }
+  bool			SetTimer		(unsigned long Timer)	{ m_TimerStart = millis(); m_TimerSet = Timer; return true; }
+  bool			WaitTimer		(void){return( (millis() - m_TimerStart) > m_TimerSet ); }
   unsigned long	getRemaining	(void){
 		unsigned long elapsed = millis() - m_TimerStart;
 		if (elapsed >= m_TimerSet)	return 0;
@@ -1046,23 +1050,49 @@ public:
     return true;
   }
 
-  typedef enum { eWaitVelocity, eWaitPosition, eWaitHome, eWaitPosAndVel, eWaitTimer} eWaitingMotor;
-  bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
-		if((CheckTimeOut || (Ty==eWaitTimer)) && WaitTimer())	return true;
+  inline bool ChkStop		(void)	{ return (getVelocity()==0); }
+  inline bool ChkEndOfSteps	(void)	{ return GetSpiStatus().position_reached && (getVelocity() == 0); }
+  inline bool IsAtHome		(void)	{ return (GetSpiStatus().bytes & 0xC0) != 0; }	//Status.status_stop_l || Status.status_stop_r
 
-		switch(Ty){
-			case eWaitVelocity:		return getVelocity()					== 0;						//FSA_WaitStop
-			case eWaitPosition:		return GetSpiStatus().position_reached;								//
-			case eWaitHome:			return (GetSpiStatus().bytes & 0xC0)	!= 0;						//IsAtHome
-			case eWaitPosAndVel:	return (getVelocity() == 0) && GetSpiStatus().position_reached;		//FSA_WaitEndOfSteps
-			case eWaitTimer:		return false;	//WaitTimer();
+  typedef enum { eWaitVelocity, eWaitPosition, eWaitHomeL, eWaitPosAndVel, eWaitTimer, eWaitHomeR, eWaitHomeRL} eWaitingMotor;
+  
+	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
+		bool wt = WaitTimer();
+		bool res;
+		if (CheckTimeOut && wt)	{
+			Serial.print(" Exit for Timeout: ");
+			 
+			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
+			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
+			return true;
+		}
+		switch (Ty) {
+			case eWaitVelocity:	res = ChkStop();							Serial.printf("  Stop  =%s\n", res?"True":"False");	return res;
+			case eWaitPosition:	res = GetSpiStatus().position_reached;		Serial.printf("  Posit =%s\n", res?"True":"False");	return res;
+			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			
+			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			
+			case eWaitPosAndVel:res = ChkEndOfSteps();						Serial.printf("  PosVel=%s\n", res?"True":"False");	return res;
+			case eWaitTimer:	res = wt;									Serial.printf("  Timer =%s\n", res?"True":"False");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
 		}
 		return true;	//Error!!!!
   }
 
-  bool FSA_WaitStop			(void)	{ return (getVelocity()==0); }
-  bool FSA_WaitEndOfSteps	(void)	{ return GetSpiStatus().position_reached && (getVelocity() == 0); }
-  bool IsAtHome				(void)	{ return (GetSpiStatus().bytes & 0xC0) != 0; }	//Status.status_stop_l || Status.status_stop_r
+	bool	WaitMotorOrg(eWaitingMotor Ty, bool CheckTimeOut=false){
+		if (CheckTimeOut && WaitTimer())	return true; 
+		switch (Ty) {
+			case eWaitVelocity:		return ChkStop();
+			case eWaitPosition:		return GetSpiStatus().position_reached;
+			case eWaitHomeL:		return (GetSpiStatus().bytes & 0x40) != 0;
+			case eWaitHomeR:		return (GetSpiStatus().bytes & 0x80) != 0;
+			case eWaitHomeRL:		return (GetSpiStatus().bytes & 0xC0) != 0;
+			case eWaitPosAndVel:	return ChkEndOfSteps();
+			case eWaitTimer:		return WaitTimer();			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
+		}
+		return true;	//Error!!!!
+  }
 
   uint8_t FSA_Status_ExitLS = 0;
 
@@ -1078,7 +1108,7 @@ public:
         setTarget( getPosition() + ((getMaxSteps()>0) ? 1 : -1) );
         FSA_Status_ExitLS = 3;//_WaitStep;
       case 3: //_WaitStep:
-        if(FSA_WaitEndOfSteps()){
+        if(ChkEndOfSteps()){
           FSA_Status_ExitLS = 1;//_Check;
           OverSteps++;
         }
@@ -1100,13 +1130,13 @@ public:
         FSA.Status = WaitStop;
         break;
       case WaitStop:
-        if(FSA_WaitStop()){
+        if(ChkStop()){
           setPosition(0);                  //XACTUAL
           FSA.Status = Nothing;
         }
         break;
       case WaitEndOfSteps:
-        if(FSA_WaitEndOfSteps())
+        if(ChkEndOfSteps())
           FSA.Status = Nothing;
         break;
 

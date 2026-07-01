@@ -2,19 +2,25 @@
 #include "../SysSampler.h"
 #include "Utilities.h"
 
+//#define USE_ESPNOW        //486689 bytes
+//#define USE_STRIPLED    //365675 bytes
 #define USE_HID_SAMPLER
-#define USE_STRIPLED
 #define USE_EXPANDERS
 #define USE_SPI
 #define USE_TMC5130     //Require USE_EXPANDERS and USE_SPI
 //#define USE_STEPPERS  //Require USE_EXPANDERS and USE_SPI
 
+#define PRINTLOG(s) Serial.print(F(s));
 
 
 void ExecuteCommand(const uint8_t* data, uint16_t len);
 
 #if !(defined(USE_HID_SAMPLER) | defined(USE_SERIALIN))
   #warning None communication system
+#endif
+
+#if defined(USE_ESPNOW)
+  #include "src/ESPNOW/SamplerNow.h"
 #endif
 
 #if defined(USE_HID_SAMPLER)
@@ -150,6 +156,10 @@ void setup() {
     Serial.println("End Setup Motors.\n");
   #endif
 
+  #if defined(USE_ESPNOW)
+    sNowFsaRx_Setup();
+  #endif
+
 }
 
 void AlwaysRun(void){
@@ -204,7 +214,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
   memcpy(&Cmd, data, sizeof(sCommand));
 
   //ToDo, AAA I suppose Cmd.m_MsgType==eTypCommand
-  Serial.print("Execution: ");
+  Serial.printf("Execution (Step %d):", Cmd.m_DetailProg);
   switch(Cmd.m_SubSystem){
     case eSystemCmd:
       Serial.println("System Command");
@@ -227,7 +237,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
       break;
 
     case eExpanders:
-      Serial.println("Espanders' Command");
+      Serial.println(F("Espanders' Command"));
       switch(Cmd.m_Cmd){
         case 118: //'v'
           {
@@ -259,13 +269,17 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         TmcAnswer       Answer;
         AnswerSent = true;
         switch(Cmd.m_Cmd){
-          case '0': Serial.print("Do Nothing");     Answer.m_Result = eCmdOk;                                                                               break;
-          case '1': Serial.print("Change Motor");   Answer.m_Result = eCmdOk; CM = Cmd.m_Par[pr++]; StripLed.setNumShowed(CM);                              break;
-          case '2': Serial.print("Set Register");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetReg(Cmd.m_Par[pr++], Cmd.m_Par[1]);                 break;
-          case 'a': Serial.print("Chip Enable");    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetChipEnable(Cmd.m_Par[pr++]!=0);
+          case '0': Serial.print(F("Do Nothing"));     Answer.m_Result = eCmdOk;                                                                               break;
+          case '1': Serial.print(F("Change Motor"));   Answer.m_Result = eCmdOk; CM = Cmd.m_Par[pr++];
+          #if defined(USE_STRIPLED)
+            StripLed.setNumShowed(CM);
+          #endif
+              break;
+          case '2': Serial.print(F("Set Register"));   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetReg(Cmd.m_Par[pr++], Cmd.m_Par[1]);                 break;
+          case 'a': Serial.print(F("Chip Enable"));    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetChipEnable(Cmd.m_Par[pr++]!=0);
                                                                               Steppers[CurrentMotor].TestReset();
                                                                               Steppers[CurrentMotor].getGstat();                                            break;
-          case 'b': Serial.print("Set Stops");      Answer.m_Result = eCmdOk;
+          case 'b': Serial.print(F("Set EndStops"));      Answer.m_Result = eCmdOk;
                     switch(ParNum){
                       case 0: Steppers[CurrentMotor].DisableStops();                                        break;
                       case 1: if(Cmd.m_Par[pr]>1) Steppers[CurrentMotor].DisableStops();
@@ -276,29 +290,34 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                     //if(ParNum==0 || Cmd.m_Par[pr]>1)  Steppers[CurrentMotor].DisableStops();
                     //else                              Steppers[CurrentMotor].setStops(Cmd.m_Par[pr++]!=0);
                     //                                                                                                                                        break;
-          case 'c': Serial.print("Set Currents");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setCurrent   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);  break;
-          case 'd': Serial.print("Set Position");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setPosition  (Cmd.m_Par[pr++]);                           break;
-          case 'e': Serial.print("Set MicroStep");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setMicrosteps(Cmd.m_Par[pr++]);                           break;
-          case 'f': Serial.print("Set Target");     Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setTargetBase(Cmd.m_Par[pr++]);                           break;
+          case 'c': PRINTLOG("Set Currents");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setCurrent   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);  break;
+          case 'd': PRINTLOG("Set Position");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setPosition  (Cmd.m_Par[pr++]);                           break;
+          case 'e': PRINTLOG("Set MicroStep");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setMicrosteps(Cmd.m_Par[pr++]);                           break;
+          case 'f': PRINTLOG("Set Target");     Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setTargetBase(Cmd.m_Par[pr++]);                           break;
 
           case 'g': switch(ParNum){
-                      case 3:   Serial.print("Set Ramp Trapezoidal");       Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
-                      case 5:   Serial.print("Set Ramp Six Points Simple"); Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
-                      case 8:   Serial.print("Set Ramp Six Points");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
+                      case 3:   PRINTLOG("Set Ramp Trapezoidal");       Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
+                      case 5:   PRINTLOG("Set Ramp Six Points Simple"); Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
+                      case 8:   PRINTLOG("Set Ramp Six Points");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
                       case 2:
-                      default:  Serial.print("Set Trapezoidal");            Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetTrapezoidal(Cmd.m_Par[pr++], Cmd.m_Par[pr++]);            break;                      
+                      default:  PRINTLOG("Set Trapezoidal");            Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetTrapezoidal(Cmd.m_Par[pr++], Cmd.m_Par[pr++]);            break;                      
                     }
                     break;
-          case 'h': Serial.print("Set Ramp Mode");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setRampMode((TMC5130::RampMode)Cmd.m_Par[pr++]);                                         break;
+          case 'h': PRINTLOG("Set Ramp Mode");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setRampMode((TMC5130::RampMode)Cmd.m_Par[pr++]);                                         break;
 
-          case 'i': Serial.print("Set Timer");      Answer.m_Result = (Steppers[CurrentMotor].SetTimer(Cmd.m_Par[pr++]*1000) ?eCmdOk : eCmdRetry);                                            break;
-          case 'j': Serial.print("Generic Wait");   Answer.m_Result = (Steppers[CurrentMotor].WaitMotor((TMC5130::eWaitingMotor)Cmd.m_Par[pr++], Cmd.m_Par[pr++]!=0)  ?eCmdOk : eCmdRetry);   break;
-//          case 'k': Serial.print("Wait Stop");      Answer.m_Result = (Steppers[CurrentMotor].FSA_WaitEndOfSteps()                                                    ?eCmdOk : eCmdRetry);   break;
-          case 'l': Serial.print("Init GoTo");      Answer.m_Result = eCmdOk; Steppers[CurrentMotor].InitGoTo         (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]); break;
-          case 'm': Serial.print("FreeRunning");    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetFreeRunning   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                          break;
-          case 'n': Serial.print("Set Accel..s");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setAccelerations ( (TMC5130::eAccelerations)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                 break;
-          case 'o': Serial.print("Set Velocities"); Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setVelocities    ( (TMC5130::eVelocity)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                      break;
-          case 'p': Serial.print("Set Direction");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setMotorDirection(Cmd.m_Par[pr++]==0 ? TMC5130::ForwardDirection : TMC5130::ReverseDirection); break;
+          case 'i': PRINTLOG("Set Timer");      Answer.m_Result = (Steppers[CurrentMotor].SetTimer(Cmd.m_Par[pr++]*1000) ?eCmdOk : eCmdRetry);                                            break;
+          case 'j': PRINTLOG("Generic Wait");   Answer.m_Result = (Steppers[CurrentMotor].WaitMotor((TMC5130::eWaitingMotor)Cmd.m_Par[pr++], Cmd.m_Par[pr++])  ?eCmdOk : eCmdRetry);
+                    Serial.printf(" Result is %d ", (int)Answer.m_Result);
+             break;
+
+          case 'k': PRINTLOG("Advance");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].Advance(Cmd.m_Par[pr++]);                           break;
+
+
+          case 'l': PRINTLOG("Init GoTo");      Answer.m_Result = eCmdOk; Steppers[CurrentMotor].InitGoTo         (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]); break;
+          case 'm': PRINTLOG("FreeRunning");    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetFreeRunning   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                          break;
+          case 'n': PRINTLOG("Set Accel..s");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setAccelerations ( (TMC5130::eAccelerations)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                 break;
+          case 'o': PRINTLOG("Set Velocities"); Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setVelocities    ( (TMC5130::eVelocity)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                      break;
+          case 'p': PRINTLOG("Set Direction");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setMotorDirection(Cmd.m_Par[pr++]==0 ? TMC5130::ForwardDirection : TMC5130::ReverseDirection); break;
           case 'q':
               {
                 TMC5130::Gconf gconf = Steppers[CurrentMotor].getGconf();
@@ -331,9 +350,9 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                   Steppers[CurrentMotor].setGconf(gconf.bytes);
               }
               break;
-          default:  Serial.print("Unknown TMC5130's NoMotor command"); AnswerSent = false; break;
+          default:  PRINTLOG("Unknown TMC5130's NoMotor command"); AnswerSent = false; break;
         }
-        Serial.print("\" ... ");
+        PRINTLOG("\" ... ");
         Answer.m_Motor    = CurrentMotor;
         FillAnswer(Answer, CurrentMotor);
         SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
@@ -366,7 +385,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
       break;
   }
   if(!AnswerSent){
-      Serial.println("Generic Answer");
+      PRINTLOG("Generic Answer\n");
       ShowBuffer(data, len);
       Serial.printf("MsgType...: 0x%02X = %d = '%c'\n", (int)Cmd.m_MsgType,   (int)Cmd.m_MsgType,   (char)Cmd.m_MsgType);
       Serial.printf("SubSystem.: 0x%02X = %d = '%c'\n", (int)Cmd.m_SubSystem, (int)Cmd.m_SubSystem, (char)Cmd.m_SubSystem);

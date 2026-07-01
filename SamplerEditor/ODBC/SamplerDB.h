@@ -31,11 +31,13 @@
 
 
 #if defined(USESAMPLERDB)
-	#define PROGMASTER_TABLENAME "SAM_ProgMaster"
-	#define PROGDETAIL_TABLENAME "SAM_ProgDetail"
+	#define PROGMASTER_TABLENAME	"SAM_ProgMaster"
+	#define PROGDETAIL_TABLENAME	"SAM_ProgDetail"
+	#define DEFAULTS_TABLENAME		"SAM_Defaults"
 #else
-	#define PROGMASTER_TABLENAME "SAM_ProgMaster"
-	#define PROGDETAIL_TABLENAME "SAM_ProgDetail"
+	#define PROGMASTER_TABLENAME	"SAM_ProgMaster"
+	#define PROGDETAIL_TABLENAME	"SAM_ProgDetail"
+	#define DEFAULTS_TABLENAME		"SAM_Defaults"
 #endif
 #define DBIterator otl_stream
 

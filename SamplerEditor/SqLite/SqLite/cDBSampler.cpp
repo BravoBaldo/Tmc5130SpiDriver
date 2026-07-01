@@ -1,4 +1,4 @@
-#include "stdwx.h"
+﻿#include "stdwx.h"
 #include "cDBSampler.h"
 
 #include <iostream>
@@ -398,6 +398,23 @@ bool cDBSampler::CreateSlave(void) {
     return CreateTable(sql_create.utf8_str());
 }
 
+bool cDBSampler::CreateDefaults(void) {
+    const char* sql_create = "CREATE TABLE IF NOT EXISTS " DEFAULTS_TABLENAME "("
+                                "  DefaultName		VarChar(30)		PRIMARY KEY NOT NULL"
+                                ", DefaultValue		VarChar(100)"
+                                ", Description		VarChar(250)"
+                            ;
+/*
+    CREATE TABLE SAM_Defaults (
+        DefaultName TEXT(30) NOT NULL,
+        DefaultValue TEXT(100),
+        Description TEXT(250),
+        CONSTRAINT SAM_Defaults_PK PRIMARY KEY (DefaultName)
+    );
+*/
+    return CreateTable(sql_create);
+}
+
 bool cDBSampler::CreateMaster(void) {
     const char* sql_create = "CREATE TABLE IF NOT EXISTS " PROGMASTER_TABLENAME "("
                                 "ProgId INT PRIMARY KEY NOT NULL,"
@@ -408,6 +425,7 @@ bool cDBSampler::CreateMaster(void) {
 bool cDBSampler::CreateDB(void) {
     CreateMaster();
     CreateSlave();
+    CreateDefaults();
     if (!ProgMaster_Insert("BravoBaldo")) return false;
 
     return true;
@@ -795,4 +813,94 @@ bool cDBSampler::ProgDetail_Select(int64_t masterId, int64_t detailProg, sComman
 
     sqlite3_finalize(stmt);
     return recordFound;
+}
+
+bool cDBSampler::Defaults_ValueSet(wxString strName, wxString strValue, wxString strDescription, const wxString & TableName) {
+    if (!m_db) return false;
+
+    // 1. Prepariamo la query con i segnaposto (?) per evitare SQL Injection
+    // Usiamo "INSERT OR IGNORE" se non vuoi sovrascrivere un valore esistente.
+    // Usiamo "INSERT OR REPLACE" se vuoi aggiornare il valore se il nome esiste già.
+    wxString strSQL = wxString::Format(
+        "INSERT OR REPLACE INTO %s (DefaultName, DefaultValue, Description) VALUES (?, ?, ?);",
+        TableName
+    );
+
+    sqlite3_stmt* stmt = nullptr;
+
+    // 2. Compilazione della query (con conversione in UTF-8 per SQLite)
+    int rc = sqlite3_prepare_v2(m_db, strSQL.utf8_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db)); // Errore effettivo del database durante l'esecuzione
+        return false;
+    }
+
+    // 3. Binding dei parametri convertiti in UTF-8
+    sqlite3_bind_text(stmt, 1, strName.utf8_str(),          -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, strValue.utf8_str(),         -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, strDescription.utf8_str(),   -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);    // 4. Esecuzione della query
+    sqlite3_finalize(stmt);     // 5. Rilascio delle risorse dello statement
+    return (rc == SQLITE_DONE); // SQLITE_DONE significa che l'inserimento è riuscito (o ignorato senza errori)
+}
+
+bool cDBSampler::Defaults_ValueGet(const wxString& strName, wxString& strValue, const wxString& strDef, const wxString& strDescription, const wxString& TableName) {
+    if (!m_db) return false;
+
+    bool bFound = false;
+
+    // 1. Prepariamo la query di selezione con il segnaposto
+    wxString strSQL = wxString::Format( "SELECT DefaultValue FROM %s WHERE DefaultName = ?;", TableName );
+
+    sqlite3_stmt* stmt = nullptr;
+
+    // 2. Compilazione della query SQL
+    int rc = sqlite3_prepare_v2(m_db, strSQL.utf8_str(), -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db)); // Errore effettivo del database durante l'esecuzione
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, strName.utf8_str(), -1, SQLITE_TRANSIENT);   // 3. Binding del parametro di ricerca
+
+    // 4. Esecuzione della query
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        const unsigned char* text = sqlite3_column_text(stmt, 0);   // Il record esiste: leggiamo il valore dal primo campo (indice 0)
+        if (text) {
+            strValue = wxString::FromUTF8(reinterpret_cast<const char*>(text));
+        } else {
+            strValue = wxEmptyString; // Il campo nel DB era NULL
+        }
+        bFound = true;
+    }
+
+    sqlite3_finalize(stmt); // 5. Rilascio delle risorse della SELECT
+
+    // 6. Gestione del valore di default se il record non è stato trovato
+    if (!bFound) {
+        if (!strDef.IsEmpty()) {
+            // Inseriamo il valore di default nel database
+            // (Nota: rimuovi il primo parametro se Defaults_ValueSet usa direttamente m_db internamente)
+            bool bInsertOk = Defaults_ValueSet(strName, strDef, strDescription, TableName);
+
+            // Assegniamo il valore di default a strValue come richiesto
+            strValue = strDef;
+            return bInsertOk;
+        }
+        return false; // Record non trovato e nessun valore di default specificato
+    }
+    return true;
+}
+
+long cDBSampler::Defaults_ValueLGet(const wxString& strName, long Defv, const wxString& strDescription) {
+    wxString strDefVal; strDefVal << Defv;
+    wxString strValue = "";	//Value readed
+    Defaults_ValueGet(strName, strValue, strDefVal, strDescription, DEFAULTS_TABLENAME);
+
+    long DefVal = Defv;	//default
+    strValue.ToLong(&DefVal);
+
+    return DefVal;
 }

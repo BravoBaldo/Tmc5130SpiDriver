@@ -5,8 +5,10 @@
 #include "sqlite3.h"
 #include <functional>
 
-#define PROGMASTER_TABLENAME "SAM_ProgMaster"
-#define PROGDETAIL_TABLENAME "SAM_ProgDetail"
+#define PROGMASTER_TABLENAME	"SAM_ProgMaster"
+#define PROGDETAIL_TABLENAME	"SAM_ProgDetail"
+#define DEFAULTS_TABLENAME		"SAM_Defaults"
+
 //--------------------------------------------------
 #include <wx/ffile.h>
 #include <tinyxml2.h>
@@ -121,12 +123,14 @@ class cDBSampler {
 	void				ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQuery, bool DoResize = true, int Fld2Translate = -1);
 
 	long				ProgMaster_GetNextId(unsigned int StartIdx);
-	static wxString		SQLStrPrepare(const wxString& str);
-	bool				RecordExists(const wxString& Query);
-	bool				ExecuteSQL(const wxString& queryToExecute, bool AutoCommit=true);
-	bool				CreateTable(const char* sql_create);
-	bool				CreateMaster(void);
-	bool				CreateSlave(void);
+	static wxString		SQLStrPrepare	(const wxString& str);
+	bool				RecordExists	(const wxString& Query);
+	bool				ExecuteSQL		(const wxString& queryToExecute, bool AutoCommit=true);
+	bool				CreateTable		(const char* sql_create);
+	bool				CreateMaster	(void);
+	bool				CreateSlave		(void);
+	bool				CreateDefaults	(void);
+
 	static wxString		SqlQuery_Detail(const unsigned int ProgId);
 public:
 	cDBSampler(const char* filename = "../Sampler.db");
@@ -159,5 +163,17 @@ public:
 	void	DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxString& SqlQuery, bool DoResize);
 
 	bool	ProgDetail_Select(int64_t masterId, int64_t detailProg, sCommand& item);
+	//---------------------------------------------------------------------------------------------
+	bool	Defaults_ValueSet	(wxString strName, wxString strValue, wxString strDescription, const wxString& TableName /*= DEFAULTS_TABLENAME*/);
+	bool	Defaults_ValueGet	(const wxString& strName, wxString& strValue, const wxString& strDef, const wxString& strDescription, const wxString& TableName);
+	long	Defaults_ValueLGet	(const wxString& strName, long Defv, const wxString& strDescription = "");
+	bool	Defaults_ValueLSet	(const wxString& strName, long ValL, const wxString& strDescription, const wxString& TableName) { return Defaults_ValueSet(strName, wxString::Format("%d", ValL), strDescription, TableName); }
+	long	Defaults_NazSteps	(unsigned int MotPosIdx) {
+		return Defaults_ValueLGet(	wxString::Format("%s%03d", "NAZMotPos", MotPosIdx), 
+									0, 
+									wxString::Format("Motor %d, Position %d", MotPosIdx / 100, MotPosIdx % 100)
+								);
+	}
 
 };
+

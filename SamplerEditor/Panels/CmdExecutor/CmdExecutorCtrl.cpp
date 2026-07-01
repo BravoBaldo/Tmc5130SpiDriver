@@ -49,9 +49,9 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
 }
 
 eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
-	LogMe("Answer from Tmc\n", true);
-	LogMe(wxString::Format("\tm_Result....: %d\n", Answ.m_Result), false);
-	LogMe(wxString::Format("\tm_Remaining.: %d\n", Answ.m_Remaining), false);
+	LogMe("\tAnswer from Tmc\n", false);
+	LogMe(wxString::Format("\t\tm_Result....: %d\n", Answ.m_Result), false);
+	LogMe(wxString::Format("\t\tm_Remaining.: %d\n", Answ.m_Remaining), false);
 
 	if (m_ptrAnswerShow)
 		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
@@ -94,7 +94,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			wxMilliSleep(100); // Piccola pausa prima di riprovare
 			continue;
 		}
-		LogMe(wxString::Format("Attempt %d: Message sent...\n", ++retryCount), true);
+		LogMe(wxString::Format("  Attempt %d: Message sent...\n", ++retryCount), false);
 
 		// 2. Attesa risposta con Timeout
 		wxStopWatch sw;
@@ -118,7 +118,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 				case eTypAnswVer:	CALLANSWERPARSER(sAnswerVersion);	break;
 				case eTypAnswStd:
 					{
-						LogMe(wxString::Format("Ricevuti %d byte in %ld ms.\n", res, sw.Time()), true);
+						LogMe(wxString::Format("Received %d bytes in %ld ms.\n", res, sw.Time()), true);
 						sAnswerStandard Answer;
 						memcpy(&Answer, (sAnswerStandard*)m_HidExec.GetBuffer(), sizeof(sAnswerStandard));
 						if (ParseAnswer(Answer) != eCmdOk)
@@ -133,17 +133,17 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 					//Inutile continuare!
 					break;
 			}
-			LogMe(wxString::Format("Success is '%s'\n", Success?"True":"False"), true);
+			LogMe(wxString::Format("\tSuccess is '%s'\n", Success?"True":"False"), false);
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
 			if (retryCount > 10) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
-				LogMe("Troppi tentativi falliti. Operazione interrotta.\n", true);
+				LogMe("Too many failed attempts. Operation aborted.\n", true);
 				m_Running = false;	//Stop Execution
 				break;
 			}
 		}
 	}
-	LogMe(wxString::Format("Concluso in %ld ms.\n", sw2.Time()), true);
+	LogMe(wxString::Format("Completed in %ld ms.\n", sw2.Time()), true);
 }
 
 
@@ -190,6 +190,9 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 //#define CALLSUBSINSTEPS
 
 bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
+	LogMe("\n\n", false);
+	LogMe(wxString::Format("Step %d\n", vStep.m_DetailProg), true);
+
 #if !defined(CALLSUBSINSTEPS)
 	//Check SubRoutine:
 	if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd=='a') {
@@ -198,6 +201,17 @@ bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 		return true;
 	}
 #endif
+
+	for (size_t i = 0; i < vStep.m_PatLen; ++i) {		
+		if (vStep.m_Pattern[i] == 'S') {
+			int	iVal = vStep.m_Par[i];
+			if (iVal >= 50000) {
+				cDBSampler yy(SQLLITEDBPATH);
+				vStep.m_Par[i] = yy.Defaults_NazSteps(iVal - 50000);
+			}
+
+		}
+	}
 
 	unsigned char	Msg[sizeof(sCommand) + 1];	// + Starting byte
 	size_t			Msg_Len = 0;
@@ -209,7 +223,6 @@ bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 		reinterpret_cast<const uint8_t*>(&vStep),
 		sizeof(vStep) - sizeof(vStep.m_ChkSum)
 	);
-
 
 	memcpy(&Msg[j], &vStep, sizeof(vStep));
 	j += sizeof(vStep);
@@ -234,9 +247,6 @@ bool CmdExecutorCtrl::ExecuteSteps(uint16_t	m_MasterId) {	//Execute Steps from D
 		do {
 			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
 			if (recordFound) {
-				LogMe(wxString::Format("\t Step %d\n", vStep.m_DetailProg), false);
-
-
 				ExecuteStep(vStep);
 				detailProg = vStep.m_DetailProg + 1;
 			}
@@ -258,6 +268,7 @@ m_Btn_ExecAll->Enable(false);
 	m_Running = true;
 	for (long i = from; i < to; i++) {
 		m_ptrPrgDetail->Select(i, true);	//Select instruction on the display and get MasterId/
+		m_ptrPrgDetail->EnsureVisible(i);
 		::wxYield();;
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data

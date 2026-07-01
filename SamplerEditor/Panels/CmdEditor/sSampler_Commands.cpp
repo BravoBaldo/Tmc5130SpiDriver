@@ -27,31 +27,31 @@ const sSubSystem* SubSystem_GetByType(eSubSysAcro Type) {
 }
 
 static const sParams SamplerParams[]{
-	//ParId	ParType	ParName			MinValue	MaxValue			ToolTip						ParValues;
-	{ 'a', eChoice,	"Accelerations",0,				3,				"(Ac)(De)celerations"		, RetArray2({"FirstAcceleration (A1)", "SecondAcceleration (AMAX)", "FirstDeceleration (DMAX)", "SecondDeceleration (D1)"})								},
-	{ 'b', eChoice,	"Boolean",		0,				1,				"True or False"				, RetArray2({"False", "TRUE"})								},
-	{ 'c', eNumber,	"Char",			(-128),			127																				},
-	{ 'd', eChoice,	"Velocities",	0,				3,				"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
-	{ 'e', eChoice,	"Abilitation",	0,				1,				"Enable or Disable"			, RetArray2({"Disable", "ENABLE"})							},
-	{ 'f', eNumber,	"Register",		0,			  115,				"TMC5130 Register"																		},
-	{ 'g', eChoice,	"Effect",		0,				0,				"Led Effect"				, RetArray2({
+	//ParId	ParType	ParName				MinValue	MaxValue			ToolTip						ParValues;
+	{ 'a', eChoice,	"Accelerations",	0,				3,			"(Ac)(De)celerations"		, RetArray2({"FirstAcceleration (A1)", "SecondAcceleration (AMAX)", "FirstDeceleration (DMAX)", "SecondDeceleration (D1)"})								},
+	{ 'b', eChoice,	"Boolean",			0,				1,			"True or False"				, RetArray2({"False", "TRUE"})								},
+	{ 'c', eNumber,	"Char",				(-128),			127																				},
+	{ 'd', eChoice,	"Velocities",		0,				3,			"Velocities"				, RetArray2({"VSTART", "V1", "VMAX", "VSTOP"})								},
+	{ 'e', eChoice,	"Abilitation",		0,				1,			"Enable or Disable"			, RetArray2({"Disable", "ENABLE"})							},
+	{ 'f', eNumber,	"Register",			0,			  115,			"TMC5130 Register"																		},
+	{ 'g', eChoice,	"Effect",			0,				0,			"Led Effect"				, RetArray2({
 																												#define X(eStripId, eRunAlways, description) description,
 																													STRIPLEDGAMES_LIST
 																												#undef X
 																											})},
-	{ 'i', eNumber,	"Current",		0,				31,				"Current31"},
-	{ 'j', eNumber,	"Current",		0,				15,				"Current15"},
-	{ 'l', eChoice,	"Left/Right",	0,				1,				"Direction"					, RetArray2({"Left", "RIGHT"})								},
-	{ 'm', eChoice,	"MicroSteps",	0,				8,				"Microsteps"				, RetArray2({"0=51200=1/256", "1=25600=1/128", "2=12800=1/64", "3=6400=1/32", "4=3200=1/16", "5=1600=1/8", "6=800=1/4", "7=400=1/2", "8=200=1/1"})},
-	{ 'n', eNumber,	"ShowedNumber",	0,				6,				"Show Number"},
-	{ 'o', eChoice,	"Open/Close",	0,				1,				"Open/Close"				, RetArray2({"Open", "Close"})								},
-//	{ 'p', eNumber,	"Process",		0,				5,				"Laser Game"},
+	{ 'i', eNumber,	"Current",			0,				31,			"Current31"},
+	{ 'j', eNumber,	"Current",			0,				15,			"Current15"},
+	{ 'l', eChoice,	"Left/Right",		0,				1,			"Direction"					, RetArray2({"Left", "RIGHT"})								},
+	{ 'm', eChoice,	"MicroSteps",		0,				8,			"Microsteps"				, RetArray2({"0=51200=1/256", "1=25600=1/128", "2=12800=1/64", "3=6400=1/32", "4=3200=1/16", "5=1600=1/8", "6=800=1/4", "7=400=1/2", "8=200=1/1"})},
+	{ 'n', eNumber,	"ShowedNumber",		0,				6,			"Show Number"},
+	{ 'o', eChoice,	"Open/Close",		0,				1,			"Open/Close"				, RetArray2({"Open", "Close"})								},
+//	{ 'p', eNumber,	"Process",			0,				5,			"Laser Game"},
 	{ 'q', eChoice,	"Left/Right/None",	0,				2,			"Direction"					, RetArray2({"Left", "Right", "None"})},
-	{ 's', eNumber,	"Speed",		500,			25000																			},
-	{ 't',   eTime,	"Time",			0,				MAX_PARAM																		},	//wxUINT32_MAX = 0xffffffff
-//	{ 'u', eChoice, "Wait User",	0,				1,				"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
-	{ 'v', eChoice,	"Output",		0,				0,				"Outputs"					, RetArray2({"All/None", "A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
-	{ 'w', eChoice,	"Waitings",		0,				5,				"Waiting Motor"				, RetArray2({"eWaitVelocity", "eWaitPosition", "eWaitHome", "eWaitPosAndVel", "eWaitTimer"})							},
+	{ 's', eNumber,	"Speed",			500,			25000																			},
+	{ 't',   eTime,	"Time",				0,				MAXSECS,	"Time in Seconds"},
+//	{ 'u', eChoice, "Wait User",		0,				1,			"0=Go ahead, 1:Wait User"	, RetArray2({"Go ahead", "Wait User"})						},
+	{ 'v', eChoice,	"Output",			0,				0,			"Outputs"					, RetArray2({"All/None", "A1 EV Ingresso siringa/diluitore","A2 EV Acqua/Aria in vaso espansione","A3 EV Acqua pozzetto lavaggio ago","P1 Pompa Carico acqua/aria","P2 Pompa Scarico pozzetto lavaggio","P3-AUX"})							},
+	{ 'w', eChoice,	"Waitings",			0,				5,			"Waiting Motor"				, RetArray2({"eWaitVelocity", "eWaitPosition", "eWaitHomeL", "eWaitPosAndVel", "eWaitTimer", "eWaitHomeR", "eWaitHomeRL"})							},
 
 
 	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
@@ -82,7 +82,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepNoMotor,	'b', "EndStops NONE (DoNotUse)",	"",			RetArray2({									})},
 	{eStepNoMotor,	'b', "EndStops (DoNotUse)",			"q",		RetArray2({"Direction"						})},
-	{eStepNoMotor,	'b', "Set EndStops",				"eeeeeee",	RetArray2({"SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
+	{eStepNoMotor,	'b', "Set EndStops",		"eeeeeee",	RetArray2({"SwapLR", "EnStopL", "EnPoolL", "EnStopR", "EnPoolR", "EnSg", "EnSoft"})},
 
 	{eStepNoMotor,	'c', "Set Currents",		"iij",		RetArray2({"IHOLD", "IRUN", "IHOLDDELAY"	})},
 	{eStepNoMotor,	'd', "Set Position",		"S",		RetArray2({"Position"						})},
@@ -98,6 +98,9 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepNoMotor,	'i', "Set Timer",			"t",		RetArray2({"Time"							})},
 	{eStepNoMotor,	'j', "Wait",				"wb",		RetArray2({"Wait for", "Check Timer"		})},
+//	{eStepNoMotor,	'j', "Wait Position",		"Sb",		RetArray2({"Final Position", "Check Timer"		})},
+
+	{eStepNoMotor,	'k', "Set Advance",			"S",		RetArray2({"Steps"					})},
 
 	{eStepNoMotor,	'l', "InitGoto",			"VVAAV",	RetArray2({"StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
 	{eStepNoMotor,	'm', "Set Free Running",	"Vml",		RetArray2({"SpeedFor1RPS", "MicroSteps", "Direction"	})},
@@ -134,7 +137,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
 	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
 
-//	{eStepDirect,	'k', "Wait Stop",			"M",		RetArray2({"Stepper"								})},
+	{eStepDirect,	'k', "Set Advance",			"MS",		RetArray2({"Stepper", "Steps"					})},
 
 	{eStepDirect,	'l', "InitGoto",			"MVVAAV",	RetArray2({"Stepper", "StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
 	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},

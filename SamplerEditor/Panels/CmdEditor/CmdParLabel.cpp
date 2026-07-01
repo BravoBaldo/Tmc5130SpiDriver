@@ -21,7 +21,6 @@ void CmdParLabel::ChangeType(const wxString& name) {		//Unknown
 void CmdParLabel::SetCurrentValue(long t) {
 	if (!m_gen_Param) return;
 	switch (m_type) {
-//		case eChoice:	((wxChoice*)m_gen_Param)->SetSelection(t);	break;
 		case eChoice: {
 			if (auto* cho = wxDynamicCast(m_gen_Param, wxChoice)) {
 				if (t >= 0 && t < static_cast<long>(cho->GetCount())) {
@@ -33,7 +32,6 @@ void CmdParLabel::SetCurrentValue(long t) {
 			break;
 		}
 
-//		case eNumber:	((wxSpinCtrl*)m_gen_Param)->SetValue(t);	break;
 		case eNumber: {
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)) {
 				int minVal = spinCtrl->GetMin();
@@ -44,15 +42,8 @@ void CmdParLabel::SetCurrentValue(long t) {
 			break;
 		}
 
-		/*case eTime:
-			{
-				unsigned int s = t % 60;		t /= 60;
-				unsigned int m = t % 60;		t /= 60;
-				unsigned int h = t % 24;	//	t/=24;
-				((wxTimePickerCtrl*)m_gen_Param)->SetTime(h, m, s);
-			}
-			break;*/
 		case eTime: {
+#if defined(USE_DATE_TIME_CTRL)
 			if (auto* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl)) {
 				unsigned long absTime = (t < 0) ? 0 : static_cast<unsigned long>(t);
 
@@ -62,6 +53,14 @@ void CmdParLabel::SetCurrentValue(long t) {
 
 				timePicker->SetTime(h, m, s);
 			}
+#else
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)) {
+				int minVal = 0;
+				int maxVal = MAXSECS;
+				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
+				spinCtrl->SetValue(static_cast<int>(safeVal));
+			}
+#endif
 			break;
 		}
 
@@ -90,12 +89,17 @@ long CmdParLabel::GetValue(void) {
 			}
 			break;
 		case eTime:
+#if defined(USE_DATE_TIME_CTRL)
 			if (auto* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl)) {
 				int h = 0, m = 0, s = 0;
 				timePicker->GetTime(&h, &m, &s);
 				long secondiTotali = static_cast<long>(h) * 3600 + static_cast<long>(m) * 60 + s;
 				return secondiTotali;
 			}
+#else
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl))
+				return static_cast<long>(spinCtrl->GetValue());
+#endif
 			break;
 		default:
 			break;
@@ -125,11 +129,10 @@ void CmdParLabel::SetValue(int Val, int Min, int Max) {	//eNumber
 	spinCtrl->SetRange(Min, Max);
 	int safeVal = std::max(Min, std::min(Val, Max));
 	spinCtrl->SetValue(safeVal);
-	//((wxSpinCtrl*)m_gen_Param)->SetRange(Min, Max);
-	//((wxSpinCtrl*)m_gen_Param)->SetValue(Val);
 }
 
 void CmdParLabel::SetValue(wxUint32 t) {
+#if defined(USE_DATE_TIME_CTRL)
 	wxTimePickerCtrl* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl);
 	if (!timePicker) return;
 	wxUint32 timeRemain = t;
@@ -137,6 +140,9 @@ void CmdParLabel::SetValue(wxUint32 t) {
 	unsigned int m = timeRemain % 60;          timeRemain /= 60;
 	unsigned int h = timeRemain % 24;
 	timePicker->SetTime(h, m, s);
+#else
+	SetValue(t, 0, MAXSECS);
+#endif
 }
 
 void CmdParLabel::ChangeType(const wxString& name, const wxDateTime& dt) {	//eTime
@@ -146,9 +152,12 @@ void CmdParLabel::ChangeType(const wxString& name, const wxDateTime& dt) {	//eTi
 		m_gen_Param->Destroy();
 		m_gen_Param = nullptr;
 	}
+#if defined(USE_DATE_TIME_CTRL)
 	m_gen_Param = new wxTimePickerCtrl(this, wxID_ANY, dt);
+#else
+	SetValue(dt.GetMinute() * 60 + dt.GetSecond(), 0, MAXSECS);
+#endif
 	SetSizers();
-//	m_gen_Param->SetFocus();	//
 }
 
 CmdParLabel::CmdParLabel(wxWindow* parent, const wxString& name) : wxPanel(parent, wxID_ANY) {	//neutral

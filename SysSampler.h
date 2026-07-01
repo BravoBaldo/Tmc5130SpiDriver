@@ -6,6 +6,8 @@ typedef int32_t		ParamType;	//See in stdwx
 
 typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError }eCmdAnswer;
 
+inline constexpr uint8_t CollectorMAC[] = {0x26, 0x0B, 0xA1, 0x4F, 0x92, 0xC3};
+
 #define SUBSYS_LIST \
     X(eSystemCmd,    'Q', "System") \
     X(eADCConverter, 'A', "ADC Converter") \

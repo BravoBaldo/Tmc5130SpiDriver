@@ -84,6 +84,8 @@ BEGIN_EVENT_TABLE(SamplerFrame, wxFrame)
 
 	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP,	OnMenu)
 	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM,	OnMenu)
+	EVT_MENU			(ID_MNU_PRGMDET_EXECTO,		OnMenu)
+	
 	EVT_MENU			(ID_MNU_POLL_MOTORS,		OnMenu)
 	EVT_MENU			(ID_MNU_POLL_CURRENT,		OnMenu)
 	EVT_MENU			(ID_MNU_POLL_NEXT,			OnMenu)
@@ -420,6 +422,12 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 				m_PanExec->ExecuteSteps(itemIndex, m_lstPrgDetail->GetItemCount());
 			}
 			break;
+		case ID_MNU_PRGMDET_EXECTO:
+			{
+				long itemIndex = m_lstPrgDetail->GetFirstSelected();
+				m_PanExec->ExecuteSteps(0, itemIndex);
+		}
+			break;
 
 /*		case ID_MNU_PRGMAIN_SORT:
 			m_lstPrgMaster->ChangeSort();	//m_SortByName = !m_SortByName;
@@ -610,9 +618,9 @@ void SamplerFrame::OnListEvent(wxListEvent& evt) {
 				//.............................................................
 				wxMenu* m_menuPopUp;
 				m_menuPopUp = new wxMenu;
-				//m_menuPopUp->Append( ID_MNU_PRGMDET_EXECTO,		_( "Execute Until here") );
 				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECFROM, _("(Re)Start From here"));
 				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECSTEP, _("Execute Single Step"));
+				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECTO, _("Execute Until here"));
 				//-----------------------------------------------------------------
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());
 				wxDELETE(m_menuPopUp);

@@ -2,6 +2,9 @@
 #include "wx/wx.h"
 #include "stdwx.h"
 
+#define MAXSECS	222	//Max seconds
+//#define USE_DATE_TIME_CTRL
+
 typedef enum { eChoice, eNumber, eTime, eUnknown } eParType;
 
 struct sSubSystem {
