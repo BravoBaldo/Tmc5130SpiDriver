@@ -318,3 +318,26 @@ void cDetailListCtrl::SwapItem(bool WithNext) {
 
 }
 
+void cDetailListCtrl::EnsureVisibleCentered(long itemIndex) {
+	if (itemIndex < 0 || itemIndex >= GetItemCount()) return;
+	int visibleElements = GetCountPerPage();					// 1. Determine how many elements are visible on the screen at once
+	long targetTopLine = itemIndex - (visibleElements / 2);		// 2. Calculate which row should be at the top to have our element in the center
+	if (targetTopLine < 0) targetTopLine = 0;					// Avoid negative numbers
+	long CurrentTopLine = GetTopItem();							// 3. Find the index of the currently displayed row at the top of the list
+	long linesToScroll = targetTopLine - CurrentTopLine;		// 4. Calculate the required offset in pixels
+
+	if (linesToScroll != 0) {
+		// Ottieni l'altezza in pixel di una singola riga (inclusi spaziature)
+		wxRect rect;
+		if (GetItemRect(itemIndex, rect, wxLIST_RECT_BOUNDS)) {
+			int PixelLineHeight = rect.GetHeight();
+			int pixelsToScroll = linesToScroll * PixelLineHeight;
+			ScrollList(0, pixelsToScroll);							//Exec vertical scrolling
+		}
+	}
+	EnsureVisible(itemIndex);										// 5. As a security fallback, call the native method to ensure it is still visible
+
+	// Optional: Select and visually highlight the centered element
+	Select(itemIndex);
+	Focus(itemIndex);
+}

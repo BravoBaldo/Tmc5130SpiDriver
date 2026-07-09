@@ -49,10 +49,9 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
 }
 
 eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
-	LogMe("\tAnswer from Tmc\n", false);
-	LogMe(wxString::Format("\t\tm_Result....: %d\n", Answ.m_Result), false);
-	LogMe(wxString::Format("\t\tm_Remaining.: %d\n", Answ.m_Remaining), false);
-
+	LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
+	if (Answ.m_Cmd == 106)
+		LogMe("Ciao",false);
 	if (m_ptrAnswerShow)
 		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
 
@@ -87,6 +86,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 	wxStopWatch	sw2;
 	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
+	sw2.Start(0);
 	while (!Success && m_Running) {		// 1. Transmission
 		if (m_HidExec.Write_NoWait(data, length) < 0) {
 			LogMe("Hardware error while writing. Open and try again....\n", true);
@@ -99,21 +99,40 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 		// 2. Attesa risposta con Timeout
 		wxStopWatch sw;
 		res = 0;
-
 		// Continua a leggere fino a che non ricevi dati O scade il timeout O il programma si ferma
+		sw.Start(0);
+/*
 		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
 			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
 			if (res <= 0) {
 				::wxYield();
 			}
 		}
+*/
+
+		byte* PtrAnswer = nullptr;
+		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
+			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
+			if (res <= 0) {
+				::wxYield();
+			}
+			PtrAnswer = (byte*)m_HidExec.GetBuffer();
+			if (data[2] != PtrAnswer[1])	res=0;
+		}
+
 
 		// 3. Verifica esito
 		if (res > 0) {
+/*			byte* PtrAnswer = (byte*)m_HidExec.GetBuffer();
+			if (data[2] != PtrAnswer[1]) {
+				m_HidExec.Read();
+				PtrAnswer = (byte*)m_HidExec.GetBuffer();
+			}
+*/
 			if (m_ptrAnswerShow)
-				m_ptrAnswerShow->SetAnswer(m_HidExec.GetBuffer(), m_HidExec.GetAnswerLen());
+				m_ptrAnswerShow->SetAnswer(PtrAnswer, m_HidExec.GetAnswerLen());
 			Success = true;
-			eMessageTypes Tipo = ((eMessageTypes*)m_HidExec.GetBuffer())[0];
+			eMessageTypes Tipo = ((eMessageTypes*)PtrAnswer)[0];
 			switch (Tipo) {
 				case eTypAnswVer:	CALLANSWERPARSER(sAnswerVersion);	break;
 				case eTypAnswStd:
@@ -133,17 +152,21 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 					//Inutile continuare!
 					break;
 			}
+			if (data[2] != PtrAnswer[1]) {
+				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)data[2], (int)PtrAnswer[1]), false);
+				Success = false;
+			}
 			LogMe(wxString::Format("\tSuccess is '%s'\n", Success?"True":"False"), false);
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
-			if (retryCount > 10) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
-				LogMe("Too many failed attempts. Operation aborted.\n", true);
+			if (retryCount > 50) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
+				LogMe("\n******* Too many failed attempts. Operation aborted. ****\n\n", true);
 				m_Running = false;	//Stop Execution
 				break;
 			}
 		}
 	}
-	LogMe(wxString::Format("Completed in %ld ms.\n", sw2.Time()), true);
+	LogMe(wxString::Format("  Completed in %ld ms.\n", sw2.Time()), false);
 }
 
 
@@ -191,7 +214,7 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 
 bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 	LogMe("\n\n", false);
-	LogMe(wxString::Format("Step %d\n", vStep.m_DetailProg), true);
+	LogMe(wxString::Format("Step %d (%d)\n", vStep.m_DetailProg, vStep.m_Cmd), true);
 
 #if !defined(CALLSUBSINSTEPS)
 	//Check SubRoutine:
@@ -250,7 +273,7 @@ bool CmdExecutorCtrl::ExecuteSteps(uint16_t	m_MasterId) {	//Execute Steps from D
 				ExecuteStep(vStep);
 				detailProg = vStep.m_DetailProg + 1;
 			}
-		} while (recordFound);
+		} while (recordFound && m_Running);
 	}
 #endif
 
@@ -267,9 +290,9 @@ m_Btn_ExecAll->Enable(false);
 	wxString CmdStr;			//wxMemoryBuffer
 	m_Running = true;
 	for (long i = from; i < to; i++) {
-		m_ptrPrgDetail->Select(i, true);	//Select instruction on the display and get MasterId/
-		m_ptrPrgDetail->EnsureVisible(i);
-		::wxYield();;
+		//m_ptrPrgDetail->Select(i, true);	//Select instruction on the display and get MasterId/
+		m_ptrPrgDetail->EnsureVisibleCentered(i);
+		::wxYield();
 
 #if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
@@ -292,6 +315,8 @@ m_Btn_ExecAll->Enable(false);
 		SendCommand(CmdStr.c_str().AsUnsignedChar(), CmdStr.Length());
 #endif
 //		myMilliSleep(10);	//wxMilliSleep(100);
+		if (!m_Running)
+			break;
 	}
 	m_Running = false;
 	LogMe("Stop Execution --------------------------\n", false);

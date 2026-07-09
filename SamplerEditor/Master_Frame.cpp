@@ -425,7 +425,7 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 		case ID_MNU_PRGMDET_EXECTO:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps(0, itemIndex);
+				m_PanExec->ExecuteSteps(0, itemIndex+1);
 		}
 			break;
 

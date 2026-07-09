@@ -39,6 +39,7 @@ static const sParams SamplerParams[]{
 																													STRIPLEDGAMES_LIST
 																												#undef X
 																											})},
+	{ 'h', eChoice,	"Comparison",		0,				1,			"Compare"					, RetArray2({">=", "==", "<="})},
 	{ 'i', eNumber,	"Current",			0,				31,			"Current31"},
 	{ 'j', eNumber,	"Current",			0,				15,			"Current15"},
 	{ 'l', eChoice,	"Left/Right",		0,				1,			"Direction"					, RetArray2({"Left", "RIGHT"})								},
@@ -98,7 +99,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepNoMotor,	'i', "Set Timer",			"t",		RetArray2({"Time"							})},
 	{eStepNoMotor,	'j', "Wait",				"wb",		RetArray2({"Wait for", "Check Timer"		})},
-//	{eStepNoMotor,	'j', "Wait Position",		"Sb",		RetArray2({"Final Position", "Check Timer"		})},
+	{eStepNoMotor,	'j', "Wait Position",		"hSb",		RetArray2({"Compare", "Final Position", "Check Timer"		})},
 
 	{eStepNoMotor,	'k', "Set Advance",			"S",		RetArray2({"Steps"					})},
 
@@ -113,6 +114,8 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepNoMotor,	'q', "Set GCONF 2",		"bbbbbbb",		RetArray2({"diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
 	{eStepNoMotor,	'q', "Set GCONF 3",		"bbbb",			RetArray2({"small_hysteresis", "stop_enable", "direct_mode", "test_mode"																			})},
 
+{eStepNoMotor,	'z', "TempTest",		"",				RetArray2({			})},
+{eStepDirect,	'z', "TempTest",		"M",			RetArray2({"Stepper"})},
 	//---------------------------------------------------------------------------------------------------------
 	{eStepDirect,	'0', "Do Nothing",			"M",		RetArray2({"Stepper"								})},
 	{eStepDirect,	'2', "Set Register",		"MfL",		RetArray2({"Stepper", "Register", "Value"			})},
@@ -136,6 +139,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
 	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
+	{eStepDirect,	'j', "Wait Position",		"MhSb",		RetArray2({"Stepper", "Compare", "Final Position", "Check Timer"		})},
 
 	{eStepDirect,	'k', "Set Advance",			"MS",		RetArray2({"Stepper", "Steps"					})},
 
@@ -145,9 +149,9 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'o', "Set Velocities",		"MdV",		RetArray2({"Stepper", "Velocity type", "Velocity Value"				})},
 	{eStepDirect,	'p', "Set Direction",		"Ml",		RetArray2({"Stepper", "Direction"			})},
 
-	{eStepDirect,	'q', "Set GCONF 1",		"Mbbbbb",		RetArray2({"Stepper", "I_scale_analog", "internal_Rsense", "en_pwm_mode", "enc_commutation", "shaft"})},
-	{eStepDirect,	'q', "Set GCONF 2",		"Mbbbbbbb",		RetArray2({"Stepper", "diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
-	{eStepDirect,	'q', "Set GCONF 3",		"Mbbbb",			RetArray2({"Stepper", "small_hysteresis", "stop_enable", "direct_mode", "test_mode"																				})},
+	{eStepDirect,	'q', "Set GCONF 1",			"Mbbbbb",	RetArray2({"Stepper", "I_scale_analog", "internal_Rsense", "en_pwm_mode", "enc_commutation", "shaft"})},
+	{eStepDirect,	'q', "Set GCONF 2",			"Mbbbbbbb",	RetArray2({"Stepper", "diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
+	{eStepDirect,	'q', "Set GCONF 3",			"Mbbbb",	RetArray2({"Stepper", "small_hysteresis", "stop_enable", "direct_mode", "test_mode"																				})},
 
 
 	{eSteppersFSA,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
@@ -226,7 +230,7 @@ void sSampler_Check(void) {
 			wxString Pattern = "M"; Pattern.Append(Sampler_Commands[i].ParamPattern);
 			const sSampler_Commands*P=Command_GetByCmd(eStepDirect, Sampler_Commands[i].cmd, Pattern.Len());
 			if(!P || P->ParamPattern!=Pattern)
-				wxMessageBox(wxString::Format("Missing eStepDirect commad '%c'!", Sampler_Commands[i].cmd), "Warning", wxOK | wxICON_INFORMATION, NULL);
+				wxMessageBox(wxString::Format("Missing eStepDirect commad '%c' ('%s')!", Sampler_Commands[i].cmd, Sampler_Commands[i].ParamPattern), "Warning", wxOK | wxICON_INFORMATION, NULL);
 
 		}
 	}

@@ -113,9 +113,17 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 }sCommand;
 #pragma pack(pop)
 
+#define ANSWERHEADER(T)		byte		m_MsgType	= T;	\
+							byte		m_Cmd		= 0;	\
+							eCmdAnswer	m_Result	= eCmdOk;
+
+
+
 #pragma pack(push, 1)
 typedef struct _sVerAnswer{
-	byte	m_MsgType			= eTypAnswVer;	//1
+	//byte	m_MsgType			= eTypAnswVer;	//1
+	ANSWERHEADER(eTypAnswVer)
+
 	byte	Y;
 	byte	M;
 	byte	D;
@@ -128,11 +136,13 @@ typedef struct _sVerAnswer{
 
 #pragma pack(push, 1)
 typedef struct _sStdAnswer{
-	byte			m_MsgType			= eTypAnswStd;	//1
+	//byte			m_MsgType			= eTypAnswStd;	//1
+	//byte			m_Cmd				= 0;			//1
+	//eCmdAnswer	m_Result			= eCmdOk;
+	ANSWERHEADER(eTypAnswStd)
+	
 	eSubSysAcro		m_SubSystem			= eUnused;		//1
-	byte			m_Cmd				= 0;			//1
 	eMessageTypes	m_UnknownMsg		= eTypCommand;	//1
-	eCmdAnswer		m_Result			= eCmdOk;
 	byte			m_AnswLen			= 0;			//1
 	char			m_Msg[40]			= "No Answer";	//	
 }sAnswerStandard;
@@ -141,17 +151,19 @@ typedef struct _sStdAnswer{
 
 #pragma pack(push, 1)
 typedef struct _sExpAnswer{
-	byte		m_MsgType				= eTypAnswExpander;	//1
+	//byte		m_MsgType				= eTypAnswExpander;	//1
+	ANSWERHEADER(eTypAnswExpander)
 	uint16_t	m_CurrStatus			= 0;				//1
 }sExpanderStandard;	//ToDo Rename in Aswer....
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct _sStripAnswer{
-	byte		m_MsgType	= eTypAnswStripLed;	//1
+	//byte		m_MsgType	= eTypAnswStripLed;	//1
+	//eCmdAnswer	m_Result	= eCmdOk;
+	ANSWERHEADER(eTypAnswStripLed)
 	uint8_t		m_CurrGame	= 0;	//ToDo
 	uint16_t	m_Remaining	= 0;
-	eCmdAnswer	m_Result	= eCmdOk;
 }StripAnswer;
 #pragma pack(pop)
 
@@ -205,8 +217,10 @@ typedef enum : uint8_t {
 
 #pragma pack(push, 1)
 typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
-	byte		m_MsgType	= eTypAnswStepDir;	//1
-	eCmdAnswer	m_Result	= eCmdOk;
+//	byte		m_MsgType	= eTypAnswStepDir;	//1
+//	byte		m_Cmd		= 0;				//This is the answer of command X
+//	eCmdAnswer	m_Result	= eCmdOk;
+	ANSWERHEADER(eTypAnswStepDir)
 
 	uint8_t		m_Motor		= 0;
 	

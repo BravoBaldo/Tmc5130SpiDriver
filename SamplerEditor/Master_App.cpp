@@ -167,10 +167,11 @@ bool MyApp::OnInit () {
 		wxSize ( 1600, 1000 ),
 		m_locale
 	);
-	frame->CentreOnScreen ();
-	frame->Show ( TRUE );
+	//frame->CentreOnScreen ();
+	frame->Show (true);
+	frame->Maximize();
 	SetTopWindow ( frame );
-	return TRUE;
+	return true;
 
 	//	return false;
 }

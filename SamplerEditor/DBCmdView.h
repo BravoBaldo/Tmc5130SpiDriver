@@ -47,6 +47,7 @@ public:
 	void		PrgDetail_FillListItem(sCommand& vStep);
 	bool		PrgDetail_FillListItem(sCommand& vStep, long rowIndex);
 	sCommand	GetSelectedItem(void);
+	void		EnsureVisibleCentered(long itemIndex);
 private:
 	void	OnListEvent		(wxListEvent& Evt);
 	void	OnChar			(wxKeyEvent& Evt);

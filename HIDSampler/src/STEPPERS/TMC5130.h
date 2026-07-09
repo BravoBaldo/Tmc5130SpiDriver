@@ -18,6 +18,9 @@ constexpr size_t arraySize(const T (&)[N]) noexcept { return N; }
 typedef std::function<void(uint8_t, bool)> SPI_ENABLER_CB;
 extern void EnableSpiOnChip(uint8_t csPin, bool en);	//extern SPI_ENABLER_CB EnableSpiOnChip;
 
+#define REMOVE_OLD_FSA
+//#define INCLUDE_UNTESTED
+#define REMOVE_UNUSED
 class TMC5130 {
 public:
   typedef union { //Spi Status, SPI_Status
@@ -406,7 +409,6 @@ private:
     LOST_STEPS  = 0x73,   //                      R
   }Reg;
 
-//#define INCLUDE_UNTESTED
   enum InterfaceMode {
     MODE_SPI,
     MODE_UART,    //NOT TESTED/USED
@@ -534,9 +536,10 @@ public:
   void		writeRegUART(uint8_t slave, Reg reg, uint32_t value);  // UART diretto
   uint32_t	readRegUART	(uint8_t slave, Reg reg);               // UART diretto
 #endif
-  // ====== Registry Access ======
-  void		writeReg	(Reg reg, uint32_t value);  // wrapper (SPI o UART)
-  uint32_t	readReg		(Reg reg);                  // wrapper (SPI o UART)
+	// ====== Registry Access ======
+	void		writeReg	(Reg reg, uint32_t value);  // wrapper (SPI or UART)
+	uint32_t	readReg		(Reg reg);                  // wrapper (SPI or UART)
+	void		SetReg		(byte reg, uint32_t value)	{writeReg((Reg)reg, value);  };
 
 
   // ====== High level Configs ======
@@ -791,9 +794,6 @@ public:
 
   void endHome                  (void);
 
-	bool InitX(unsigned int Offset=12);
-//	bool InitY(unsigned int Offset);
-//	bool InitR(unsigned int Offset);
   // ====== Utilities Step/Dir ======
 #if defined(INCLUDE_UNTESTED)
   void stepOnce           (void);
@@ -801,30 +801,30 @@ public:
   void enableDriver       (bool en);
 #endif
   int32_t   Init_MicroSteps (uint8_t ms);
-  inline SpiStatus   GetLastSpiStatus   (void)                                            {return SPI_Status;}
+  inline SpiStatus   GetLastSpiStatus   (void)						{return SPI_Status;}
 
-  uint32_t  genSpiFunct     (Reg reg, uint32_t value, bool Read);
+	uint32_t	genSpiFunct			(Reg reg, uint32_t value, bool Read);
 
-  void      SetPinCSFunct   (SPI_ENABLER_CB callback)                      {cbEnableChipSelect = callback;};
-//void      SetPinCSFunct2  (void (*callback)(uint8_t, bool))              {cbEnableChipSelect2 = callback;};
+	void		SetPinCSFunct   	(SPI_ENABLER_CB callback)                      {cbEnableChipSelect = callback;};
+//	void		SetPinCSFunct2  	(void (*callback)(uint8_t, bool))              {cbEnableChipSelect2 = callback;};
 
-  char*     GetName         (void)    { return StepperName; }
-  void      SetName         (char* n) { StepperName=n; }
+	char*		GetName         	(void)    { return StepperName; }
+	void		SetName         	(char* n) { StepperName=n; }
 
-  int32_t   getMaxSteps     (void)      { return MaxSteps*((int32_t)1<<(8-getMicrosteps())); };
-  void      setMaxSteps     (int32_t s) { MaxSteps = s; };
+	int32_t		getMaxSteps     	(void)      { return MaxSteps*((int32_t)1<<(8-getMicrosteps())); };
+	void		setMaxSteps     	(int32_t s) { MaxSteps = s; };
 
-  uint32_t getGoHomeVelocity  (void)            {return goHomeVelocity;}
-  void     setGoHomeVelocity  (uint32_t v=100)  {goHomeVelocity = v;}
+	uint32_t	getGoHomeVelocity  (void)            {return goHomeVelocity;}
+	void		setGoHomeVelocity  (uint32_t v=100)  {goHomeVelocity = v;}
 
-  uint16_t getOverSteps       (void)            {return OverSteps;}
-  void     setOverSteps       (uint16_t s)      {OverSteps = s;}
+	uint16_t	getOverSteps       (void)            {return OverSteps;}
+	void		setOverSteps       (uint16_t s)      {OverSteps = s;}
 
-  uint8_t getcsPinAddress     (void)            {return csPinAddress;}
-  uint8_t getcePinAddress     (void)            {return cePinAddress;}
-  
-  void SetChipEnable	(bool Enable)	{cbEnableChipSelect(cePinAddress, Enable);};
-  void SetChipSelect	(bool Enable)	{cbEnableChipSelect(csPinAddress, Enable);}
+	uint8_t		getcsPinAddress     (void)            {return csPinAddress;}
+	uint8_t		getcePinAddress     (void)            {return cePinAddress;}
+
+	void		SetChipEnable	(bool Enable)	{cbEnableChipSelect(cePinAddress, Enable);};
+	void		SetChipSelect	(bool Enable)	{cbEnableChipSelect(csPinAddress, Enable);}
   
     void InitGoTo		(uint32_t vStart, uint32_t vStop, uint16_t a1, uint16_t d1, uint32_t v1){
 		setStartVelocity      (vStart);	//Set VSTART=0. Higher velocity for abrupt start (limited by motor).
@@ -833,6 +833,73 @@ public:
 		setSecondDeceleration (d1);		//D1: Use same value as A1 or higher
 		setFirstVelocity      (v1);		//V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
 	}
+
+
+  inline bool ChkStop		(void)	{ return (getVelocity()==0); }
+  inline bool ChkEndOfSteps	(void)	{ return GetSpiStatus().position_reached && (getVelocity() == 0); }
+  inline bool IsAtHome		(void)	{ return (GetSpiStatus().bytes & 0xC0) != 0; }	//Status.status_stop_l || Status.status_stop_r
+
+	typedef enum { eWaitVelocity, eWaitPosition, eWaitHomeL, eWaitPosAndVel, eWaitTimer, eWaitHomeR, eWaitHomeRL} eWaitingMotor;
+  
+	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
+		bool wt = WaitTimer();
+		if (CheckTimeOut && wt)	{
+			Serial.print(" Exit for Timeout: ");
+			 
+			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
+			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
+			return true;
+		}
+		bool res;
+		switch (Ty) {
+			case eWaitVelocity:	res = ChkStop();							Serial.printf("  Stop  =%s\n", res?"True":"False");	return res;
+			case eWaitPosition:	res = GetSpiStatus().position_reached;		Serial.printf("  Posit =%s\n", res?"True":"False");	return res;
+			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			
+			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
+			
+			case eWaitPosAndVel:res = ChkEndOfSteps();						Serial.printf("  PosVel=%s\n", res?"True":"False");	return res;
+			case eWaitTimer:	res = wt;									Serial.printf("  Timer =%s\n", res?"True":"False");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
+		}
+		return true;	//Error!!!!
+	}
+
+	typedef enum { eLessThan, eSameAs, eGreaterOf} eComparePosition;
+	bool WaitPosition( eComparePosition Cmp, int32_t Position, bool CheckTimeOut=false){
+		Serial.printf("\nWaitPosition(%d, %d, %d)\n", (int)Cmp, (int)Position, (int)CheckTimeOut);
+
+		bool wt = WaitTimer();
+		bool res;
+		if (CheckTimeOut && wt)	{
+			Serial.print(" Exit for Timeout: ");
+			 
+			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
+			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
+			return true;
+		}
+		int32_t CurrPos = getPosition();
+		switch (Cmp) {
+			case eLessThan:		return (CurrPos<=Position);
+			case eSameAs:		return (CurrPos==Position);
+			case eGreaterOf:	return (CurrPos>=Position);
+		}
+		return true;
+	}
+
+	bool	WaitMotorOrg(eWaitingMotor Ty, bool CheckTimeOut=false){
+		if (CheckTimeOut && WaitTimer())	return true; 
+		switch (Ty) {
+			case eWaitVelocity:		return ChkStop();
+			case eWaitPosition:		return GetSpiStatus().position_reached;
+			case eWaitHomeL:		return (GetSpiStatus().bytes & 0x40) != 0;
+			case eWaitHomeR:		return (GetSpiStatus().bytes & 0x80) != 0;
+			case eWaitHomeRL:		return (GetSpiStatus().bytes & 0xC0) != 0;
+			case eWaitPosAndVel:	return ChkEndOfSteps();
+			case eWaitTimer:		return WaitTimer();			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
+		}
+		return true;	//Error!!!!
+  }
 
 private:
 
@@ -856,8 +923,8 @@ private:
 #if defined(INCLUDE_UNTESTED)
   uint8_t pinSTEP = 0xFF, pinDIR = 0xFF, pinEN = 0xFF;  // STEP/DIR
 #endif
-  uint16_t OverSteps = 0; //Num of steps to exit from Limit Switch
-  bool    Calibrated = true;//false; ToDo set to false
+	uint16_t	OverSteps	= 0; //Num of steps to exit from Limit Switch
+	bool		Calibrated	= true;//false; ToDo set to false
 
   //Default Settings
   SwMode	Default_sw_mode;
@@ -876,7 +943,6 @@ public:
 		if (elapsed >= m_TimerSet)	return 0;
 		return m_TimerSet - elapsed;
   }
-
 
 
   void setResets(){ //Read current settings and use them as defaults
@@ -898,75 +964,47 @@ private:
   bool      recvUART(uint8_t addr, Reg reg, uint32_t &data);
 #endif
   void      enableRegBit(bool en, Reg reg, uint32_t Mask);
-private:
-  typedef enum : uint8_t {
-    Nothing,
-    StopAndZero,
-    WaitStop,
-    WaitEndOfSteps,
-    GoEnd,
-    ExitLS,
-    GoHome,
-    GoHome_ExitLS,
-  }FSA_Status;
 
-volatile  struct Fsa {  //Finite State Machine for each Motors
-    FSA_Status      Status			= Nothing;       //Finite State Automata
-    uint16_t        SecondA			=  0;	//AMAX
-    uint32_t        StartV			= 10;	//VSTART
-    uint32_t        MaxVelocity		= 10;	//VMAX
-    uint32_t        StopV			= 10;	//VSTOP
-    uint16_t        FirstA			= 10;	//A1
-    uint16_t        SecondD			= 10;	//D1
-    uint16_t        FirstD			= 10;	//DMAX
-    uint32_t        FirstV			= 10;	//V1
-    uint8_t         Curr_irun		= 0;	//IHOLD_IRUN
-    uint8_t         Curr_ihold		= 0;	//IHOLD_IRUN
-    uint8_t         Curr_holdDelay	= 0;	//IHOLD_IRUN
-    int32_t         xTarget			= 0;	//XTARGET
-    ulong           LastCallTime	= millis();
-    ulong           MaxTime			= 0;
-  }FSA;
+#if !defined(REMOVE_OLD_FSA)
+private:
+	typedef enum : uint8_t {
+		Nothing,
+		StopAndZero,
+		WaitStop,
+		WaitEndOfSteps,
+		GoEnd,
+		ExitLS,
+		GoHome,
+		GoHome_ExitLS,
+	}FSA_Status;
+
+	volatile struct Fsa {  //Finite State Machine for each Motors
+		FSA_Status	Status			= Nothing;       //Finite State Automata
+		uint16_t	SecondA			=  0;	//AMAX
+		uint32_t	StartV			= 10;	//VSTART
+		uint32_t	MaxVelocity		= 10;	//VMAX
+		uint32_t	StopV			= 10;	//VSTOP
+		uint16_t	FirstA			= 10;	//A1
+		uint16_t	SecondD			= 10;	//D1
+		uint16_t	FirstD			= 10;	//DMAX
+		uint32_t	FirstV			= 10;	//V1
+		uint8_t		Curr_irun		= 0;	//IHOLD_IRUN
+		uint8_t		Curr_ihold		= 0;	//IHOLD_IRUN
+		uint8_t		Curr_holdDelay	= 0;	//IHOLD_IRUN
+		int32_t		xTarget			= 0;	//XTARGET
+		ulong		LastCallTime	= millis();
+		ulong		MaxTime			= 0;
+	}FSA;
 
 public:
-  ulong getFsaMaxTime(void)       {return FSA.MaxTime;};
-  void setFsaMaxTime(ulong t=0)   {FSA.MaxTime = t;};
 
-  bool IsFSAFree(void){ return FSA.Status == Nothing;};
-  bool IsFSABusy(void){ return FSA.Status != Nothing;};
 
-  void SetReg(byte reg, uint32_t value)	{writeReg((Reg)reg, value);  };
+	ulong	getFsaMaxTime(void)			{return FSA.MaxTime;};
+	void	setFsaMaxTime(ulong t=0)	{FSA.MaxTime = t;};
 
-  //This is the only command that should be executed immediately
-  bool Exec_Panic(uint16_t a=1000) {
-    FSA.Status = Nothing;
-    setSecondAcceleration(a);        //AMAX
-    setMaxVelocity(0);               //VMAX
-    setRampMode(PositionMode);
-    return true;
-  }
+	bool	IsFSAFree(void)				{ return FSA.Status == Nothing;};
+	bool	IsFSABusy(void)				{ return FSA.Status != Nothing;};
 
-  bool Exec_setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
-    if(FSA.Status != Nothing) return false;
-    setCurrent(irun, ihold, holdDelay); //IHOLD_IRUN
-    return true;
-  }
-
-  bool Exec_ExitLS(void) {  //Exit from Limit Switch
-    if(FSA.Status != Nothing) return false;
-    OverSteps = 0;
-    FSA_Status_ExitLS = 1;
-    FSA.Status        = ExitLS;
-    return true;
-  }
-
-  bool Exec_StopAndZero(uint16_t a=1000) { //Slow down and reset the position
-    if(FSA.Status != Nothing) return false;
-    FSA.SecondA = a;
-    FSA.Status = StopAndZero;
-    return true;
-  }
-  
   bool SubExec_InitGoto(void) {
     if(FSA.Status != Nothing) return false;
     if(Calibrated == false){if(Exec_GoHome()==false) return false;}
@@ -1008,6 +1046,7 @@ public:
     setMicrosteps(mres);
     return true;
   }
+  
   bool Exec_GoEnd(uint16_t A = 100, uint32_t V = 2000){
     //Calc Steps
     if(FSA.Status != Nothing) return false;
@@ -1050,51 +1089,38 @@ public:
     return true;
   }
 
-  inline bool ChkStop		(void)	{ return (getVelocity()==0); }
-  inline bool ChkEndOfSteps	(void)	{ return GetSpiStatus().position_reached && (getVelocity() == 0); }
-  inline bool IsAtHome		(void)	{ return (GetSpiStatus().bytes & 0xC0) != 0; }	//Status.status_stop_l || Status.status_stop_r
-
-  typedef enum { eWaitVelocity, eWaitPosition, eWaitHomeL, eWaitPosAndVel, eWaitTimer, eWaitHomeR, eWaitHomeRL} eWaitingMotor;
-  
-	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
-		bool wt = WaitTimer();
-		bool res;
-		if (CheckTimeOut && wt)	{
-			Serial.print(" Exit for Timeout: ");
-			 
-			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
-			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
-			return true;
-		}
-		switch (Ty) {
-			case eWaitVelocity:	res = ChkStop();							Serial.printf("  Stop  =%s\n", res?"True":"False");	return res;
-			case eWaitPosition:	res = GetSpiStatus().position_reached;		Serial.printf("  Posit =%s\n", res?"True":"False");	return res;
-			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			
-			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			
-			case eWaitPosAndVel:res = ChkEndOfSteps();						Serial.printf("  PosVel=%s\n", res?"True":"False");	return res;
-			case eWaitTimer:	res = wt;									Serial.printf("  Timer =%s\n", res?"True":"False");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
-		}
-		return true;	//Error!!!!
-  }
-
-	bool	WaitMotorOrg(eWaitingMotor Ty, bool CheckTimeOut=false){
-		if (CheckTimeOut && WaitTimer())	return true; 
-		switch (Ty) {
-			case eWaitVelocity:		return ChkStop();
-			case eWaitPosition:		return GetSpiStatus().position_reached;
-			case eWaitHomeL:		return (GetSpiStatus().bytes & 0x40) != 0;
-			case eWaitHomeR:		return (GetSpiStatus().bytes & 0x80) != 0;
-			case eWaitHomeRL:		return (GetSpiStatus().bytes & 0xC0) != 0;
-			case eWaitPosAndVel:	return ChkEndOfSteps();
-			case eWaitTimer:		return WaitTimer();			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
-		}
-		return true;	//Error!!!!
-  }
-
   uint8_t FSA_Status_ExitLS = 0;
+
+	//This is the only command that should be executed immediately
+	bool Exec_Panic(uint16_t a=1000) {
+		FSA.Status = Nothing;
+		setSecondAcceleration(a);        //AMAX
+		setMaxVelocity(0);               //VMAX
+		setRampMode(PositionMode);
+		return true;
+	}
+
+	bool Exec_setCurrent(uint8_t irun, uint8_t ihold, uint8_t holdDelay) {
+		if(FSA.Status != Nothing) return false;
+		setCurrent(irun, ihold, holdDelay); //IHOLD_IRUN
+		return true;
+	}
+
+	bool Exec_ExitLS(void) {  //Exit from Limit Switch
+		if(FSA.Status != Nothing) return false;
+		OverSteps = 0;
+		FSA_Status_ExitLS = 1;
+		FSA.Status        = ExitLS;
+		return true;
+	}
+
+	bool Exec_StopAndZero(uint16_t a=1000) { //Slow down and reset the position
+		if(FSA.Status != Nothing) return false;
+		FSA.SecondA = a;
+		FSA.Status = StopAndZero;
+		return true;
+	}
+
 
   bool FSA_loopExitLS(void) {
     SpiStatus  Status;
@@ -1116,7 +1142,7 @@ public:
     }
     return false;
   }
-
+  
   void FSA_loop(void){
     ulong DeltaT = millis()-FSA.LastCallTime;
     if( DeltaT>FSA.MaxTime)  FSA.MaxTime = DeltaT;
@@ -1170,13 +1196,81 @@ public:
 
     //return FSA.Status == Nothing;
   }
+#endif //REMOVE_OLD_FSA
+
+public:
+	void TestFsaInitY(void){
+		SetChipEnable(true); TestReset();	getGstat();
+		setMotorDirection(ReverseDirection);	//GCONF
+		setStops		(false, true, true, false, false, false, false);
+		setCurrent		(20, 30, 0);
+		SetFreeRunning	(10, 8, 0);
+		SetTimer		(8000);
+	}
 
 };
 
-#if defined(AnIdea)
-class TMC5130_FSA : private TMC5130 {
-  TMC5130* Stepper;  
-  //TMC5130(SPIClass &spiRef, uint8_t csPin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr, int32_t Max_Steps = 0);
 
-}
-#endif
+class TMC5130_FSA : public TMC5130 {
+	typedef enum : uint8_t {
+		Nothing,
+		InitSearchBeginning,
+		WaitHomeA,
+		WaitHomeB,
+		WaitStopAtHome,
+		WaitPosZero,
+	}FSA_SetHome;
+	FSA_SetHome	Status_SetHome	= Nothing; 
+public:
+	void FSA_SetHome_loop(void){
+		switch(Status_SetHome){
+			case Nothing:
+			default:
+				break;
+			case WaitHomeA:
+				if(WaitMotor(eWaitHomeL, true))	Status_SetHome = WaitHomeB;
+				break;
+			case WaitHomeB:
+				if(WaitMotor(eWaitHomeL, true))	{
+					setVelocities    ( eVMAX, 0);
+					Status_SetHome = WaitStopAtHome;
+				}
+				break;
+			case WaitStopAtHome:
+				if(WaitMotor(eWaitVelocity, false)){
+					setRampMode(PositionMode);
+					setPosition  (-10);
+					setTargetBase(0);
+					SetRamp(10, 50, 10, 50, 5000, 0);
+					Status_SetHome = WaitPosZero;
+				}
+				break;
+			case WaitPosZero:
+				if(WaitMotor(eWaitPosition, false)){
+					SetTrapezoidal(60, 5000);                      
+					setCurrent   (0, 0, 0);
+					Status_SetHome = Nothing;
+				}
+				break;
+		}
+	}
+
+	TMC5130_FSA(SPIClass &spiRef, uint8_t csPin, uint8_t cePin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr, int32_t Max_Steps = 0)
+		: TMC5130(spiRef, csPin, cePin, cbCS, spiHz, Name, Max_Steps)
+		{}
+
+	bool	Exec_WaitOperations(void) {return (Status_SetHome == Nothing);}
+
+	bool	Exec_SearchBegin(){
+				if(Status_SetHome != Nothing) return false;
+				SetChipEnable(true); TestReset();	getGstat();
+				setMotorDirection(ReverseDirection);	//GCONF
+				setStops		(false, true, true, false, false, false, false);
+				setCurrent		(20, 30, 0);
+				SetFreeRunning	(10, 8, 0);
+				SetTimer		(8000);
+				Status_SetHome = WaitHomeA;
+				return true;
+			}
+};
+

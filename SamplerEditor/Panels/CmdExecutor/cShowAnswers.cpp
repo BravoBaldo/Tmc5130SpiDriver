@@ -103,7 +103,7 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 	S += wxString::Format("sg_stop..........:%d\n",		(SA.m_SWMODE & 0x400) ? 1 : 0);
 	S += wxString::Format("en_softstop......:%d\n",		(SA.m_SWMODE & 0x800) ? 1 : 0);
 #if !defined(SHOW_SWMODE_HIDELATCH)
-	S += wxString::Format("\nlatch_l_active...:%d\n",	(SA.m_SWMODE & 0x020)?1:0 );
+	S += wxString::Format("\nlatch_l_active.:%d\n",		(SA.m_SWMODE & 0x020)?1:0 );
 	S += wxString::Format("latch_l_inactive.:%d\n",		(SA.m_SWMODE & 0x040)?1:0 );
 	S += wxString::Format("latch_r_active...:%d\n",		(SA.m_SWMODE & 0x080)?1:0 );
 	S += wxString::Format("latch_r_inactive.:%d\n",		(SA.m_SWMODE & 0x100)?1:0 );
