@@ -52,7 +52,7 @@ enum {
 #endif
 	ID_MNU_POLL_MOTORS,
 	ID_MNU_POLL_CURRENT,
-	ID_MNU_POLL_NEXT,
+//	ID_MNU_POLL_NEXT,
 };
 
 
@@ -88,7 +88,7 @@ BEGIN_EVENT_TABLE(SamplerFrame, wxFrame)
 	
 	EVT_MENU			(ID_MNU_POLL_MOTORS,		OnMenu)
 	EVT_MENU			(ID_MNU_POLL_CURRENT,		OnMenu)
-	EVT_MENU			(ID_MNU_POLL_NEXT,			OnMenu)
+//	EVT_MENU			(ID_MNU_POLL_NEXT,			OnMenu)
 
 
 	EVT_TIMER			( ID_TMR_TIMER,	OnTimer)
@@ -190,9 +190,9 @@ SamplerFrame::SamplerFrame(const wxString& title, const wxPoint& pos, const wxSi
 	wxMenu *menuTools	= new wxMenu;
 	menuTools->Append( ID_MNU_Perspect,				_("Layout..."), menuPerspect );
 #endif
-	menuTools->AppendCheckItem(ID_MNU_POLL_MOTORS,	"&Motors Polling\tF10",				"Enable/Disable Polling");
-	menuTools->Append(ID_MNU_POLL_NEXT,	"&Poll Next Motor\tShift-F10",		"Enable/Disable Polling");
-	menuTools->AppendCheckItem(ID_MNU_POLL_CURRENT, "&Poll Current Motor\tCtrl-F10",	"Enable/Disable Polling");
+	menuTools->AppendCheckItem	(ID_MNU_POLL_MOTORS,	"&Motors Polling\tF10",				"Enable/Disable Polling");
+//	menuTools->Append			(ID_MNU_POLL_NEXT,		"&Poll Next Motor\tShift-F10",		"Enable/Disable Polling");
+	menuTools->AppendCheckItem	(ID_MNU_POLL_CURRENT,	"&Poll Current Motor\tCtrl-F10",	"Enable/Disable Polling");
 
 	menuBar->Append(menuTools, _("&Tools"));
 
@@ -499,9 +499,10 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 			break;
 #endif
 		case ID_MNU_POLL_MOTORS:	m_PanExec->SetPoolMotors(event.IsChecked()); break;
-		case ID_MNU_POLL_NEXT:		
-			m_PanExec->IncPoolIdx();
-		case ID_MNU_POLL_CURRENT:	m_PanExec->SetPoolMotors(true, false); break;
+//		case ID_MNU_POLL_NEXT:		m_PanExec->IncPoolIdx(); m_PanExec->SetPoolMotors(true, false);	break;
+		case ID_MNU_POLL_CURRENT:	
+									m_PanExec->SetPoolIdx(m_PanExec->GetMotorSelected());
+									m_PanExec->SetPoolMotors(event.IsChecked(), false);
 			break;
 
 		default:

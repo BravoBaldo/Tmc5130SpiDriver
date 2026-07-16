@@ -8,6 +8,7 @@
 #define USE_EXPANDERS
 #define USE_SPI
 #define USE_TMC5130     //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC5130_FSA //Require USE_EXPANDERS and USE_SPI
 //#define USE_STEPPERS  //Require USE_EXPANDERS and USE_SPI
 
 #define PRINTLOG(s) Serial.print(F(s));
@@ -44,12 +45,13 @@ void ExecuteCommand(const uint8_t* data, uint16_t len);
   #define SPI_FREQ  4000000
 #endif
 
-#if defined(USE_TMC5130)
+#if defined(USE_TMC5130) || defined(USE_TMC5130_FSA)
   #if !defined(USE_EXPANDERS) || !defined(USE_SPI)
     #error Steppers require Expanders and SPI
   #endif
   #include "src/STEPPERS/TMC5130.h"
   #include "src/STEPPERS/TMC5130_Inits.h"
+  #include "src/STEPPERS/TMC5130_FSA.h"
   #define ExpanderStepper 1
   void  SpiEnableSteppers(uint8_t csPin, bool en) { Expanders[ExpanderStepper].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
   
@@ -108,7 +110,7 @@ void setup() {
     Motors.Setup();
   #endif
 
-  #if defined(USE_TMC5130)
+  #if defined(USE_TMC5130) || defined(USE_TMC5130_FSA)
   	for(int i=0; i<wxSIZEOF(Steppers); i++){
       Expanders[ExpanderStepper].write1(Steppers[i].getcePinAddress(), 0);  //0 Activate
       TMC5130_Init_00(Steppers[i]);
@@ -175,7 +177,7 @@ void AlwaysRun(void){
     Motors.Loop();
   #endif
 
-  #if defined(USE_TMC5130)
+  #if defined(USE_TMC5130) || defined(USE_TMC5130_FSA)
   	for(int i=0; i<wxSIZEOF(Steppers); i++){
       Steppers[i].FSA_SetHome_loop();
     }
@@ -275,7 +277,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
     case eStepNoMotor:
       Serial.printf("\"TMC5130's Command %s\", \"", (Cmd.m_SubSystem==eStepNoMotor)?"No Motor":"");
       {
-        static uint8_t  CM = 0;
+        static uint8_t  CM = 0; //Motor to use
         uint8_t         pr = 0; //Param Index
         uint8_t         CurrentMotor  = (Cmd.m_SubSystem==eStepNoMotor) ? CM : Cmd.m_Par[pr++];
         uint8_t         ParNum        = (Cmd.m_SubSystem==eStepNoMotor) ? Cmd.m_PatLen : Cmd.m_PatLen-1;
@@ -374,7 +376,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
           case 'z': Serial.print(F("Routine in Test"));
                     Answer.m_Result = eCmdOk;
                     //Steppers[CurrentMotor].TestFsaInitY();
-                    Steppers[1].Exec_SearchBegin();
+                    Steppers[CurrentMotor].Exec_SearchBegin();
                     break;
               break;
           default:  PRINTLOG("Unknown TMC5130's NoMotor command"); AnswerSent = false; break;
@@ -389,6 +391,36 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
           PRINTLOG("Answer ... ");
           ShowBuffer( (uint8_t*)&Answer, sizeof(Answer) );
         }
+        SamplerHID.SendBuffer( (uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
+      }
+      break;
+#endif
+#if defined(USE_TMC5130_FSA)
+    case eSteppersFSA:
+      Serial.printf("\"FSA single TMC5130\"");
+      {
+        FsaSingleAnswer Answer;Answer.m_Cmd = Cmd.m_Cmd; // ToDo: use proper Answer
+        uint8_t         pr = 0; //Param Index
+        uint8_t         CurrentMotor  = Cmd.m_Par[pr++];
+        AnswerSent = true;
+        switch(Cmd.m_Cmd){
+          case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations()      ? eCmdOk : eCmdRetry; break;
+          case 'a': PRINTLOG("Init Motor");
+            if(CurrentMotor!=2)
+               Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin()       ? eCmdOk : eCmdRetry;
+            else
+              Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin_R()      ? eCmdOk : eCmdRetry;
+             break;
+          case 'b': 
+            switch(Cmd.m_PatLen){
+              case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ) ? eCmdOk : eCmdRetry; break;
+              case 3: PRINTLOG("GoTo3");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++],  Cmd.m_Par[pr++]*1000  ) ? eCmdOk : eCmdRetry; break;
+            }
+            break;
+          default:  PRINTLOG("Unknown FSA single TMC5130 command"); AnswerSent = false;                                                 break;
+        }
+        Answer.m_Motor    = CurrentMotor;
+        Answer.m_FsaStatus = Steppers[CurrentMotor].AskStatus();
         SamplerHID.SendBuffer( (uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
       }
       break;

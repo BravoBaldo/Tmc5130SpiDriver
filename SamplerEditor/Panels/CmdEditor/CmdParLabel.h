@@ -3,6 +3,10 @@
 #include <wx/timectrl.h>
 #include <wx/spinctrl.h>
 #include <wx/dateevt.h>
+//#define USE_COORDDB
+#if defined(USE_COORDDB)
+#include "CoordDBctrl.h"
+#endif
 
 #include "sSampler_Commands.h"
 

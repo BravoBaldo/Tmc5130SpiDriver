@@ -139,7 +139,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 
 	{eStepDirect,	'i', "Set Timer",			"Mt",		RetArray2({"Stepper", "Time"						})},
 	{eStepDirect,	'j', "Wait",				"Mwb",		RetArray2({"Stepper", "Wait for", "Check Timer"		})},
-	{eStepDirect,	'j', "Wait Position",		"MhSb",		RetArray2({"Stepper", "Compare", "Final Position", "Check Timer"		})},
+	{eStepDirect,	'j', "Wait Position",		"MhSb",		RetArray2({"Stepper", "Compare", "Final Position", "Check Timer"	})},
 
 	{eStepDirect,	'k', "Set Advance",			"MS",		RetArray2({"Stepper", "Steps"					})},
 
@@ -153,7 +153,12 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'q', "Set GCONF 2",			"Mbbbbbbb",	RetArray2({"Stepper", "diag0_error", "diag0_otpw", "diag0_stall", "diag1_stall", "diag1_index", "diag1_onstate", "diag1_steps_skipped"	})},
 	{eStepDirect,	'q', "Set GCONF 3",			"Mbbbb",	RetArray2({"Stepper", "small_hysteresis", "stop_enable", "direct_mode", "test_mode"																				})},
 
+	{eSteppersFSA,	'0', "WaitPrevCommand",		"M",		RetArray2({"Stepper"})},
+	{eSteppersFSA,	'a', "Init",				"M",		RetArray2({"Stepper"})},
+	{eSteppersFSA,	'b', "Set Target 2",		"MS",		RetArray2({"Stepper", "Final Position"				})},
+	{eSteppersFSA,	'b', "Set Target 3",		"MSt",		RetArray2({"Stepper", "Final Position", "TimeOut"	})},
 
+/*
 	{eSteppersFSA,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
 	{eSteppersFSA,	'w', "WaitPrevCommand",		"M",			RetArray2({"Stepper"})},
 	{eSteppersFSA,	'C', "Set Currents",		"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
@@ -171,7 +176,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eSteppersFSA,	'H', "Home 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
 	{eSteppersFSA,	'T', "Set Trapezoidal",		"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
 	{eSteppersFSA,	'w', "Wait End Of",			"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
-
+*/
 	{eADCConverter,	'a', "GetADC",			"",				RetArray2({							})},
 
 	{eBarCode,		'l', "Laser ON",		"O",			RetArray2({"Laser On/Off"			})},

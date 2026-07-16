@@ -29,4 +29,5 @@ public:
 
     bool SetAnswer(void* Answer, size_t AnswerLen);
     void AddSamplePages();
+    int GetMotorSelected(void){return m_Grids[eGrid_Motors]->GetGridCursorRow(); }
 };

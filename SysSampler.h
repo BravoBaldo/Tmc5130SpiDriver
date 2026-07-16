@@ -85,6 +85,7 @@ typedef enum : uint8_t {	// AnswerType is lowercase
 	eTypAnswPwReader	= 'p',
 	eTypAnswExpander	= 'e',	//sExpanderStandard
 	eTypAnswStepDir		= 'd',	//TmcAnswer
+	eTypAnswFsaSingle	= 'f',	//FSA Single Stepper
 //	eTypStepperRegs		= 'r',	//StepperRegsAnswer
 }eMessageTypes;
 
@@ -215,6 +216,16 @@ typedef enum : uint8_t {
 }eStepShowAnswer;
 
 
+
+
+#pragma pack(push, 1)
+typedef struct _sFsaSingleAnswer{	//see STEP_ANSWERS_LIST
+	ANSWERHEADER(eTypAnswFsaSingle)	//m_MsgType, m_Cmd, m_Result
+	uint8_t		m_Motor		= 0;
+	uint8_t		m_FsaStatus	= 0;
+}FsaSingleAnswer;
+#pragma pack(pop)
+	
 #pragma pack(push, 1)
 typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 //	byte		m_MsgType	= eTypAnswStepDir;	//1

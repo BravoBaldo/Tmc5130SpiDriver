@@ -854,11 +854,9 @@ public:
 		switch (Ty) {
 			case eWaitVelocity:	res = ChkStop();							Serial.printf("  Stop  =%s\n", res?"True":"False");	return res;
 			case eWaitPosition:	res = GetSpiStatus().position_reached;		Serial.printf("  Posit =%s\n", res?"True":"False");	return res;
-			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			
-			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  Home  =%s\n", res?"True":"False");	return res;
-			
+			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  HomeL =%s\n", res?"True":"False");	return res;
+			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  HomeR =%s\n", res?"True":"False");	return res;
+			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  HomeRL=%s\n", res?"True":"False");	return res;
 			case eWaitPosAndVel:res = ChkEndOfSteps();						Serial.printf("  PosVel=%s\n", res?"True":"False");	return res;
 			case eWaitTimer:	res = wt;									Serial.printf("  Timer =%s\n", res?"True":"False");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
 		}
@@ -879,10 +877,11 @@ public:
 			return true;
 		}
 		int32_t CurrPos = getPosition();
+		Serial.printf("Target:%d, CurrPos %d\n", Position, CurrPos);
 		switch (Cmp) {
-			case eLessThan:		return (CurrPos<=Position);
-			case eSameAs:		return (CurrPos==Position);
-			case eGreaterOf:	return (CurrPos>=Position);
+			case eLessThan:		return (Position<=CurrPos);
+			case eSameAs:		return (Position==CurrPos);
+			case eGreaterOf:	return (Position>=CurrPos);
 		}
 		return true;
 	}
@@ -1210,67 +1209,4 @@ public:
 
 };
 
-
-class TMC5130_FSA : public TMC5130 {
-	typedef enum : uint8_t {
-		Nothing,
-		InitSearchBeginning,
-		WaitHomeA,
-		WaitHomeB,
-		WaitStopAtHome,
-		WaitPosZero,
-	}FSA_SetHome;
-	FSA_SetHome	Status_SetHome	= Nothing; 
-public:
-	void FSA_SetHome_loop(void){
-		switch(Status_SetHome){
-			case Nothing:
-			default:
-				break;
-			case WaitHomeA:
-				if(WaitMotor(eWaitHomeL, true))	Status_SetHome = WaitHomeB;
-				break;
-			case WaitHomeB:
-				if(WaitMotor(eWaitHomeL, true))	{
-					setVelocities    ( eVMAX, 0);
-					Status_SetHome = WaitStopAtHome;
-				}
-				break;
-			case WaitStopAtHome:
-				if(WaitMotor(eWaitVelocity, false)){
-					setRampMode(PositionMode);
-					setPosition  (-10);
-					setTargetBase(0);
-					SetRamp(10, 50, 10, 50, 5000, 0);
-					Status_SetHome = WaitPosZero;
-				}
-				break;
-			case WaitPosZero:
-				if(WaitMotor(eWaitPosition, false)){
-					SetTrapezoidal(60, 5000);                      
-					setCurrent   (0, 0, 0);
-					Status_SetHome = Nothing;
-				}
-				break;
-		}
-	}
-
-	TMC5130_FSA(SPIClass &spiRef, uint8_t csPin, uint8_t cePin, SPI_ENABLER_CB cbCS=EnableSpiOnChip, uint32_t spiHz = 1000000, char* Name=nullptr, int32_t Max_Steps = 0)
-		: TMC5130(spiRef, csPin, cePin, cbCS, spiHz, Name, Max_Steps)
-		{}
-
-	bool	Exec_WaitOperations(void) {return (Status_SetHome == Nothing);}
-
-	bool	Exec_SearchBegin(){
-				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); TestReset();	getGstat();
-				setMotorDirection(ReverseDirection);	//GCONF
-				setStops		(false, true, true, false, false, false, false);
-				setCurrent		(20, 30, 0);
-				SetFreeRunning	(10, 8, 0);
-				SetTimer		(8000);
-				Status_SetHome = WaitHomeA;
-				return true;
-			}
-};
 

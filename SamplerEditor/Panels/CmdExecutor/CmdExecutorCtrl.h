@@ -59,8 +59,12 @@ public:
 	bool		ExecuteSteps(uint16_t	m_MasterId);
 	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
 	void		SetPoolMotors	(bool s, bool r = true) { m_PoolMotors = s; m_RotatePool = r; }
-	void		IncPoolIdx		(void) { 
-		m_PoolIdx = (m_PoolIdx + 1) % 3; 
-	}
-		
+	void		IncPoolIdx		(void) { m_PoolIdx = (m_PoolIdx + 1) % 3; }
+	void		SetPoolIdx		(int idx) { m_PoolIdx = idx; }
+
+	int			GetMotorSelected(void) { return m_ptrAnswerShow->GetMotorSelected(); }
+		/*
+		* cAnswersShow::GetMotorSelected()
+			cAnswersShow*		m_ptrAnswerShow	= nullptr;
+		*/
 };

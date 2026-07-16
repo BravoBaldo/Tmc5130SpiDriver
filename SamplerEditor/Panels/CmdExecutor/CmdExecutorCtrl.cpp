@@ -146,6 +146,13 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 					break;
 				case eTypAnswExpander:	CALLANSWERPARSER(sExpanderStandard);	break;
 				case eTypAnswStepDir:	CALLANSWERPARSER(TmcAnswer);			break;
+				case eTypAnswFsaSingle: 
+					{
+						FsaSingleAnswer Answer;
+						memcpy(&Answer, (FsaSingleAnswer*)m_HidExec.GetBuffer(), sizeof(FsaSingleAnswer));
+						Success = Answer.m_Result;
+					}
+					break;
 				default:
 					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
 					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);

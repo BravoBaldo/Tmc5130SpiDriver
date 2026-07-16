@@ -33,7 +33,11 @@ void CmdParLabel::SetCurrentValue(long t) {
 		}
 
 		case eNumber: {
+#if defined(USE_COORDDB)
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
+#else
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)) {
+#endif
 				int minVal = spinCtrl->GetMin();
 				int maxVal = spinCtrl->GetMax();
 				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
@@ -84,8 +88,13 @@ long CmdParLabel::GetValue(void) {
 			break;
 		case eNumber:
 			{
-				if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl))
-					return static_cast<long>(spinCtrl->GetValue());
+#if defined(USE_COORDDB)
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
+#else
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)){
+#endif
+				return static_cast<long>(spinCtrl->GetValue());
+			}
 			}
 			break;
 		case eTime:
@@ -124,7 +133,11 @@ void CmdParLabel::SetValue(wxArrayString Names, wxArrayInt WXUNUSED(Codes)) {	//
 }
 
 void CmdParLabel::SetValue(int Val, int Min, int Max) {	//eNumber
+#if defined(USE_COORDDB)
+	CoordDBctrl* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl);
+#else
 	wxSpinCtrl* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl);
+#endif
 	if (!spinCtrl) return;
 	spinCtrl->SetRange(Min, Max);
 	int safeVal = std::max(Min, std::min(Val, Max));
@@ -188,7 +201,12 @@ void CmdParLabel::ChangeType(const wxString& name, int Min, int Max) {	//eNumber
 	m_type = eNumber;	InitLabel(name);
 
 	wxDELETE(m_gen_Param);
+	
+#if defined(USE_COORDDB)
+	m_gen_Param = new CoordDBctrl(this, wxID_ANY, wxSP_ARROW_KEYS, Min, Max, Min);
+#else
 	m_gen_Param = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, Min, Max, Min);
+#endif
 	SetSizers();
 }
 
@@ -202,7 +220,7 @@ void CmdParLabel::SetSizers(void) {
 	//SIZER_STATDEBUG(sizMaster, "par", wxHORIZONTAL);
 	wxBoxSizer* sizMaster = new wxBoxSizer(wxHORIZONTAL);
 	sizMaster->Add(m_Lbl_Param, 1, wxALL, 0);
-	sizMaster->Add(m_gen_Param, 1, wxALL, 0);
+	sizMaster->Add(m_gen_Param, 10, wxEXPAND | wxALL, 0);
 
 	SetSizer(sizMaster); // use the sizer for layout
 	ReposeSizers();
