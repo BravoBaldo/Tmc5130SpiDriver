@@ -55,21 +55,23 @@ static const sParams SamplerParams[]{
 	{ 'w', eChoice,	"Waitings",			0,				5,			"Waiting Motor"				, RetArray2({"eWaitVelocity", "eWaitPosition", "eWaitHomeL", "eWaitPosAndVel", "eWaitTimer", "eWaitHomeR", "eWaitHomeRL"})							},
 
 
-	{ 'A', eNumber,	"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
-	{ 'C', eNumber,	"Byte",			0,				0xFF																			},
-	{ 'L', eNumber,	"Uint32",		0,				wxINT32_MAX,	"if>50000 ask database"		, RetArray2({"Message"})			},	//wxUINT32_MAX = 0xffffffff
-	{ 'M', eChoice,	"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)", "Probe"})},
-	{ 'O', eChoice,	"On/Off",		0,				1,				"Off/ON"					, RetArray2({"Off", "ON"})			},
-	{ 'R', eChoice,	"Ramp Mode",	0,				1,				"Ramp Mode"					, RetArray2({"PositionMode", "VelocityPositiveMode", "VelocityNegativeMode", "HoldMode"})},
-	{ 'S', eNumber,	"Steps.",		MIN_PARAM,		MAX_PARAM,		"Steps"						, RetArray2({"Steps"})},
-	{ 'V', eNumber,	"Vel.",			MIN_PARAM,		MAX_PARAM,		"Velocity"					, RetArray2({"Velocity"})},
-	{ 'P', eNumber,	"Routine",		2000,			65535,			"Routine from DB"			, RetArray2({"Routine" })},
+	{ 'A', eNumber,		"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
+	{ 'C', eNumber,		"Byte",			0,				0xFF																			},
+	{ 'L', eNumber,		"Uint32",		0,				wxINT32_MAX,	"if>50000 ask database"		, RetArray2({"Message"})			},	//wxUINT32_MAX = 0xffffffff
+	{ 'M', eChoice,		"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)", "Probe"})},
+	{ 'O', eChoice,		"On/Off",		0,				1,				"Off/ON"					, RetArray2({"Off", "ON"})			},
+	{ 'R', eChoice,		"Ramp Mode",	0,				1,				"Ramp Mode"					, RetArray2({"PositionMode", "VelocityPositiveMode", "VelocityNegativeMode", "HoldMode"})},
+	{ 'S', eDBCoord,	"Steps.",		MIN_PARAM,		MAX_PARAM,		"Steps"						, RetArray2({"Steps"})},
+	{ 'V', eNumber,		"Vel.",			MIN_PARAM,		MAX_PARAM,		"Velocity"					, RetArray2({"Velocity"})},
+	{ 'P', eDBRoutine,	"Routine",		2000,			65535,			"Routine from DB"			, RetArray2({"Routine" })},
+	{ 'Q', eDBCoord,	"eDBCoord",		0,				65535,			"Routine from DB"			, RetArray2({"eDBCoord" })},
 };
 
 static const sSampler_Commands Sampler_Commands[] = {
 	// Sub  cmd  Descr				ParamPattern	ParNames										ExtDescr
 
 	{eSystemCmd, 'a',	"Exec. Routine",		"P",		RetArray2({"Program Id"					})},
+//	{eSystemCmd, 'q',	"eDBCoord",				"Q",		RetArray2({"Program Id"					})},
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
 	{eSystemCmd, '0',	"Get Version",			"",			RetArray2({								})},
@@ -218,6 +220,7 @@ void sSampler_Check(void) {
 		}
 	}
 	//Check Unused SamplerParams
+#ifdef ToDoTest
 	for (size_t p = 0; p < WXSIZEOF(SamplerParams); p++) {
 		bool Chk = false;
 		for (size_t i = 0; i < WXSIZEOF(Sampler_Commands); i++) {
@@ -227,7 +230,7 @@ void sSampler_Check(void) {
 		if(Chk==false)
 			wxMessageBox(wxString::Format("Parameter '%c' not used!", SamplerParams[p].ParId), "Warning", wxOK | wxICON_INFORMATION, NULL);
 	}
-
+#endif
 	//Check eStepNoMotor/eStepDirect
 	for (size_t i = 0; i < WXSIZEOF(Sampler_Commands); i++) {
 		if (Sampler_Commands[i].SubSys == eStepNoMotor && Sampler_Commands[i].cmd!='1') {

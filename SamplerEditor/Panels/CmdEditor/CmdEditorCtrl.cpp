@@ -33,7 +33,7 @@ sCommand	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
             Cmd.m_Cmd         = Cmd.m_Cmd       = c->cmd;
             Cmd.SetPattern(c->ParamPattern);
             for (size_t i = 0; i < c->ParNames.size(); i++) {
-                Cmd.m_Par[i] = Cmd.m_Par[i] = m_Params[i]->GetValue();
+                Cmd.m_Par[i] = m_Params[i]->GetValue();
             }
         }
     }
@@ -135,6 +135,15 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                                     m_Params[ParIdx]->ChangeType(parName, p->MinValue, p->MaxValue);
                                     m_Params[ParIdx]->SetToolTip(wxString::Format("From %d to %d", p->MinValue, p->MaxValue));
                                     break;
+                                case eDBRoutine:
+                                    m_Params[ParIdx]->ChangeTo_DBRoutine(parName);
+                                    m_Params[ParIdx]->SetToolTip(wxString::Format("Routine %d to %d", p->MinValue, p->MaxValue));
+                                    break;
+                                case eDBCoord:
+                                    m_Params[ParIdx]->ChangeTo_DBCoord(parName, p->MinValue, p->MaxValue);
+                                    m_Params[ParIdx]->SetToolTip(wxString::Format("Coordinate %d to %d", p->MinValue, p->MaxValue));
+                                    break;
+
                                 case eChoice:
                                     {
                                         wxArrayString Names;	//Names.Clear();
@@ -168,7 +177,7 @@ void CmdEditorCtrl::OnChoice(wxCommandEvent& Evt) {
                 sizMaster->Fit(this); // fit the dialog to the contents
                 sizMaster->SetSizeHints(this); // set hints to honor min size
                 GetParent()->Refresh();//	m_mgr.Update(); //Thaw();
-                GetParent()->Layout();
+                GetParent()->Layout(); PostSizeEventToParent();
 
                 this->Thaw();
             }
@@ -262,40 +271,26 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
     }
 
     sSampler_Check();
-//#define WRONGMODE
-
 
     SIZER_STATDEBUG(sizDBInfo, "DB Info", wxVERTICAL);
         sizDBInfo->Add(m_Txt_ProgId, 0, wxALL, 5);
         sizDBInfo->Add(m_Txt_StepId, 0, wxALL, 5);
 
     SIZER_STATDEBUG(sizComp, "SubSystems", wxHORIZONTAL);
-#if defined(WRONGMODE)
-    m_cho_SubSystem = new wxChoice(this, ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-#else
     m_cho_SubSystem = new wxChoice(sizComp->GetStaticBox(), ID_cho_SubSys, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-#endif
     m_cho_SubSystem->SetToolTip(_("SubSystems List"));
     for (size_t i = 0; i < SubSystem_Size(); i++) {
         const sSubSystem* SubSys = SubSystem_GetByIndex(i);
         if (SubSys)  m_cho_SubSystem->Append(SubSys->Descr, (void*)SubSys);
     }
     m_cho_SubSystem->SetSelection(4);
-
-
         sizComp->Add(m_cho_SubSystem, 0, wxALL, 5);
 
     SIZER_STATDEBUG(sizCmd, "Command", wxHORIZONTAL);
-#if defined(WRONGMODE)
-    m_cho_StepperCmd = new wxChoice(this, ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-#else
     m_cho_StepperCmd = new wxChoice(sizCmd->GetStaticBox(), ID_cho_Cmd, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_SORT);
-#endif
     m_cho_StepperCmd->SetToolTip(_("Main Command"));
     Fill_Commands();
     sizCmd->Add(m_cho_StepperCmd, 0, wxALL, 5);
-
-
 
 
     SIZER_STATDEBUG(sizTop, "Master", wxHORIZONTAL);
@@ -322,11 +317,13 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 #endif			
 
         SIZER_STATDEBUG(sizParams2, "Parameters", wxVERTICAL);
-            sizParams2->SetMinSize(wxSize(500, 200));
-            for(int i=0; i<WXSIZEOF(m_Params); i++)
+            sizParams2->SetMinSize(wxSize(700, 200));
+            for (int i = 0; i < WXSIZEOF(m_Params); i++) {
+                //m_Params[i]->Layout();
                 sizParams2->Add(m_Params[i], 0, wxALL | wxGROW, 0);
+            }
 
-        sizTop->Add(sizDBInfo, 0, wxALL | wxGROW, 5);
+        sizTop->Add(sizDBInfo,  0, wxALL | wxGROW, 5);
         sizTop->Add(sizComp,	0, wxALL | wxGROW, 5);
         sizTop->Add(sizCmd,		0, wxALL | wxGROW, 5);
 #if defined(SHOW_PARAMS_INFO)

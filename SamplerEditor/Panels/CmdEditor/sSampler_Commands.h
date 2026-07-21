@@ -5,7 +5,7 @@
 #define MAXSECS	222	//Max seconds
 //#define USE_DATE_TIME_CTRL
 
-typedef enum { eChoice, eNumber, eTime, eUnknown } eParType;
+typedef enum { eChoice, eNumber, eTime, eDBRoutine, eDBCoord, eUnknown } eParType;
 
 struct sSubSystem {
 	eSubSysAcro		Type;

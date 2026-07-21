@@ -51,22 +51,17 @@ long cDBSampler::ProgMaster_GetNextId(unsigned int StartIdx) {
         PROGMASTER_TABLENAME, StartIdx, PROGMASTER_TABLENAME, StartIdx
     );
 
-    // 1. Preparazione
     if (sqlite3_prepare_v2(m_db, SqlCmd.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
         ErrorShow(sqlite3_errmsg(m_db));
         return -1;
     }
 
-    // 2. Esecuzione
     int rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW) {
-        // Estraiamo il valore dalla colonna 0 (MIN(ProgId) + 1)
-        // Usiamo sqlite3_column_int64 per gestire ID potenzialmente grandi (long)
         nextId = (long)sqlite3_column_int64(stmt, 0);
     }
     sqlite3_finalize(stmt);
 
-    // Se 0 come risultato (per la tabella vuota e StartIdx era 0), restituiamo almeno StartIdx
     return (nextId < (long)StartIdx) ? (long)StartIdx : nextId;
 }
 
@@ -75,7 +70,6 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
 
     sqlite3_stmt* stmt;
 
-    // Preparazione della query
     if (sqlite3_prepare_v2(m_db, SqlQuery.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
         ErrorShow(sqlite3_errmsg(m_db));
         return;
@@ -85,16 +79,12 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
     listCtrl->Freeze();
     listCtrl->ClearAll();   // Svuota la lista esistente
 
-    // 1. Creazione delle intestazioni e dimensionamento colonne
     for (int i = 0; i < colCount; i++) {
         wxString colName = wxString::FromUTF8(sqlite3_column_name(stmt, i));
-        //int colType = sqlite3_column_type(stmt, i); // Nota: il tipo e' affidabile solo dopo uno step o tramite decltype
 
-        // SQLite e' dinamico, ma possiamo tentare di dedurre il tipo dalla definizione
         const char* declType = sqlite3_column_decltype(stmt, i);
         wxString typeStr = (declType) ? wxString(declType).Upper() : wxString("");
 
-        // Dimensionamento: 50 per numerici (INT, REAL, DOUBLE, FLOAT), 190 per altri
         int width = (   typeStr.Contains("INT") ||
                         typeStr.Contains("REAL") ||
                         typeStr.Contains("DOUBLE") ||
@@ -131,7 +121,6 @@ void cDBSampler::ListCtrl_FillFromSql(wxListCtrl* listCtrl, const wxString& SqlQ
         for (int i = 0; i < colCount; i++)
             listCtrl->SetColumnWidth(i, wxLIST_AUTOSIZE);	//
     }
-
     listCtrl->Thaw();
 }
 
@@ -191,6 +180,48 @@ void cDBSampler::DataViewCtrl_FillFromSql(wxDataViewListCtrl* dvCtrl, const wxSt
     dvCtrl->Thaw();
 }
 
+bool cDBSampler::Combo_FillSql(wxArrayString& Titles, wxArrayInt& Codes, const wxString& SqlQuery) {
+    Titles.Clear();
+    Codes.Clear();
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, SqlQuery.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        return false;
+    }
+
+    bool success = true;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        // Lettura della prima colonna (Testo -> f1)
+        const unsigned char* textPtr = sqlite3_column_text(stmt, 0);
+        wxString titleStr = wxEmptyString;
+        if (textPtr != nullptr) {
+            titleStr = wxString::FromUTF8(reinterpret_cast<const char*>(textPtr));
+        }
+        Titles.Add(titleStr);
+
+        // Lettura della seconda colonna (Intero -> f2)
+        // SQLite risolve il problema del byte/int: estrae un int standard a prescindere dal tipo di memorizzazione sul DB
+        int f2 = sqlite3_column_int(stmt, 1);
+        Codes.Add(f2);
+    }
+
+    // Verifica se il ciclo è terminato per errore o regolarmente
+    int rc = sqlite3_reset(stmt);
+    if (rc != SQLITE_OK && rc != SQLITE_DONE) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        success = false;
+    }
+
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+bool cDBSampler::ProgMaster_FillRoutines(wxArrayString& Titles, wxArrayInt& Codes, bool OnlySub) {
+    wxString strQuerySQL = wxString::Format(" SELECT ProgName, ProgId FROM " PROGMASTER_TABLENAME  " %s ORDER BY ProgName", OnlySub ? "WHERE ProgId>=2000" : "");
+    return Combo_FillSql(Titles, Codes, strQuerySQL);	//No translation
+}
 
 void cDBSampler::ProgMaster_Fill2(wxListCtrl* ListCtrl, bool SortByName, bool DoResize, int Fld2Translate, byte Filter) {
     wxString SqlWhere;
@@ -282,7 +313,7 @@ wxString cDBSampler::SQLStrPrepare(const wxString & str) {
 
 bool cDBSampler::RecordExists(const wxString& Query) {
     if (!m_db) return false;
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     bool exists = false;
 
     int rc = sqlite3_prepare_v2(m_db, Query.utf8_str(), -1, &stmt, nullptr);    // 1. Preparazione della query (converte wxString in UTF-8)
@@ -296,6 +327,25 @@ bool cDBSampler::RecordExists(const wxString& Query) {
     sqlite3_finalize(stmt);         // 3. Finalizzazione obbligatoria per liberare le risorse dello statement
     return exists;
 }
+
+wxString cDBSampler::ProgMaster_GetTitle(unsigned int ProgId) {
+    sqlite3_stmt* stmt = nullptr;
+    wxString progName = wxEmptyString;
+    const char* sql = "SELECT ProgName FROM SAM_ProgMaster WHERE ProgId = ?;";
+
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, static_cast<sqlite3_int64>(ProgId));
+
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            const unsigned char* text = sqlite3_column_text(stmt, 0);
+            if (text != nullptr)    progName = wxString::FromUTF8(reinterpret_cast<const char*>(text));
+        }
+    }
+    sqlite3_finalize(stmt);
+    return progName;
+}
+
+
 
 bool cDBSampler::ExecuteSQL(const wxString& queryToExecute, bool AutoCommit) {
     if (!m_db) return false;
@@ -850,21 +900,17 @@ bool cDBSampler::Defaults_ValueGet(const wxString& strName, wxString& strValue, 
 
     bool bFound = false;
 
-    // 1. Prepariamo la query di selezione con il segnaposto
     wxString strSQL = wxString::Format( "SELECT DefaultValue FROM %s WHERE DefaultName = ?;", TableName );
 
     sqlite3_stmt* stmt = nullptr;
 
-    // 2. Compilazione della query SQL
     int rc = sqlite3_prepare_v2(m_db, strSQL.utf8_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         ErrorShow(sqlite3_errmsg(m_db)); // Errore effettivo del database durante l'esecuzione
         return false;
     }
+    sqlite3_bind_text(stmt, 1, strName.utf8_str(), -1, SQLITE_TRANSIENT);
 
-    sqlite3_bind_text(stmt, 1, strName.utf8_str(), -1, SQLITE_TRANSIENT);   // 3. Binding del parametro di ricerca
-
-    // 4. Esecuzione della query
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW) {
         const unsigned char* text = sqlite3_column_text(stmt, 0);   // Il record esiste: leggiamo il valore dal primo campo (indice 0)
@@ -876,20 +922,15 @@ bool cDBSampler::Defaults_ValueGet(const wxString& strName, wxString& strValue, 
         bFound = true;
     }
 
-    sqlite3_finalize(stmt); // 5. Rilascio delle risorse della SELECT
+    sqlite3_finalize(stmt);
 
-    // 6. Gestione del valore di default se il record non è stato trovato
     if (!bFound) {
         if (!strDef.IsEmpty()) {
-            // Inseriamo il valore di default nel database
-            // (Nota: rimuovi il primo parametro se Defaults_ValueSet usa direttamente m_db internamente)
             bool bInsertOk = Defaults_ValueSet(strName, strDef, strDescription, TableName);
-
-            // Assegniamo il valore di default a strValue come richiesto
             strValue = strDef;
             return bInsertOk;
         }
-        return false; // Record non trovato e nessun valore di default specificato
+        return false; // Record not found
     }
     return true;
 }
@@ -903,4 +944,55 @@ long cDBSampler::Defaults_ValueLGet(const wxString& strName, long Defv, const wx
     strValue.ToLong(&DefVal);
 
     return DefVal;
+}
+
+bool cDBSampler::Defaults_Get(wxString DefaultName, long& DefVal, wxString& Descr) {
+    sqlite3_stmt* stmt = nullptr;
+    bool recordFound = false;
+
+    const char* sql = "SELECT DefaultValue, Description FROM " DEFAULTS_TABLENAME " WHERE DefaultName = ?;";
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, DefaultName.utf8_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            DefVal = static_cast<long>(sqlite3_column_int64(stmt, 0));
+            const unsigned char* textDescr = sqlite3_column_text(stmt, 1);
+            if (textDescr != nullptr) {
+                Descr = wxString::FromUTF8(reinterpret_cast<const char*>(textDescr));
+            } else {
+                Descr = wxEmptyString;
+            }
+            recordFound = true;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return recordFound;
+}
+
+bool cDBSampler::Defaults_Set(const wxString& DefaultName, long DefVal, const wxString& Descr) {
+    sqlite3_stmt* stmt = nullptr;
+    int rc;
+    long dummyVal;
+    wxString dummyDescr;
+    bool esiste = Defaults_Get(DefaultName, dummyVal, dummyDescr);
+
+    const char* sql = (esiste)
+        ? "UPDATE \"SAM_Defaults\" SET DefaultValue = ?, Description = ? WHERE DefaultName = ?;"
+        : "INSERT INTO \"SAM_Defaults\" (DefaultValue, Description, DefaultName) VALUES (?, ?, ?);";
+/*
+    const char* sql = nullptr;
+    if (esiste) {
+        sql = "UPDATE \"SAM_Defaults\" SET DefaultValue = ?, Description = ? WHERE DefaultName = ?;";
+    } else {
+        sql = "INSERT INTO \"SAM_Defaults\" (DefaultValue, Description, DefaultName) VALUES (?, ?, ?);";
+    }
+*/
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+    sqlite3_bind_int64  (stmt, 1, static_cast<sqlite3_int64>(DefVal));
+    sqlite3_bind_text   (stmt, 2, Descr.utf8_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text   (stmt, 3, DefaultName.utf8_str(), -1, SQLITE_TRANSIENT);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    return (rc == SQLITE_DONE);
 }

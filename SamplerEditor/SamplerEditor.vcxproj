@@ -458,6 +458,8 @@
     <ClCompile Include="ODBC\SamplerDB.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
+    <ClCompile Include="Panels\CmdEditor\CoordDBctrl.cpp" />
+    <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
     <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp" />

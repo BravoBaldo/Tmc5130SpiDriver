@@ -33,18 +33,40 @@ void CmdParLabel::SetCurrentValue(long t) {
 		}
 
 		case eNumber: {
-#if defined(USE_COORDDB)
-			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
-#else
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)) {
-#endif
+				int minVal = spinCtrl->GetMin();
+				int maxVal = spinCtrl->GetMax();
+				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
+
+				//wxFont customFont((safeVal>5)?10:20, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, "Courier New");
+				//spinCtrl->SetFont(customFont);
+
+				spinCtrl->SetValue(static_cast<int>(safeVal));
+				//SetSizers();
+
+			}
+			break;
+		}
+		case eDBRoutine:
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, DBRoutineCtrl)) {
+				/*int minVal = spinCtrl->GetMin();
+				int maxVal = spinCtrl->GetMax();
+				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
+				spinCtrl->SetValue(static_cast<int>(safeVal));
+				*/
+				spinCtrl->SetValue(t);
+			}
+			break;
+		case eDBCoord:
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
 				int minVal = spinCtrl->GetMin();
 				int maxVal = spinCtrl->GetMax();
 				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
 				spinCtrl->SetValue(static_cast<int>(safeVal));
+				spinCtrl->Layout();
+				Layout();	PostSizeEventToParent();
 			}
 			break;
-		}
 
 		case eTime: {
 #if defined(USE_DATE_TIME_CTRL)
@@ -71,6 +93,7 @@ void CmdParLabel::SetCurrentValue(long t) {
 		default:
 			return;
 	}
+	Layout(); PostSizeEventToParent();
 }
 
 long CmdParLabel::GetValue(void) {
@@ -87,16 +110,21 @@ long CmdParLabel::GetValue(void) {
 			}
 			break;
 		case eNumber:
-			{
-#if defined(USE_COORDDB)
-			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
-#else
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl)){
-#endif
 				return static_cast<long>(spinCtrl->GetValue());
 			}
+			break;
+		case eDBRoutine:
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, DBRoutineCtrl)) {
+				return static_cast<long>(spinCtrl->GetValue());
 			}
 			break;
+		case eDBCoord:
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
+				return static_cast<long>(spinCtrl->GetValue());
+			}
+			break;
+
 		case eTime:
 #if defined(USE_DATE_TIME_CTRL)
 			if (auto* timePicker = wxDynamicCast(m_gen_Param, wxTimePickerCtrl)) {
@@ -133,15 +161,27 @@ void CmdParLabel::SetValue(wxArrayString Names, wxArrayInt WXUNUSED(Codes)) {	//
 }
 
 void CmdParLabel::SetValue(int Val, int Min, int Max) {	//eNumber
-#if defined(USE_COORDDB)
-	CoordDBctrl* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl);
-#else
 	wxSpinCtrl* spinCtrl = wxDynamicCast(m_gen_Param, wxSpinCtrl);
-#endif
 	if (!spinCtrl) return;
 	spinCtrl->SetRange(Min, Max);
 	int safeVal = std::max(Min, std::min(Val, Max));
 	spinCtrl->SetValue(safeVal);
+}
+
+void CmdParLabel::SetValue_DBRoutine(int Val){	//eDBRoutine
+	DBRoutineCtrl* spinCtrl = wxDynamicCast(m_gen_Param, DBRoutineCtrl);
+	if (!spinCtrl) return;
+	spinCtrl->SetValue(Val);
+}
+
+void CmdParLabel::SetValue_DBCoord(int Val, int Min, int Max){	//eDBCoord
+	CoordDBctrl* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl);
+	if (!spinCtrl) return;
+	spinCtrl->SetRange(Min, Max);
+	int safeVal = std::max(Min, std::min(Val, Max));
+	spinCtrl->SetValue(safeVal);
+	spinCtrl->Layout();
+	Layout();	PostSizeEventToParent();
 }
 
 void CmdParLabel::SetValue(wxUint32 t) {
@@ -199,28 +239,44 @@ void CmdParLabel::ChangeType(const wxString& name, wxArrayString Names, wxArrayI
 
 void CmdParLabel::ChangeType(const wxString& name, int Min, int Max) {	//eNumber
 	m_type = eNumber;	InitLabel(name);
-
 	wxDELETE(m_gen_Param);
 	
-#if defined(USE_COORDDB)
-	m_gen_Param = new CoordDBctrl(this, wxID_ANY, wxSP_ARROW_KEYS, Min, Max, Min);
-#else
 	m_gen_Param = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, Min, Max, Min);
-#endif
+
 	SetSizers();
 }
 
+void CmdParLabel::ChangeTo_DBRoutine(const wxString& name) {	//eDBRoutine
+	m_type = eDBRoutine;	InitLabel(name);
+	wxDELETE(m_gen_Param);
+	m_gen_Param = new DBRoutineCtrl(this, wxID_ANY);
+	SetSizers();
+}
+
+void CmdParLabel::ChangeTo_DBCoord(const wxString& name, int Min, int Max) {	//eDBCoord
+	m_type = eDBCoord;	InitLabel(name);
+	wxDELETE(m_gen_Param);
+	m_gen_Param = new CoordDBctrl(this, wxID_ANY, wxSP_ARROW_KEYS, Min, Max, Min);
+	SetSizers();
+	m_gen_Param->Layout();
+	Layout();	PostSizeEventToParent();
+}
+
 void CmdParLabel::ReposeSizers(void) {
-	wxSizer* sizMaster = GetSizer(); // use the sizer for layout
-	sizMaster->Fit(this); // fit the dialog to the contents
-	sizMaster->SetSizeHints(this); // set hints to honor min size
+	wxSizer* sizMaster = GetSizer();	// use the sizer for layout
+	sizMaster->Fit(this);				// fit the dialog to the contents
+	sizMaster->SetSizeHints(this);		// set hints to honor min size
 }
 
 void CmdParLabel::SetSizers(void) {
 	//SIZER_STATDEBUG(sizMaster, "par", wxHORIZONTAL);
 	wxBoxSizer* sizMaster = new wxBoxSizer(wxHORIZONTAL);
-	sizMaster->Add(m_Lbl_Param, 1, wxALL, 0);
-	sizMaster->Add(m_gen_Param, 10, wxEXPAND | wxALL, 0);
+
+	//if (GetSizer()->GetItem(m_Lbl_Param)) GetSizer()->Detach(m_Lbl_Param);
+	sizMaster->Add(m_Lbl_Param, 0, wxALL, 0);
+
+	//if (GetSizer()->GetItem(m_gen_Param)) GetSizer()->Detach(m_gen_Param);
+	sizMaster->Add(m_gen_Param, 1, wxEXPAND | wxALL, 0);
 
 	SetSizer(sizMaster); // use the sizer for layout
 	ReposeSizers();

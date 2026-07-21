@@ -30,6 +30,12 @@
     <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp">
       <Filter>Source\Executor</Filter>
     </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\CoordDBctrl.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ResFile.rc" />

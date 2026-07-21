@@ -95,6 +95,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			continue;
 		}
 		LogMe(wxString::Format("  Attempt %d: Message sent...\n", ++retryCount), false);
+		::wxYield();
 
 		// 2. Attesa risposta con Timeout
 		wxStopWatch sw;
@@ -225,7 +226,7 @@ bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 
 #if !defined(CALLSUBSINSTEPS)
 	//Check SubRoutine:
-	if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd=='a') {
+	if (vStep.m_SubSystem == eSystemCmd && (vStep.m_Cmd=='a')) {
 		LogMe(wxString::Format("Execute Subroutine %d\n", vStep.m_Par[0]), false);
 		ExecuteSteps(vStep.m_Par[0]);
 		return true;
@@ -434,8 +435,8 @@ CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 			SizButtons->Add(m_Btn_ExecStep, 1, wxALL | wxGROW, 1);
 			SizButtons->Add(m_Btn_Panic, 1, wxALL | wxGROW, 1);
 
-		this->SetSizer(SizButtons);
-		this->Layout();
+		SetSizer(SizButtons);
+		Layout(); 	PostSizeEventToParent();
 	}
 
 	m_timer = new wxTimer(this, ID_Exec_Timer);

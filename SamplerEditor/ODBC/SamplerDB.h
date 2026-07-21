@@ -81,9 +81,9 @@ public:
 	int				ProgMaster_Fill2	(wxListCtrl* ListCtrl, bool SortByName, bool DoResize = true, int Fld2Translate = 1, byte Filter = 0);
 	bool			ProgMaster_Insert	(const wxString& NewProgNameIn, unsigned int Id=0);
 	bool			ProgMaster_Copy		(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew = 0);
-	bool			ProgDetail_Delete	(unsigned int ProgId, bool DelFather);
 	bool			ProgMaster_Print	(unsigned int ProgId, const wxString& ProgName, const wxString& FilePathName);
 	bool			ProgMaster_Export	(unsigned int ProgId, const wxString& FilePathName);
 
 	int				ProgDetail_Fill		(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoResize = true, int Fld2Translate = 1);
+	bool			ProgDetail_Delete	(unsigned int ProgId, bool DelFather);
 };

@@ -142,11 +142,15 @@ public:
 	const char* GetLastError(void) { return sqlite3_errmsg(m_db); }
 	wxString	getMasterName(unsigned int ProgId);
 
-	bool	CreateDB				(void);
-	bool	ProgMaster_Insert		(const wxString& ProgName, unsigned int Id = 0);
-	bool	ProgMaster_Copy			(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew = 0);
-	void	ProgMaster_Fill2		(wxListCtrl* ListCtrl, bool SortByName, bool DoResize = true, int Fld2Translate = 1, byte Filter = 0);
-	bool	ProgMaster_Export		(bool IsText, unsigned int ProgId, const wxString& FilePathName);
+	bool		CreateDB				(void);
+	bool		ProgMaster_Insert		(const wxString& ProgName, unsigned int Id = 0);
+	bool		ProgMaster_Copy			(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew = 0);
+	void		ProgMaster_Fill2		(wxListCtrl* ListCtrl, bool SortByName, bool DoResize = true, int Fld2Translate = 1, byte Filter = 0);
+	bool		ProgMaster_Export		(bool IsText, unsigned int ProgId, const wxString& FilePathName);
+	wxString	ProgMaster_GetTitle		(unsigned int Id = 0);
+
+	bool		Combo_FillSql			(wxArrayString& Titles, wxArrayInt& Codes, const wxString& SqlQuery);
+	bool		ProgMaster_FillRoutines	(wxArrayString& Titles, wxArrayInt& Codes, bool OnlySub = false);
 
 	bool	ProgDetail_Insert		(const sCommand& Cmd, bool AllowRenum = true);
 	bool	ProgDetail_Renum		(unsigned int ProgId, unsigned int Step = 3);
@@ -174,6 +178,7 @@ public:
 									wxString::Format("Motor %d, Position %d", MotPosIdx / 100, MotPosIdx % 100)
 								);
 	}
-
+	bool Defaults_Get			(wxString DefaultName, long& DefVal, wxString& Descr);
+	bool Defaults_Set			(const wxString & DefaultName, long DefVal, const wxString & Descr);
 };
 

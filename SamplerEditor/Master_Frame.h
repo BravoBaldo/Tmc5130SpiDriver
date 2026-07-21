@@ -105,8 +105,14 @@ public:
 				const sSubSystem		*Ssys = SubSystem_GetByType((eSubSysAcro)SubSys);
 				const sSampler_Commands	*pCmd = Command_GetByCmd((char)SubSys, (char)Cmd, PatternLen);
 
-				wxString toolTipText = wxString::Format( "%s/%s", Ssys ? Ssys->Descr:wxString("???"), pCmd?pCmd->Descr:"???");
-
+				wxString toolTipText = wxString::Format( "%s/%s", Ssys ? Ssys->Descr:wxString("???"), pCmd ? pCmd->Descr:"???");
+				
+				if (pCmd && pCmd->SubSys == eSystemCmd && pCmd->cmd == 'a'){
+					int Par0 = wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 4));// .ToInt();
+					cDBSampler yy(SQLLITEDBPATH);
+					toolTipText = yy.ProgMaster_GetTitle(Par0);
+				}
+				
 				m_lstPrgDetail->SetToolTip(toolTipText);
 			}
 		}

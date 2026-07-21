@@ -3,14 +3,13 @@
 #include <wx/timectrl.h>
 #include <wx/spinctrl.h>
 #include <wx/dateevt.h>
-//#define USE_COORDDB
-#if defined(USE_COORDDB)
-#include "CoordDBctrl.h"
-#endif
+#include "CoordDBctrl.h"	//eDBCoord
+#include "DBRoutineCtrl.h"	//eDBRoutine
 
 #include "sSampler_Commands.h"
 
 class CmdParLabel : public wxPanel {
+
 public:
 	wxStaticText	*m_Lbl_Param	= nullptr;
 	wxControl		*m_gen_Param	= nullptr;
@@ -26,14 +25,19 @@ public:
 	void SetLabel		(const wxString& T);
 	void SetToolTip		(const wxString& s) { m_gen_Param->SetToolTip(s); };
 
-	void ChangeType		(const wxString& name);											//Unknown
-	void ChangeType		(const wxString& name, wxArrayString Names, wxArrayInt Codes);	//eChoice
-	void ChangeType		(const wxString& name, int Min, int Max);						//eNumber
-	void ChangeType		(const wxString& name, const wxDateTime& dt);					//eTime
+	void ChangeType			(const wxString& name);											//Unknown
+	void ChangeType			(const wxString& name, wxArrayString Names, wxArrayInt Codes);	//eChoice
+	void ChangeType			(const wxString& name, int Min, int Max);						//eNumber
+	void ChangeType			(const wxString& name, const wxDateTime& dt);					//eTime
+	void ChangeTo_DBRoutine	(const wxString& name);											//eDBRoutine
+	void ChangeTo_DBCoord	(const wxString& name, int Min, int Max);						//eDBCoord
 
 	void SetValue(wxArrayString Names, wxArrayInt WXUNUSED(Codes));	//eChoice
 	void SetValue(int Val, int Min, int Max);						//eNumber
 	void SetValue(wxUint32 t);										//eTime
+	void SetValue_DBRoutine	(int Val);								//eDBRoutine
+	void SetValue_DBCoord	(int Val, int Min, int Max);			//eDBCoord
+
 	void SetCurrentValue(long t);
 	long GetValue(void);
 };

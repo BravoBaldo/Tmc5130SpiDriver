@@ -360,6 +360,7 @@ int Next_DB::ListCtrl_FillFromSql(wxListCtrl* ListCtrl
 	return 0;
 }
 
+
 int Next_DB::ProgDetail_Fill(unsigned int ProgId, wxListCtrl* ListCtrl, bool DoResize, int Fld2Translate) {
 	return ListCtrl_FillFromSql(ListCtrl, wxString::Format(
 		// Same order of cDetailListCtrl::PrgDetail_FillListItem
