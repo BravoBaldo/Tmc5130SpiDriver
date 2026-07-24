@@ -7,9 +7,10 @@
 #define USE_HID_SAMPLER
 #define USE_EXPANDERS
 #define USE_SPI
-#define USE_TMC5130     //Require USE_EXPANDERS and USE_SPI
-#define USE_TMC5130_FSA //Require USE_EXPANDERS and USE_SPI
-//#define USE_STEPPERS  //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC5130       //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC5130_FSA   //Require USE_EXPANDERS and USE_SPI
+//#define USE_STEPPERS    //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
 
 #define PRINTLOG(s) Serial.print(F(s));
 
@@ -84,6 +85,14 @@ void ExecuteCommand(const uint8_t* data, uint16_t len);
   cStripLed StripLed;
 #endif
 
+#if defined(USE_TMC_Multi_FSA)
+  #include "src/STEPPERS/TMC_Multi_FSA.h"
+
+  TMC_Multi_FSA MultiFSA(Steppers, wxSIZEOF(Steppers));
+#endif
+
+
+
 void setup() {
   Serial.begin(115200); delay(1000);
 
@@ -132,9 +141,10 @@ void setup() {
       Steppers[i].DisableStops();
     }
 
-    Steppers[0].setOverSteps(12);      Steppers[0].setMicrosteps(8);
-    Steppers[1].setOverSteps(10);      Steppers[1].setMicrosteps(8);
-    Steppers[2].setOverSteps(100);     Steppers[2].setMicrosteps(4);
+    Steppers[0].setOverSteps(12);      Steppers[0].setMicrosteps(8);  Steppers[0].ResetSpeed(5);
+    Steppers[1].setOverSteps(10);      Steppers[1].setMicrosteps(8);  Steppers[1].ResetSpeed(20);
+    Steppers[2].setOverSteps(100);     Steppers[2].setMicrosteps(4);  Steppers[2].ResetSpeed(2);  Steppers[2].IsRotative(true);
+
 
     /*
     //Steppers[0].InitGoTo(0, 10, 0, 10, 0);
@@ -182,6 +192,11 @@ void AlwaysRun(void){
       Steppers[i].FSA_SetHome_loop();
     }
   #endif
+
+  #if defined(USE_TMC_Multi_FSA)
+    MultiFSA.Multi_FSA_loop();
+  #endif
+
   yield();
 }
 
@@ -374,11 +389,14 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
               }
               break;
           case 'z': Serial.print(F("Routine in Test"));
+                  #if defined(USE_TMC_Multi_FSA)
+                    Answer.m_Result = MultiFSA.Exec_ResetAll() ? eCmdOk : eCmdRetry;
+                  #else
                     Answer.m_Result = eCmdOk;
-                    //Steppers[CurrentMotor].TestFsaInitY();
                     Steppers[CurrentMotor].Exec_SearchBegin();
-                    break;
+                  #endif
               break;
+            break;
           default:  PRINTLOG("Unknown TMC5130's NoMotor command"); AnswerSent = false; break;
         }
         PRINTLOG("\" ... ");
@@ -406,11 +424,11 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         switch(Cmd.m_Cmd){
           case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations()      ? eCmdOk : eCmdRetry; break;
           case 'a': PRINTLOG("Init Motor");
-            if(CurrentMotor!=2)
+            //if(CurrentMotor!=2)
                Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin()       ? eCmdOk : eCmdRetry;
-            else
-              Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin_R()      ? eCmdOk : eCmdRetry;
-             break;
+            //else
+            //  Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin_R()      ? eCmdOk : eCmdRetry;
+            // break;
           case 'b': 
             switch(Cmd.m_PatLen){
               case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ) ? eCmdOk : eCmdRetry; break;

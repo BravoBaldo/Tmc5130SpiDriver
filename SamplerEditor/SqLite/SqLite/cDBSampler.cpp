@@ -219,7 +219,8 @@ bool cDBSampler::Combo_FillSql(wxArrayString& Titles, wxArrayInt& Codes, const w
 }
 
 bool cDBSampler::ProgMaster_FillRoutines(wxArrayString& Titles, wxArrayInt& Codes, bool OnlySub) {
-    wxString strQuerySQL = wxString::Format(" SELECT ProgName, ProgId FROM " PROGMASTER_TABLENAME  " %s ORDER BY ProgName", OnlySub ? "WHERE ProgId>=2000" : "");
+    //wxString strQuerySQL = wxString::Format(" SELECT ProgName, ProgId FROM " PROGMASTER_TABLENAME  " %s ORDER BY ProgName", OnlySub ? "WHERE ProgId>=2000" : "");
+    wxString strQuerySQL = wxString::Format(" SELECT ProgName || ' (' || ProgId || ')', ProgId FROM " PROGMASTER_TABLENAME  " %s ORDER BY ProgName", OnlySub ? "WHERE ProgId>=2000" : "");
     return Combo_FillSql(Titles, Codes, strQuerySQL);	//No translation
 }
 

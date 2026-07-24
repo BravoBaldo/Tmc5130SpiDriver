@@ -21,5 +21,4 @@ void ShowBuffer(const uint8_t* data, uint16_t len){
     for(int i=0; i<len; i++) Serial.printf("%c  ", isprint(data[i])?data[i] : ' ');
     
     Serial.println("\n");
-
 }

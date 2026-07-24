@@ -415,9 +415,15 @@ private:
     MODE_STEPDIR,  //NOT TESTED/USED
   };
 
-
+	bool	m_IsRotative = false;
+	uint8_t	m_ResetSpeed = 10;
 public:
 
+	bool	IsRotative(void)			{return m_IsRotative;}
+	void	IsRotative(bool En)			{m_IsRotative = En;}
+	uint8_t	ResetSpeed(void)			{return m_ResetSpeed;}
+	void	ResetSpeed(uint8_t Speed)	{m_ResetSpeed = Speed;}
+	
  static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
                                             RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
                                             CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
@@ -443,7 +449,7 @@ public:
     uint32_t cool_step_threshold = 0;
   };
 
-	void TestReset(){
+	void TestReset(){	//Clear Error AAA: ToDo Rename in ClearError
 		Chopconf chopconf;
 		chopconf.bytes = readReg(CHOPCONF);
 		chopconf.toff = 0;
@@ -678,19 +684,19 @@ public:
 			}
 			
 
-  bool zeroVelocity             (void);
-  bool positionReached          (void);
-  void beginRampToZeroVelocity  (void);
-  bool homed                    (void);
+	bool zeroVelocity             (void);
+	bool positionReached          (void);
+	void beginRampToZeroVelocity  (void);
+	bool homed                    (void);
 
-  inline void		setTZeroWait	(uint16_t t)	{ writeReg(TZEROWAIT, t); };  //0…(2^16)-1 * 512 tCLK
-  inline uint16_t	getTZeroWait	(void)			{ return ShadowRegs.TZEROWAIT; };
-  
-  inline void		setVDCMin		(uint32_t v)	{ writeReg(VDCMIN, v); };  //0…(2^16)-1 * 512 tCLK
-  inline uint32_t	getVDCMin		(void)			{ return ShadowRegs.VDCMIN; };
+	inline void		setTZeroWait	(uint16_t t)	{ writeReg(TZEROWAIT, t); };  //0…(2^16)-1 * 512 tCLK
+	inline uint16_t	getTZeroWait	(void)			{ return ShadowRegs.TZEROWAIT; };
 
-  inline void		setPosition		(int32_t x)		{ writeReg(XACTUAL, x); }
-  inline int32_t	getPosition		(void)			{ return (int32_t)readReg(XACTUAL); }
+	inline void		setVDCMin		(uint32_t v)	{ writeReg(VDCMIN, v); };  //0…(2^16)-1 * 512 tCLK
+	inline uint32_t	getVDCMin		(void)			{ return ShadowRegs.VDCMIN; };
+
+	inline void		setPosition		(int32_t x)		{ writeReg(XACTUAL, x); }
+	inline int32_t	getPosition		(void)			{ return (int32_t)readReg(XACTUAL); }
 
 	void			setStops		(bool Swap);
 	void			setStops		(bool SwapLR, bool EnStopL, bool EnPoolL, bool EnStopR, bool EnPoolR, bool EnSg, bool EnSoft);
@@ -737,13 +743,24 @@ public:
 		SetRamp(a, v, a, 0);	//Trapezoidal
 	}
 
+	void SetFreeRunning_base(uint32_t MaxVel, uint16_t a1, uint16_t a2, uint16_t d1, bool Positive){
+		setFirstAcceleration	(a1);
+		setSecondAcceleration	(a2);
+		setFirstDeceleration	(d1);
+		setMaxVelocity			( MaxVel );
+		setRampMode(Positive ? VelocityPositiveMode : VelocityNegativeMode);
+	}
+
 	void SetFreeRunning(uint8_t SpeedFor1RPS, uint8_t mres, bool Positive){ //
 		setMicrosteps(mres);
+		SetFreeRunning_base((uint32_t)(53687*SpeedFor1RPS)>>(mres), 1000, 1000, 1000, Positive);
+/*		
 		setFirstAcceleration(1000);
 		setSecondAcceleration(1000);
 		setFirstDeceleration(1000);
 		setMaxVelocity( (uint32_t)(53687*SpeedFor1RPS)>>(mres));
 		setRampMode(Positive ? VelocityPositiveMode : VelocityNegativeMode);
+*/
 	}
 	/*
 	void SetPositional(uint8_t SpeedFor1RPS, uint8_t mres){ //
@@ -841,6 +858,9 @@ public:
 
 	typedef enum { eWaitVelocity, eWaitPosition, eWaitHomeL, eWaitPosAndVel, eWaitTimer, eWaitHomeR, eWaitHomeRL} eWaitingMotor;
   
+	//#define DEBUGINFO(Str)	{Serial.printf("  %6s=%s\n", Str, res?"True":"False");}
+	#define DEBUGINFO(Str)
+	
 	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
 		bool wt = WaitTimer();
 		if (CheckTimeOut && wt)	{
@@ -852,13 +872,13 @@ public:
 		}
 		bool res;
 		switch (Ty) {
-			case eWaitVelocity:	res = ChkStop();							Serial.printf("  Stop  =%s\n", res?"True":"False");	return res;
-			case eWaitPosition:	res = GetSpiStatus().position_reached;		Serial.printf("  Posit =%s\n", res?"True":"False");	return res;
-			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	Serial.printf("  HomeL =%s\n", res?"True":"False");	return res;
-			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	Serial.printf("  HomeR =%s\n", res?"True":"False");	return res;
-			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	Serial.printf("  HomeRL=%s\n", res?"True":"False");	return res;
-			case eWaitPosAndVel:res = ChkEndOfSteps();						Serial.printf("  PosVel=%s\n", res?"True":"False");	return res;
-			case eWaitTimer:	res = wt;									Serial.printf("  Timer =%s\n", res?"True":"False");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
+			case eWaitVelocity:	res = ChkStop();							DEBUGINFO("Stop  ");	return res;
+			case eWaitPosition:	res = GetSpiStatus().position_reached;		DEBUGINFO("Posit ");	return res;
+			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	DEBUGINFO("HomeL ");	return res;
+			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	DEBUGINFO("HomeR ");	return res;
+			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	DEBUGINFO("HomeRL");	return res;
+			case eWaitPosAndVel:res = ChkEndOfSteps();						DEBUGINFO("PosVel");	return res;
+			case eWaitTimer:	res = wt;									DEBUGINFO("Timer ");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
 		}
 		return true;	//Error!!!!
 	}

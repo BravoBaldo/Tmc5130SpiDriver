@@ -94,7 +94,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			wxMilliSleep(100); // Piccola pausa prima di riprovare
 			continue;
 		}
-		LogMe(wxString::Format("  Attempt %d: Message sent...\n", ++retryCount), false);
+		//LogMe(wxString::Format("  Attempt %d: Message sent...\n", ++retryCount), false);
+		LogMe(wxString::Format(" %d ", ++retryCount), false);
 		::wxYield();
 
 		// 2. Attesa risposta con Timeout
@@ -164,7 +165,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)data[2], (int)PtrAnswer[1]), false);
 				Success = false;
 			}
-			LogMe(wxString::Format("\tSuccess is '%s'\n", Success?"True":"False"), false);
+			//LogMe(wxString::Format("\tSuccess is '%s'\n", Success?"True":"False"), false);
+			LogMe(wxString::Format(" %s ...", Success ? "True\n" : "False"), false);
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
 			if (retryCount > 50) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
@@ -327,7 +329,7 @@ m_Btn_ExecAll->Enable(false);
 			break;
 	}
 	m_Running = false;
-	LogMe("Stop Execution --------------------------\n", false);
+	LogMe("Stop Execution --------------------------\n", true);
 m_Btn_ExecStep->Enable(true);
 m_Btn_ExecAll->Enable(true);
 

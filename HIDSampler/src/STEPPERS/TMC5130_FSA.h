@@ -2,13 +2,18 @@
 #include <Arduino.h>
 #include "TMC5130.h"
 
+#define NEW_HOMING
 
 class TMC5130_FSA : public TMC5130 {
 	typedef enum : uint8_t {
 		Nothing,
 		//---------------------------------------
 		WaitHomeA,
-		WaitHomeB,
+//		WaitHomeB,
+#if defined(NEW_HOMING)
+		WaitHomeC,
+		WaitHomeD,
+#endif
 		WaitStopAtHome,
 		WaitPosZero,
 		//---------------------------------------
@@ -26,43 +31,54 @@ public:
 			default:
 				break;
 		//---------------------------------------
+#if defined(NEW_HOMING)
 			case WaitHomeA:
-				if(WaitMotor(eWaitHomeL, true))	Status_SetHome = WaitHomeB;
+				if(WaitMotor(eWaitHomeL, true))	{
+					setVelocities    ( eVMAX, 0);
+					//Wait Stop?
+					setStops		(true, false, false, true, false, false, false);
+					SetTimer		(500);
+					//SetFreeRunning	(1, 8, true);
+					SetFreeRunning_base(200, 50, 50, 1000, true);
+					Status_SetHome = WaitHomeD;
+				}
 				break;
-			case WaitHomeB:
+
+			case WaitHomeD:
+				if(WaitMotor(eWaitHomeR, true))	{
+					setVelocities    ( eVMAX, 0);
+					//Wait Stop?
+					setRampMode(PositionMode);
+					setPosition  (-10);
+					setTargetBase(0);
+					setStops(false, true, true, false, false, false, false);
+					SetRamp(10, 50, 10, 50, 5000, 0);
+					Status_SetHome = WaitPosZero;
+				}
+				break;
+#else
+			case WaitHomeA:
 				if(WaitMotor(eWaitHomeL, true))	{
 					setVelocities    ( eVMAX, 0);
 					Status_SetHome = WaitStopAtHome;
 				}
 				break;
-
-			case WaitStopAtHome:
-				if(WaitMotor(eWaitVelocity, false)){
-					setRampMode(PositionMode);			//
-					setPosition  (-2);
-					setTargetBase(0);
-					SetRamp(10, 50, 10, 50, 5000, 0);	//
-					SpiStatus  Status = GetSpiStatus();
-					if (Status.status_stop_l==0)// && Status.status_stop_r==0)
-						Status_SetHome = WaitPosZero;
-				}
-				break;
-/*
+#endif
 			case WaitStopAtHome:
 				if(WaitMotor(eWaitVelocity, false)){
 					setRampMode(PositionMode);
-					setPosition  (-10);						//
+					setPosition  (-2);
 					setTargetBase(0);
 					SetRamp(10, 50, 10, 50, 5000, 0);
-															//
-					Status_SetHome = WaitPosZero;
+					SpiStatus  Status = GetSpiStatus();
+					if (Status.status_stop_l==0)		// && Status.status_stop_r==0)
+						Status_SetHome = WaitPosZero;
 				}
 				break;
-*/				
 			case WaitPosZero:
 				if(WaitMotor(eWaitPosition, false)){
 					SetTrapezoidal(60, 5000);
-					setCurrent   (0, 0, 0);
+					setCurrent   (0, 0, 0);	//Homing does not graps
 					Status_SetHome = Nothing;
 				}
 				break;
@@ -71,7 +87,8 @@ public:
 				if(WaitMotor(eWaitHomeL, true)) {
 					setVelocities    ( eVMAX, 0);
 					setStops(true, false, false, true, false, false, false);
-					SetFreeRunning   (1, 4, true);
+					SetFreeRunning(1, 4, true);
+					//SetFreeRunning_base(5000, 100, 100, 1000, true);
 					Status_SetHome = WaitHomeB_R;
 				}
 				break;
@@ -89,14 +106,14 @@ public:
 				break;
 			case WaitHomeC_R:
 				if(WaitMotor(eWaitPosAndVel, false)){
-					setCurrent   (0, 10, 0);
+					setCurrent   (0, 0, 0);	//Homing does not graps
 					Status_SetHome = Nothing;
 				}
 				break;
 		//---------------------------------------
 			case WaitGoTo:
 				if(WaitMotor(eWaitPosAndVel, true)){
-					setCurrent   (0, 0, 0);
+					//setCurrent   (0, 0, 0);
 					Status_SetHome = Nothing;
 				}
 				break;
@@ -110,19 +127,22 @@ public:
 	bool	Exec_WaitOperations(void) {return (Status_SetHome == Nothing);}
 
 	bool	Exec_SearchBegin(unsigned long T=8000){
+				if(IsRotative()) return Exec_SearchBegin_R(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); TestReset();	getGstat();
+				SetChipEnable(true); TestReset();		//getGstat();
 				setMotorDirection(ReverseDirection);	//GCONF
 				setStops		(false, true, true, false, false, false, false);
 				setCurrent		(20, 30, 0);
-				SetFreeRunning	(10, 8, 0);
+
+				SetFreeRunning	(ResetSpeed(), 8, 0);	//SetFreeRunning	(20, 8, 0);
 				SetTimer		(T);
 				Status_SetHome = WaitHomeA;
 				return true;
 			}
 	bool	Exec_SearchBegin_R(unsigned long T=3000){
+				if(!IsRotative()) return Exec_SearchBegin(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); TestReset();	getGstat();
+				SetChipEnable(true); TestReset();		//getGstat();
 				setVelocities	( eVMAX, 0);
 				setMotorDirection(ForwardDirection);	//GCONF
 				setCurrent		(10, 11, 10);
