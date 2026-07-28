@@ -61,14 +61,17 @@ void cMainListCtrl::MainPrg_Fill(void) {
 	this->SetColumnWidth(1, wxLIST_AUTOSIZE_USEHEADER);
 
 }
-
-long cMainListCtrl::Reload(long CurrItemIdx) {
-	MainPrg_Fill();
+long cMainListCtrl::Repose(long CurrItemIdx) {
 	if (CurrItemIdx >= GetItemCount())
 		CurrItemIdx = GetItemCount() - 1;
 	Focus(CurrItemIdx);
 	Select(CurrItemIdx);	//Stay on same position
 	return CurrItemIdx;
+}
+
+long cMainListCtrl::Reload(long CurrItemIdx) {
+	MainPrg_Fill();
+	return Repose(CurrItemIdx);
 }
 
 void cMainListCtrl::DBCreateNewProcess(void) {
@@ -91,7 +94,7 @@ void cMainListCtrl::DBCreateNewProcess(void) {
 	}
 }
 
-void cMainListCtrl::DBModifyCopyProcess(const wxString &OldName, const unsigned int ProgId, bool Modify) {
+unsigned int  cMainListCtrl::DBModifyCopyProcess(const wxString &OldName, const unsigned int ProgId, bool Modify) {
 	wxString strCaption;
 	wxString strNewName;
 	if (Modify) {
@@ -101,6 +104,8 @@ void cMainListCtrl::DBModifyCopyProcess(const wxString &OldName, const unsigned 
 		strCaption = _("Duplicate Process");
 		strNewName = wxString::Format("%s %s", _("Copy of"), OldName).Left(50);
 	}
+
+	unsigned int ProgIdUsed = ProgId;
 	wxTextEntryDialog dialog(this, _("Insert a name for the new process"), strCaption, strNewName, wxOK | wxCANCEL);
 	if (dialog.ShowModal() == wxID_OK && dialog.GetValue() != wxT("")) {
 #if defined(USE_ODBC)
@@ -113,10 +118,14 @@ void cMainListCtrl::DBModifyCopyProcess(const wxString &OldName, const unsigned 
 		cDBSampler yy(SQLLITEDBPATH);
 		if (Modify)
 			yy.ProgMaster_Insert(dialog.GetValue(), ProgId);
-		else
-			yy.ProgMaster_Copy(ProgId, dialog.GetValue());
+		else {
+			ProgIdUsed = 0;
+			yy.ProgMaster_Copy(ProgId, dialog.GetValue(), ProgIdUsed);
+		}
 #endif
 	}
+	return ProgIdUsed;
+
 }
 
 void cMainListCtrl::DBClearProcess(const wxString& OldName, const unsigned int ProgId, bool ClearAll) {

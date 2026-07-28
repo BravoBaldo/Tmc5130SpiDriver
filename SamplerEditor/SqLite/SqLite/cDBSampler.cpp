@@ -387,7 +387,7 @@ void cDBSampler::DBCreateNewProcess(void) {
     }
 }
 
-bool cDBSampler::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew) {
+bool cDBSampler::ProgMaster_Copy(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int& ProgIdNew) {
     if (ProgIdNew == 0) {
         if ((ProgIdNew = ProgMaster_GetNextId(NewProgName.Left(4).IsSameAs("SUB_", false) ? 2000 : 0)) <= 0)
             return false;

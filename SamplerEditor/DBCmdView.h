@@ -15,9 +15,12 @@ public:
 	void	MainPrg_Fill(void);
 	void	ChangeSort(void) { m_SortByName = !m_SortByName; };
 	long	GetCurrRow(unsigned int* ProgId, wxString* Name);
+
+	long	Repose(long CurrItemIdx);
 	long	Reload(long CurrItemIdx);
 	void	DBCreateNewProcess(void);
-	void	DBModifyCopyProcess(const wxString& Name, const unsigned int ProgId, bool Modify = true);
+	unsigned int DBModifyCopyProcess(const wxString& Name, const unsigned int ProgId, bool Modify = true);
+//	void	SelectRowByNumber()
 	void	DBClearProcess(const wxString& OldName, const unsigned int ProgId, bool ClearAll = false);
 	void	DBPrintExport(const wxString& Name, const unsigned int ProgId, bool PrintOnly = false);
 private:

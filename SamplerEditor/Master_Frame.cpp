@@ -381,8 +381,10 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 				unsigned int	ProgId;
 				long			CurrItemIdx = m_lstPrgMaster->GetCurrRow(&ProgId, &OldName);
 				if (CurrItemIdx >= 0) {
-					m_lstPrgMaster->DBModifyCopyProcess(OldName, ProgId, event.GetId() == ID_MNU_PRGMAIN_MODIFY);
-					m_lstPrgMaster->Reload(CurrItemIdx);
+					unsigned int Idx = m_lstPrgMaster->DBModifyCopyProcess(OldName, ProgId, event.GetId() == ID_MNU_PRGMAIN_MODIFY);
+					m_lstPrgMaster->MainPrg_Fill();
+					CurrItemIdx = m_lstPrgMaster->FindItem(-1, wxString::Format("%d", Idx));
+					m_lstPrgMaster->Repose(CurrItemIdx);
 				}
 			}
 			break;

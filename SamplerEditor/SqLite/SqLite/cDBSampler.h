@@ -144,7 +144,7 @@ public:
 
 	bool		CreateDB				(void);
 	bool		ProgMaster_Insert		(const wxString& ProgName, unsigned int Id = 0);
-	bool		ProgMaster_Copy			(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int ProgIdNew = 0);
+	bool		ProgMaster_Copy			(unsigned int ProgIdOld, const wxString& NewProgName, unsigned int& ProgIdNew);
 	void		ProgMaster_Fill2		(wxListCtrl* ListCtrl, bool SortByName, bool DoResize = true, int Fld2Translate = 1, byte Filter = 0);
 	bool		ProgMaster_Export		(bool IsText, unsigned int ProgId, const wxString& FilePathName);
 	wxString	ProgMaster_GetTitle		(unsigned int Id = 0);

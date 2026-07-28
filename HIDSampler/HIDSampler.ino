@@ -141,7 +141,7 @@ void setup() {
       Steppers[i].DisableStops();
     }
 
-    Steppers[0].setOverSteps(12);      Steppers[0].setMicrosteps(8);  Steppers[0].ResetSpeed(5);
+    Steppers[0].setOverSteps(12);      Steppers[0].setMicrosteps(8);  Steppers[0].ResetSpeed(7);
     Steppers[1].setOverSteps(10);      Steppers[1].setMicrosteps(8);  Steppers[1].ResetSpeed(20);
     Steppers[2].setOverSteps(100);     Steppers[2].setMicrosteps(4);  Steppers[2].ResetSpeed(2);  Steppers[2].IsRotative(true);
 
