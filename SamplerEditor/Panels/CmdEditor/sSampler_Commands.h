@@ -36,12 +36,10 @@ typedef struct {	//Microcontroller Commands. See
 	const char*				ParamPattern;
 	std::vector<wxString>	ParNames;
 	wxString				ExtDescr;
-	//decltype(cmd)			CmdTyp;
 }sSampler_Commands;
 
-unsigned int				Commands_Size(void);
-const sSampler_Commands*	Command_Get(unsigned int i);
+unsigned int				Commands_Size	(void);
+const sSampler_Commands*	Command_Get		(unsigned int i);
 const sSampler_Commands*	Command_GetByCmd(char SubSys, char c, uint8_t NumPar);
 void						Params_RemoveAll(void);
-
-void						sSampler_Check(void);
+void						sSampler_Check	(void);

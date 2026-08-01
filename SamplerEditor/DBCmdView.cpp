@@ -234,10 +234,9 @@ bool cDetailListCtrl::PrgDetail_FillListItem(sCommand& vStep, long rowIndex) {
 
 void cDetailListCtrl::PrgDetail_FillListItem(sCommand& vStep) {
 	wxListItem info;
-	vStep.m_DetailProg = 0;	//Unused value
 	info.m_itemId = this->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);	//this->GetFocusedItem();
 	if (info.m_itemId >= 0) {
-		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!	//ToDo
+		info.m_mask = wxLIST_MASK_TEXT;	//I want the text!
 		info.m_col = eDetailProg;	this->GetItem(info);	vStep.m_DetailProg	= wxAtol(info.m_text);
 		info.m_col = eSubSys;		this->GetItem(info);	vStep.m_SubSystem	= (eSubSysAcro)wxAtol(info.m_text);
 		info.m_col = eCmd;			this->GetItem(info);	vStep.m_Cmd			= wxAtol(info.m_text);
@@ -245,7 +244,9 @@ void cDetailListCtrl::PrgDetail_FillListItem(sCommand& vStep) {
 		for (int i = 0; i < WXSIZEOF(vStep.m_Par); i++) {
 			info.m_col = eParFirst+i;	this->GetItem(info);	vStep.m_Par[i] = wxAtol(info.m_text);
 		}
-		info.m_col = eMasterId;	this->GetItem(info);	vStep.m_MasterId = wxAtol(info.m_text);
+#if defined(ADD_CMD_DESCRIPTION)
+#endif
+		info.m_col = eMasterId;		this->GetItem(info);	vStep.m_MasterId = wxAtol(info.m_text);
 	}
 }
 

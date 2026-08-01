@@ -282,13 +282,16 @@ void cDBSampler::ProgDetail_ReadAll(unsigned int ProgId, std::function<void(cons
 
 wxString cDBSampler::SqlQuery_Detail(const unsigned int ProgId) {
     wxString SqlQuery = "SELECT ";
-    for (int i = 0; i < efielsCount; i++) {
+    for (int i = 0; i < efieldsCount; i++) {
         switch ((eDetHeaders)i) {
             case eDetailProg:   SqlQuery += "DetailProg AS [N], ";      break;
             case eSubSys:       SqlQuery += "SubSys, ";                 break;
             case eCmd:          SqlQuery += "Cmd, ";                    break;
             case ePattern:      SqlQuery += "Pattern AS [Command], ";   break;
-            case eMasterId:                                             break;    //Will be last
+#if defined(ADD_CMD_DESCRIPTION)
+            case eDescr:        SqlQuery += "Description, ";            break;
+#endif
+            case eMasterId:                                             break;    //Is forced to be last
             default:
                 if (i < eParFirst || i > eParLast)
                     wxLogError(wxT("Warning: Review eDetHeaders list!"));
@@ -329,10 +332,10 @@ bool cDBSampler::RecordExists(const wxString& Query) {
     return exists;
 }
 
-wxString cDBSampler::ProgMaster_GetTitle(unsigned int ProgId) {
+wxString cDBSampler::ProgMaster_GetTitle(unsigned int ProgId) { //Seems the same of getMasterName
     sqlite3_stmt* stmt = nullptr;
     wxString progName = wxEmptyString;
-    const char* sql = "SELECT ProgName FROM SAM_ProgMaster WHERE ProgId = ?;";
+    const char* sql = "SELECT ProgName FROM " PROGMASTER_TABLENAME " WHERE ProgId = ?;";
 
     if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_int64(stmt, 1, static_cast<sqlite3_int64>(ProgId));
@@ -345,8 +348,6 @@ wxString cDBSampler::ProgMaster_GetTitle(unsigned int ProgId) {
     sqlite3_finalize(stmt);
     return progName;
 }
-
-
 
 bool cDBSampler::ExecuteSQL(const wxString& queryToExecute, bool AutoCommit) {
     if (!m_db) return false;
@@ -482,22 +483,6 @@ bool cDBSampler::CreateDB(void) {
     return true;
 }
 
-wxString cDBSampler::getMasterName(unsigned int ProgId) {
-    if (!m_db) return wxEmptyString;
-    sqlite3_stmt* stmtMaster = nullptr;
-    const char* query = "SELECT ProgName FROM " PROGMASTER_TABLENAME " WHERE ProgId = ?;";
-    if (sqlite3_prepare_v2(m_db, query, -1, &stmtMaster, nullptr) != SQLITE_OK) return wxEmptyString;
-    sqlite3_bind_int(stmtMaster, 1, static_cast<int>(ProgId));
-
-    wxString result;
-    if (sqlite3_step(stmtMaster) == SQLITE_ROW) {
-        if (const unsigned char* text = sqlite3_column_text(stmtMaster, 0)) {
-            result = wxString::FromUTF8(reinterpret_cast<const char*>(text));
-        }
-    }
-    sqlite3_finalize(stmtMaster);
-    return result;
-}
 
 bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxString& FilePathName) {
     if (!m_db) return false;
@@ -570,8 +555,7 @@ bool cDBSampler::ProgMaster_Export(bool IsText, unsigned int ProgId, const wxStr
             for (size_t i = 0; i < S.m_PatLen; ++i) {
                 wxString strVal = wxString::Format("%ld", S.m_Par[i]);
                 if (S.m_SubSystem == eSystemCmd && S.m_Cmd == 'a' && S.m_Pattern[i] == 'P') {	//"Exec. Routine"
-                    //strVal+= getMasterName(S.m_Par[i]);
-                    strVal += wxString::Format("=*%s*", getMasterName(S.m_Par[i]));
+                    strVal += wxString::Format("=*%s*", ProgMaster_GetTitle(S.m_Par[i]));
                 }
                 const sParams* P = Param_Get(S.m_Pattern[i]);
                 if (P && P->ParType == eChoice) {
@@ -687,17 +671,17 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId, unsigned int Step) {
         "WITH NewSequence AS ("
         "  SELECT MasterId, DetailProg, "
         "  (ROW_NUMBER() OVER (PARTITION BY MasterId ORDER BY DetailProg) * %u) AS NewVal "
-        "  FROM SAM_ProgDetail "
+        "  FROM " PROGDETAIL_TABLENAME " "
         "  WHERE MasterId = %u"
         ") "
-        "UPDATE SAM_ProgDetail "
+        "UPDATE " PROGDETAIL_TABLENAME " "
         "SET DetailProg = -(SELECT NewVal FROM NewSequence "
-        "                  WHERE NewSequence.MasterId = SAM_ProgDetail.MasterId "
-        "                  AND NewSequence.DetailProg = SAM_ProgDetail.DetailProg) "
+        "                  WHERE NewSequence.MasterId = " PROGDETAIL_TABLENAME ".MasterId "
+        "                  AND NewSequence.DetailProg = " PROGDETAIL_TABLENAME ".DetailProg) "
         "WHERE MasterId = %u;", Step, ProgId, ProgId
     );
     wxString sqlUpdate = wxString::Format(
-        "UPDATE SAM_ProgDetail SET DetailProg = ABS(DetailProg) WHERE MasterId = %u;"// AND DetailProg < 0
+        "UPDATE " PROGDETAIL_TABLENAME " SET DetailProg = ABS(DetailProg) WHERE MasterId = %u;"// AND DetailProg < 0
         , ProgId
     );
 
@@ -718,42 +702,88 @@ bool cDBSampler::ProgDetail_Renum(unsigned int ProgId, unsigned int Step) {
 }
 
 
-bool cDBSampler::ProgDetail_Insert(const sCommand& item, bool AllowRenum ) {
+bool cDBSampler::ProgDetail_Insert(const sCommand& item, bool AllowRenum) {
     if (!m_db) return false;
 
-    wxString strParNames;
-    wxString strParams;
-    wxString strParExc;
-    for (byte i = 0; i < NUMOFPARAMS; i++) {
-        strParNames += wxString::Format(", Par%d", i);
-        strParams += ", ?";
-        strParExc += wxString::Format(", Par%d=excluded.Par%d", i, i);
+    const sSampler_Commands* pCmd = Command_GetByCmd((char)item.m_SubSystem, (char)item.m_Cmd, item.m_PatLen);
+    if (!pCmd) {
+        wxMessageBox("Command not found in specifications", "Validation Error", wxOK | wxICON_WARNING);
+        return false;
     }
+    if (item.m_SubSystem != pCmd->SubSys || item.m_Cmd != pCmd->cmd
+        || std::strcmp(item.GetPatternAsChars(), pCmd->ParamPattern) != 0
+    )
+        wxMessageBox("Please review: parameters mismatch", "SQL Error!", wxOK | wxICON_INFORMATION, NULL);
+
+    wxString CmdDescr = pCmd->Descr;
+    if (item.m_SubSystem == eSystemCmd && item.m_Cmd == 'a' && item.m_Pattern[0] == 'P') {	//"Exec. Routine"
+        CmdDescr += wxString::Format(": *%s* [%ld]", ProgMaster_GetTitle(item.m_Par[0]).Mid(4), item.m_Par[0]);
+    }
+
+
+    static const wxString strParNames = []() {
+        wxString names;
+        for (int i = 0; i < NUMOFPARAMS; ++i) names += wxString::Format(", Par%d", i);
+        return names;
+        }();
+    static const wxString strParams = []() {
+        wxString params;
+        for (int i = 0; i < NUMOFPARAMS; ++i) params += ", ?";
+        return params;
+        }();
+    static const wxString strParExc = []() {
+        wxString exc;
+        for (int i = 0; i < NUMOFPARAMS; ++i) exc += wxString::Format(", Par%d=excluded.Par%d", i, i);
+        return exc;
+        }();
+
     wxString sql = wxString::Format(
-        "INSERT INTO %s (MasterId, DetailProg, SubSys, Cmd, Pattern %s) VALUES (?, ?, ?, ?, ?%s) "
+        "INSERT INTO %s (MasterId, DetailProg, SubSys, Cmd, Pattern "
+#if defined(ADD_CMD_DESCRIPTION)
+        ", Description "
+#endif
+        "%s) VALUES (?, ?, ?, ?, ?"
+#if defined(ADD_CMD_DESCRIPTION)
+        ", ?"
+#endif
+        "%s) "
         "ON CONFLICT(MasterId, DetailProg) DO UPDATE SET "
-        "SubSys=excluded.SubSys, Cmd=excluded.Cmd, Pattern=excluded.Pattern %s;",
+        "SubSys=excluded.SubSys, Cmd=excluded.Cmd, Pattern=excluded.Pattern"
+#if defined(ADD_CMD_DESCRIPTION)
+        ", Description=excluded.Description"
+#endif
+        " %s;",
         PROGDETAIL_TABLENAME, strParNames, strParams, strParExc
     );
 
-    sqlite3_stmt* stmt;
+
+    sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(m_db, sql.utf8_str(), -1, &stmt, nullptr) != SQLITE_OK) {
         ErrorShow(sqlite3_errmsg(m_db));
         return false;
     }
 
     // Binding dei parametri dall'oggetto sCommand
-    sqlite3_bind_int64(stmt, 1, item.m_MasterId);
-    sqlite3_bind_int64(stmt, 2, item.m_DetailProg);
-    sqlite3_bind_int  (stmt, 3, item.m_SubSystem);
-    sqlite3_bind_int  (stmt, 4, item.m_Cmd);
-    sqlite3_bind_text (stmt, 5, item.GetPatternAsChars(), -1, SQLITE_TRANSIENT);
+    int Fld = 1;
+    sqlite3_bind_int64  (stmt, Fld++, item.m_MasterId);
+    sqlite3_bind_int64  (stmt, Fld++, item.m_DetailProg);
+    sqlite3_bind_int    (stmt, Fld++, item.m_SubSystem);
+    sqlite3_bind_int    (stmt, Fld++, item.m_Cmd);
+    sqlite3_bind_text   (stmt, Fld++, item.GetPatternAsChars(), -1, SQLITE_TRANSIENT);
+#if defined(ADD_CMD_DESCRIPTION)
+    sqlite3_bind_text   (stmt, Fld++, CmdDescr, -1, SQLITE_TRANSIENT);
+#endif
 
-    int i;
-    for (i = 0; i < item.m_PatLen; i++) sqlite3_bind_int64(stmt, 6 + i, item.m_Par[i]);
-    for (; i < NUMOFPARAMS; i++)        sqlite3_bind_int64(stmt, 6 + i, 0);
+    int i = 0;
+    for (; i < item.m_PatLen; i++)  sqlite3_bind_int64(stmt, Fld + i, item.m_Par[i]);
+    for (; i < NUMOFPARAMS; i++)    sqlite3_bind_int64(stmt, Fld + i, 0);
 
-    sqlite3_step(stmt); //Execution
+    int rc = sqlite3_step(stmt); //Execution
+    if (rc != SQLITE_DONE && rc != SQLITE_ROW) {
+        ErrorShow(sqlite3_errmsg(m_db));
+        sqlite3_finalize(stmt);
+        return false;
+    }
 
     if (sqlite3_finalize(stmt) != SQLITE_OK) {
         ErrorShow(sqlite3_errmsg(m_db));

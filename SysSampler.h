@@ -1,6 +1,7 @@
 #pragma once
 
 #define SHOW_DEBUGS
+#define ADD_CMD_DESCRIPTION
 #define NUMOFPARAMS 10
 typedef int32_t		ParamType;	//See in stdwx
 
@@ -101,7 +102,6 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 	uint16_t		m_MasterId				= 0;			//2
 	uint16_t		m_DetailProg			= 0;			//2
 	uint16_t  		m_ChkSum				= 0;			//2
-	//inline const char* GetPatternAsChars(void) const { return (char*)m_Pattern; }
 	inline const char* GetPatternAsChars() const noexcept {
 		return reinterpret_cast<const char*>(m_Pattern);
 	}

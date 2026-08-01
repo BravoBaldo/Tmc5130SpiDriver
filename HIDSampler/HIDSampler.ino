@@ -12,7 +12,6 @@
 //#define USE_STEPPERS    //Require USE_EXPANDERS and USE_SPI
 #define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
 
-#define PRINTLOG(s) Serial.print(F(s));
 
 
 void ExecuteCommand(const uint8_t* data, uint16_t len);
@@ -299,17 +298,17 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         TmcAnswer       Answer; Answer.m_Cmd = Cmd.m_Cmd;
         AnswerSent = true;
         switch(Cmd.m_Cmd){
-          case '0': Serial.print(F("Do Nothing"));    Answer.m_Result = eCmdOk;                                                                               break;
-          case '1': Serial.print(F("Change Motor"));  Answer.m_Result = eCmdOk; CM = Cmd.m_Par[pr++];
+          case '0': PRINTLOG("Do Nothing");    Answer.m_Result = eCmdOk;                                                                               break;
+          case '1': PRINTLOG("Change Motor");  Answer.m_Result = eCmdOk; CM = Cmd.m_Par[pr++];
           #if defined(USE_STRIPLED)
             StripLed.setNumShowed(CM);
           #endif
               break;
-          case '2': Serial.print(F("Set Register"));  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetReg(Cmd.m_Par[pr++], Cmd.m_Par[1]);                 break;
-          case 'a': Serial.print(F("Chip Enable"));   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetChipEnable(Cmd.m_Par[pr++]!=0);
+          case '2': PRINTLOG("Set Register");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetReg(Cmd.m_Par[pr++], Cmd.m_Par[1]);                 break;
+          case 'a': PRINTLOG("Chip Enable");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetChipEnable(Cmd.m_Par[pr++]!=0);
                                                                                 Steppers[CurrentMotor].TestReset();
                                                                                 Steppers[CurrentMotor].getGstat();                                            break;
-          case 'b': Serial.print(F("Set EndStops"));  Answer.m_Result = eCmdOk;
+          case 'b': PRINTLOG("Set EndStops");  Answer.m_Result = eCmdOk;
                     switch(ParNum){
                       case 0: Steppers[CurrentMotor].DisableStops();                                        break;
                       case 1: if(Cmd.m_Par[pr]>1) Steppers[CurrentMotor].DisableStops();
@@ -388,7 +387,7 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                   Steppers[CurrentMotor].setGconf(gconf.bytes);
               }
               break;
-          case 'z': Serial.print(F("Routine in Test"));
+          case 'z': PRINTLOG("Routine in Test");
                   #if defined(USE_TMC_Multi_FSA)
                     Answer.m_Result = MultiFSA.Exec_ResetAll() ? eCmdOk : eCmdRetry;
                   #else

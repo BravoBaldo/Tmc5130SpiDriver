@@ -140,7 +140,6 @@ public:
 	cDBSampler& operator=(const cDBSampler&) = delete;
 
 	const char* GetLastError(void) { return sqlite3_errmsg(m_db); }
-	wxString	getMasterName(unsigned int ProgId);
 
 	bool		CreateDB				(void);
 	bool		ProgMaster_Insert		(const wxString& ProgName, unsigned int Id = 0);

@@ -30,7 +30,13 @@ private:
 
 //-----------------------------------------------
 //Compare with SqlQuery_Detail
-enum eDetHeaders{ eDetailProg=0, eSubSys, eCmd, ePattern, eParFirst, eParLast = eParFirst + NUMOFPARAMS-1, eMasterId, efielsCount };
+enum eDetHeaders{ eDetailProg=0, eSubSys, eCmd
+#if defined(ADD_CMD_DESCRIPTION)
+	, eDescr
+#endif
+	, ePattern, eParFirst, eParLast = eParFirst + NUMOFPARAMS-1
+	, eMasterId		//Must be last item (before efieldsCount). See cDBSampler::SqlQuery_Detail
+	, efieldsCount };
 class cDetailListCtrl : public wxListView {
 public:
 	cDetailListCtrl(wxWindow* parent,

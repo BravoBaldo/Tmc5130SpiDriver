@@ -1,5 +1,7 @@
 #pragma once
 
+#define PRINTLOG(s) Serial.print(F(s));
+
 void ShowBuffer(const uint8_t* data, uint16_t len);
 
 // Funzione constexpr per convertire le tre lettere del mese in un numero da 1 a 12

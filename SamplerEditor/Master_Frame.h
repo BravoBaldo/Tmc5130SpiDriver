@@ -99,18 +99,19 @@ public:
 				m_lastHoveredItem = itemIndex;
 
 				// Recupera le informazioni della riga per comporre il ToolTip personalizzato
-				int SubSys		= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 1));// .ToInt();
-				int Cmd			= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 2));	// .ToInt();
-				int PatternLen	= m_lstPrgDetail->GetItemText(itemIndex, 3).Length();
+				int SubSys		= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, eSubSys));// .ToInt();
+				int Cmd			= wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, eCmd));	// .ToInt();
+				int PatternLen	= m_lstPrgDetail->GetItemText(itemIndex, ePattern).Length();
 				const sSubSystem		*Ssys = SubSystem_GetByType((eSubSysAcro)SubSys);
 				const sSampler_Commands	*pCmd = Command_GetByCmd((char)SubSys, (char)Cmd, PatternLen);
 
 				wxString toolTipText = wxString::Format( "%s/%s", Ssys ? Ssys->Descr:wxString("???"), pCmd ? pCmd->Descr:"???");
 				
 				if (pCmd && pCmd->SubSys == eSystemCmd && pCmd->cmd == 'a'){
-					int Par0 = wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, 4));// .ToInt();
+					int Par0 = wxAtoi(m_lstPrgDetail->GetItemText(itemIndex, eParFirst));// .ToInt();
 					cDBSampler yy(SQLLITEDBPATH);
 					toolTipText = yy.ProgMaster_GetTitle(Par0);
+					//toolTipText = wxString::Format("=**%s**", yy.getMasterName(Par0));
 				}
 				
 				m_lstPrgDetail->SetToolTip(toolTipText);
