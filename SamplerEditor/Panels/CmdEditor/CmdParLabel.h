@@ -6,24 +6,22 @@
 #include "CoordDBctrl.h"	//eDBCoord
 #include "DBRoutineCtrl.h"	//eDBRoutine
 
-#include "sSampler_Commands.h"
-
 class CmdParLabel : public wxPanel {
 
 public:
-	wxStaticText	*m_Lbl_Param	= nullptr;
-	wxControl		*m_gen_Param	= nullptr;
+	wxStaticText*	m_Lbl_Param		= nullptr;
+	wxControl*		m_gen_Param		= nullptr;
 	int				m_ValidValue	= 0;
 	eParType		m_type			= eChoice;
-	void InitLabel		(const wxString& name);
-	void SetSizers		(void);
-	void ReposeSizers	(void);
-	~CmdParLabel		() {};
-	CmdParLabel			(wxWindow* parent, const wxString& name);									//neutral
+	void InitLabel			(const wxString& name);
+	void SetSizers			(void);
+	void ReposeSizers		(void);
+	~CmdParLabel			() {};
+	CmdParLabel				(wxWindow* parent, const wxString& name);
 	
-	void Show			(boolean s) { m_Lbl_Param->Show(s); m_gen_Param->Show(s); };
-	void SetLabel		(const wxString& T);
-	void SetToolTip		(const wxString& s) { m_gen_Param->SetToolTip(s); };
+	void Show				(boolean s) { m_Lbl_Param->Show(s); m_gen_Param->Show(s); };
+	void SetLabel			(const wxString& T);
+	void SetToolTip			(const wxString& s) { m_gen_Param->SetToolTip(s); };
 
 	void ChangeType			(const wxString& name);											//Unknown
 	void ChangeType			(const wxString& name, wxArrayString Names, wxArrayInt Codes);	//eChoice

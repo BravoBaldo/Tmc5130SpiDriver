@@ -276,7 +276,7 @@ void CmdParLabel::SetSizers(void) {
 	sizMaster->Add(m_Lbl_Param, 0, wxALL, 0);
 
 	//if (GetSizer()->GetItem(m_gen_Param)) GetSizer()->Detach(m_gen_Param);
-	sizMaster->Add(m_gen_Param, 1, wxEXPAND | wxALL, 0);
+	sizMaster->Add(m_gen_Param, 0, wxEXPAND | wxALL, 0);
 
 	SetSizer(sizMaster); // use the sizer for layout
 	ReposeSizers();

@@ -1,6 +1,8 @@
 #include "stdwx.h"
 #include "DBRoutineCtrl.h"
+#include "cDBSampler.h"
 
+#if !defined(DBROUTINE_IN_TEST)
 void DBRoutineCtrl::FillRoutines(void) {
 	cDBSampler yy(SQLLITEDBPATH);
 	wxArrayString	Names;
@@ -12,3 +14,4 @@ void DBRoutineCtrl::FillRoutines(void) {
 		m_RoutineList->Append(Names[i], reinterpret_cast<void*>(static_cast<intptr_t>(Codes[i])));
 	}
 }
+#endif

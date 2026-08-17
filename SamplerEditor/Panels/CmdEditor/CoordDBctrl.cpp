@@ -1,14 +1,15 @@
 #include "stdwx.h"
 #include "CoordDBctrl.h"
 
+#if !defined(COORDDB_IN_TEST)
 
-void CoordDBctrl::OnChange(wxCommandEvent& ) {
-	int Val = m_spinPos->GetValue();
+void CoordDBctrl::OnChange(wxCommandEvent& Evt) {
 	long DefVal=0;
 	wxString Descr;
 	wxString DefaultName;
-	bool up = Val > (int)m_Theshold;
+	bool up = ChkThreshold();// Val > (int)m_Theshold;
 	if (up) {
+		int Val = m_spinPos->GetValue();
 		DefaultName = wxString::Format("%s%03d", m_Prefix, Val - m_Theshold);
 
 		cDBSampler yy(SQLLITEDBPATH);
@@ -16,11 +17,13 @@ void CoordDBctrl::OnChange(wxCommandEvent& ) {
 	}
 	m_spinDBVal->SetValue(DefVal);
 	m_txtDescr->SetValue(Descr);
+	m_txtDescr->SetHint("Insert Description");
 	m_txtDBName->SetLabel(wxString::Format("%s", DefaultName));
-	ShowExtraControls(up);
+	UpdateInterface();
+	Evt.Skip();
 }
 
-void CoordDBctrl::OnUpdate(wxCommandEvent& /*event*/) {
+void CoordDBctrl::OnUpdate(wxCommandEvent& /*Evt*/) {
 	int Val = m_spinPos->GetValue();
 	wxString DefaultName = wxString::Format("%s%03d", m_Prefix, Val - m_Theshold);
 	cDBSampler yy(SQLLITEDBPATH);
@@ -28,3 +31,4 @@ void CoordDBctrl::OnUpdate(wxCommandEvent& /*event*/) {
 	wxString Descr = m_txtDescr->GetValue();
 	yy.Defaults_Set(DefaultName, DBVal, Descr);
 }
+#endif

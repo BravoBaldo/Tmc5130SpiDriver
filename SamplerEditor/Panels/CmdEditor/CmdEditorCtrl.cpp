@@ -317,7 +317,7 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
 #endif			
 
         SIZER_STATDEBUG(sizParams2, "Parameters", wxVERTICAL);
-            sizParams2->SetMinSize(wxSize(700, 200));
+            //sizParams2->SetMinSize(wxSize(700, 200));
             for (int i = 0; i < WXSIZEOF(m_Params); i++) {
                 //m_Params[i]->Layout();
                 sizParams2->Add(m_Params[i], 0, wxALL | wxGROW, 0);
@@ -334,7 +334,7 @@ CmdEditorCtrl::CmdEditorCtrl(	wxWindow*		parent,
         sizTop->Add(sizParams2, 0, wxALL | wxGROW, 5);
         
 SIZER_STATDEBUG(sizMaster, "Main", wxVERTICAL);
-    sizMaster->Add(sizTop,		1, wxALL | wxGROW, 0);
+    sizMaster->Add(sizTop,		0, wxALL | wxGROW, 0);
     
     sizMaster->Add(m_Txt_Result, 0, wxALL | wxGROW, 0);
     

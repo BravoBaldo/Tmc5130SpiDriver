@@ -3,11 +3,13 @@
 #include <wx/spinctrl.h>
 #include <wx/gbsizer.h>
 
+//#define COORDDB_IN_TEST
+
 class CoordDBctrl : public wxControl {
 public:
-
     CoordDBctrl(wxWindow* parent, wxWindowID id = wxID_ANY
-        , long style = wxSP_ARROW_KEYS, int min = 0, int max = 100, int initial = 0) : wxControl(parent, id) {
+        , long style = wxSP_ARROW_KEYS, int min = 0, int max = 100, int initial = 0)
+        : wxControl(parent, id), m_shownPrevious(false) {
 
         m_spinPos = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, style, min, max, initial);
             m_spinPos->Bind(wxEVT_SPINCTRL, &CoordDBctrl::OnChange, this);
@@ -27,23 +29,27 @@ public:
 
         m_btnSave   = new wxButton      (this, wxID_ANY, "Update DB");
             m_btnSave->Bind(wxEVT_BUTTON, &CoordDBctrl::OnUpdate, this);
+        //--------------------------------------------------------------
         SetLayout();
-
-        wxCommandEvent Evt; OnChange(Evt);
-        //ShowExtraControls(false);
-        Layout();
-        GetParent()->Layout();
-
+        //-------------------------------------------------------
+        m_shownPrevious = ChkThreshold();// ((unsigned int)m_spinPos->GetValue() > m_Theshold);
+        UpdateInterface(true);
     };
+
+    virtual ~CoordDBctrl() = default;
+
+    inline bool ChkThreshold()  {return ((unsigned int)m_spinPos->GetValue() > m_Theshold); }
+
     int     GetValue()                  { return m_spinPos->GetValue(); }
     void    SetRange(int min, int max)  { m_spinPos->SetRange(min, max); }
-    void    SetValue(int val)           { m_spinPos->SetValue(val); wxCommandEvent Evt; OnChange(Evt); }
+    void    SetValue(int val)           { m_spinPos->SetValue(val); UpdateInterface(); }
     int     GetMin() const              { return m_spinPos->GetMin(); }
     int     GetMax() const              { return m_spinPos->GetMax(); }
 
     wxString        m_Prefix = "NAZMotPos";
     unsigned int    m_Theshold = 50000;
 private:
+    bool            m_shownPrevious = false;
     wxSpinCtrl*     m_spinPos;
     wxStaticText*   m_lblTrueVal;   //--------------------------
     wxSpinCtrl*     m_spinDBVal;
@@ -56,93 +62,111 @@ private:
 
     wxButton*       m_btnSave;
 
-    wxSizer* m_mainSizer;
+    void UpdateInterface(bool forceSizer = false, bool TopToo = false) {
+        bool show = ChkThreshold();// ((unsigned int)m_spinPos->GetValue() > m_Theshold);
+        m_spinDBVal->Show(show);
+        m_txtDescr->Show(show);
+        m_btnSave->Show(show);
 
-    void ShowExtraControls(bool show) {
-        //show = true;
-//#define USE_SHOW
-#if defined(USE_SHOW)
-        m_lblDescr  ->Show(show);
+        m_lblDescr->Show(show);
         m_lblTrueVal->Show(show);
-        m_lblDBName ->Show(show);
+        m_lblDBName->Show(show);
         m_txtDBName->Show(show);
-        m_spinDBVal ->Show(show);
-        m_txtDescr  ->Show(show);
-        m_btnSave   ->Show(show);
-#else
-        m_lblDescr  ->Enable(show);
-        m_lblTrueVal->Enable(show);
-        m_lblDBName ->Enable(show);
-        m_txtDBName->Enable(show);
-        m_spinDBVal ->Enable(show);
-        m_txtDescr  ->Enable(show);
-        m_btnSave   ->Enable(show);
-#endif
-        m_mainSizer->Layout();
-        Layout(); PostSizeEventToParent();
+
+        wxSizer* sz = GetSizer();
+        if (show != m_shownPrevious || forceSizer) {
+            m_shownPrevious = show;
+
+            if (sz) {
+                sz->Layout();
+                wxSize minSize = sz->GetMinSize();    // Ricalcola la dimensione minima necessaria per contenere SOLO gli elementi visibili
+                SetMinSize(minSize);
+                SetSize(minSize);
+            }
+            wxWindow* win = GetParent();
+            while (win) {
+                // Se incontriamo un pannello intermedio (come CmdParLabel2), aggiorna il suo sizer
+                wxSizer* szl = win->GetSizer();
+                if (szl) {
+                    szl->Layout();
+                    // Aggiorna la dimensione minima del pannello basandoti sul suo sizer interno
+                    win->SetMinSize(szl->GetMinSize());
+                }
+
+                // Se siamo arrivati al Frame principale (Top Level Window)
+                if (win->IsTopLevel()) {
+                    if (TopToo) {   //Top Level Window too
+                        wxFrame* frame = wxDynamicCast(win, wxFrame);
+                        if (frame) {
+                            wxSizer* szf = frame->GetSizer();
+                            if (szf) szf->Layout();
+                            frame->Fit(); // Costringe il Frame ad allargarsi o stringersi fisicamente sulla scrivania!
+                        }
+                    }
+                    break; // Usciamo dal ciclo una volta aggiornato il Frame
+                }
+                win = win->GetParent();
+            }
+        } else {
+            if (sz) sz->Layout();
+            Refresh();
+        }
     }
 
-    void OnChange(wxCommandEvent& /*event*/);
-    void OnUpdate(wxCommandEvent& /*event*/);
+
+
+
+
+#if defined(COORDDB_IN_TEST)
+    void OnChange(wxCommandEvent& Evt) {
+        UpdateInterface();
+        Evt.Skip();
+    }
+
+    void OnUpdate(wxCommandEvent& /*event*/) {}
+#else
+    void OnChange(wxCommandEvent& Evt);
+    void OnUpdate(wxCommandEvent& Evt);
+#endif
+
+
+
+    void SetLayout3(void) {
+        wxBoxSizer* m_mainSizer = new wxBoxSizer(wxVERTICAL);
+        m_mainSizer->Add(m_spinPos,     0, wxALL, 2);
+        m_mainSizer->Add(m_spinDBVal,   0, wxALL, 2);
+        m_mainSizer->Add(m_txtDescr,    0, wxALL, 2);
+        m_mainSizer->Add(m_btnSave,     0, wxALL, 2);
+
+        m_mainSizer->Add(m_lblDescr,    0, wxALL, 2);
+        m_mainSizer->Add(m_lblTrueVal,  0, wxALL, 2);
+        m_mainSizer->Add(m_lblDBName,   0, wxALL, 2);
+        m_mainSizer->Add(m_txtDBName,   0, wxALL, 2);
+
+        SetSizerAndFit(m_mainSizer);    //SetSizer(m_mainSizer);
+    }
 
     void SetLayout(void) {
-        m_mainSizer = new wxBoxSizer(wxVERTICAL);
+        wxBoxSizer* m_mainSizer = new wxBoxSizer(wxVERTICAL);
 
         wxGridBagSizer* gbSizer1 = new wxGridBagSizer(2, 2);
         gbSizer1->SetFlexibleDirection(wxBOTH);
         gbSizer1->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-        gbSizer1->Add(m_spinPos, wxGBPosition(0, 0), wxGBSpan(1, 1), wxALL, 0);
 
+        gbSizer1->Add(m_spinPos,    wxGBPosition(0, 0), wxGBSpan(1, 1), wxALL, 0);
         gbSizer1->Add(m_lblTrueVal, wxGBPosition(0, 1), wxGBSpan(1, 1), wxALL, 0);
-        gbSizer1->Add(m_spinDBVal, wxGBPosition(0, 2), wxGBSpan(1, 1), wxALL, 0);
+        gbSizer1->Add(m_spinDBVal,  wxGBPosition(0, 2), wxGBSpan(1, 1), wxALL, 0);
+        gbSizer1->Add(m_lblDBName,  wxGBPosition(1, 0), wxGBSpan(1, 1), wxALL, 0);
+        gbSizer1->Add(m_txtDBName,  wxGBPosition(1, 1), wxGBSpan(1, 1), wxEXPAND, 0);
+        gbSizer1->Add(m_lblDescr,   wxGBPosition(2, 0), wxGBSpan(1, 1), wxALL, 0);
+        gbSizer1->Add(m_txtDescr,   wxGBPosition(2, 1), wxGBSpan(1, 2), wxEXPAND, 0);
+        gbSizer1->Add(m_btnSave,    wxGBPosition(3, 2), wxGBSpan(1, 1), wxALIGN_RIGHT, 0);
 
-        gbSizer1->Add(m_lblDBName, wxGBPosition(1, 0), wxGBSpan(1, 1), wxALL, 0);
-        gbSizer1->Add(m_txtDBName, wxGBPosition(1, 1), wxGBSpan(1, 2), wxEXPAND, 0);
-        gbSizer1->Add(m_lblDescr, wxGBPosition(2, 0), wxGBSpan(1, 1), wxALL, 0);
-        gbSizer1->Add(m_txtDescr, wxGBPosition(2, 1), wxGBSpan(1, 2), wxEXPAND, 0);
-        gbSizer1->Add(m_btnSave, wxGBPosition(3, 2), wxGBSpan(1, 1), wxALIGN_RIGHT, 0);
+//        gbSizer1->AddGrowableCol(2);
 
-        gbSizer1->AddGrowableCol(2);
-
-
-        m_mainSizer->Add(gbSizer1, 1, wxEXPAND, 5);
-        SetSizer(m_mainSizer);
-        Layout(); PostSizeEventToParent();
-    }
-
-    void SetLayout2(void) {
-        m_mainSizer = new wxBoxSizer(wxVERTICAL);
-
-        wxFlexGridSizer* m_condSizerF = new wxFlexGridSizer(0, 2, 0, 0);
-        m_condSizerF->AddGrowableCol(1);
-        m_condSizerF->SetFlexibleDirection(wxBOTH);
-        m_condSizerF->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
-#define OrgSolXX
-#if defined(OrgSolXX)
-        m_condSizerF->Add(m_spinPos,    1, wxALL | wxEXPAND, 0);
-        m_condSizerF->Add(0, 0, 1, wxEXPAND, 5);
-        m_condSizerF->Add(m_lblDBName,  0, wxALIGN_RIGHT | wxALL, 0);
-        m_condSizerF->Add(m_spinDBVal,  1, wxALL | wxEXPAND, 0);
-        m_condSizerF->Add(m_lblDescr,   0, wxALIGN_RIGHT | wxALL, 5);
-        m_condSizerF->Add(m_txtDescr,   1, wxALL | wxEXPAND, 0);
-        m_condSizerF->Add(0,0,          1, wxEXPAND, 5);
-        m_condSizerF->Add(m_btnSave,    1, wxALIGN_RIGHT | wxALL, 5);
-#else
-        m_condSizerF->Add(m_spinPos, 1, wxALL | wxEXPAND, 0);
-        m_condSizerF->Add(m_lblDBName, 0, wxALIGN_LEFT | wxALL, 0);
-        m_condSizerF->Add(m_spinDBVal, 1, wxALL | wxEXPAND, 0);
-        m_condSizerF->Add(m_txtDescr, 1, wxALL | wxEXPAND, 0);
-//        m_condSizerF->Add(0, 0, 1, wxEXPAND, 5);
-        m_condSizerF->Add(m_lblDescr, 0, wxALIGN_RIGHT | wxALL, 5);
-        m_condSizerF->Add(m_btnSave, 1, wxALIGN_RIGHT | wxALL, 5);
-#endif
-        m_mainSizer->Add(m_condSizerF, 1, wxEXPAND, 5);
-        SetSizer(m_mainSizer);
-
-        wxWindow* w = this;
-        while ((w = w->GetParent())!=nullptr){
-            w->Layout();
-        }
+        m_mainSizer->Add(gbSizer1, 0, wxEXPAND, 5);
+        SetSizerAndFit(m_mainSizer);
+        UpdateInterface();
     }
 };
 

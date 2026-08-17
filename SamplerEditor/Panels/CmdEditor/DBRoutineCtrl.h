@@ -1,13 +1,22 @@
 #pragma once
 #include "wx/wx.h"
 #include <wx/spinctrl.h>
-#include "cDBSampler.h"
-
+//#define DBROUTINE_IN_TEST
 class DBRoutineCtrl : public wxControl {
     wxSizer*        m_mainSizer;
     wxChoice*       m_RoutineList;
+#if defined(DBROUTINE_IN_TEST)
+    void            FillRoutines(void) {
+        m_RoutineList->Clear();
+        for (int i = 2001; i < 2050; i++) {
+            m_RoutineList->Append(
+                wxString::Format("Test Routine %d", i), 
+                reinterpret_cast<void*>(static_cast<intptr_t>(i)));
+        }
+    }
+#else
     void            FillRoutines(void);
-
+#endif
     void gGetIndexFromClientData(wxChoice* Cho, int DataInt) {
         if (Cho) {
             size_t j = Cho->GetCount();
