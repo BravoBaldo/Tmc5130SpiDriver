@@ -449,12 +449,12 @@ public:
     uint32_t cool_step_threshold = 0;
   };
 
-	void TestReset(){	//Clear Error AAA: ToDo Rename in ClearError
+	void ClearError(){	//Clear Error AAA: ToDo Rename in ClearError
 		Chopconf chopconf;
 		chopconf.bytes = readReg(CHOPCONF);
 		chopconf.toff = 0;
 		writeReg(CHOPCONF, chopconf.bytes);
-		readReg(GSTAT);
+		readReg(GSTAT);		//Clear Flags
 		readReg(DRV_STATUS);
 		chopconf.toff = 3;
 		writeReg(CHOPCONF, chopconf.bytes);
@@ -1219,7 +1219,7 @@ public:
 
 public:
 	void TestFsaInitY(void){
-		SetChipEnable(true); TestReset();	getGstat();
+		SetChipEnable(true); ClearError();//	getGstat();
 		setMotorDirection(ReverseDirection);	//GCONF
 		setStops		(false, true, true, false, false, false, false);
 		setCurrent		(20, 30, 0);

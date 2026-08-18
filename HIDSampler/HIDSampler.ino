@@ -10,8 +10,8 @@
 #define USE_TMC5130       //Require USE_EXPANDERS and USE_SPI
 #define USE_TMC5130_FSA   //Require USE_EXPANDERS and USE_SPI
 //#define USE_STEPPERS    //Require USE_EXPANDERS and USE_SPI
-#define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
-
+//#define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
+#define USE_INA260        //Current Power, Require USE_SPI
 
 
 void ExecuteCommand(const uint8_t* data, uint16_t len);
@@ -56,17 +56,15 @@ void ExecuteCommand(const uint8_t* data, uint16_t len);
   void  SpiEnableSteppers(uint8_t csPin, bool en) { Expanders[ExpanderStepper].write1(csPin, en?0:1); }  //Callback for Chip-Select through expander
   
   TMC5130_FSA Steppers[]={
-/*
-#define X(eMotorId, csPin, cePin, description) TMC5130(SPI,  csPin,  cePin, SpiEnableSteppers, SPI_FREQ, description),
+
+#define X(eMotorId, csPin, cePin, description) TMC5130_FSA(SPI,  csPin,  cePin, SpiEnableSteppers, SPI_FREQ, description),
 	STEPPERS_LIST
 #undef X
-*/
+/*
     TMC5130_FSA(SPI,  6,  7, SpiEnableSteppers, SPI_FREQ, "Motor A: Up/Dn"),
     TMC5130_FSA(SPI,  4,  5, SpiEnableSteppers, SPI_FREQ, "Motor B: Left/Right"),
     TMC5130_FSA(SPI,  2,  3, SpiEnableSteppers, SPI_FREQ, "Motor C: Syringe/Diluter"),
-//    TMC5130_FSA(SPI, 12, 13, SpiEnableSteppers, SPI_FREQ, "Motor D: Depositor"),
-//    TMC5130_FSA(SPI, 10, 11, SpiEnableSteppers, SPI_FREQ, "Motor E"),
-//    TMC5130_FSA(SPI,  8,  9, SpiEnableSteppers, SPI_FREQ, "Motor F")
+*/
   };
 
 #endif
@@ -90,7 +88,10 @@ void ExecuteCommand(const uint8_t* data, uint16_t len);
   TMC_Multi_FSA MultiFSA(Steppers, wxSIZEOF(Steppers));
 #endif
 
-
+#if defined(USE_INA260)
+  #include "src/INA260/Ina260.h" //include also "Adafruit INA260 Library"
+  cINA260   sina260;
+#endif
 
 void setup() {
   Serial.begin(115200); delay(1000);
@@ -111,6 +112,10 @@ void setup() {
 
   #if defined(USE_SPI)
     SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+  #endif
+
+  #if defined(USE_INA260)
+    sina260.init();
   #endif
 
   #if defined(USE_STEPPERS)
@@ -182,6 +187,10 @@ void AlwaysRun(void){
     StripLed.AlwaysRun();
   #endif
 
+  #if defined(USE_INA260)
+    sina260.AlwaysRun();
+  #endif
+
   #if defined(USE_STEPPERS)
     Motors.Loop();
   #endif
@@ -206,14 +215,14 @@ void AlwaysRun(void){
         Answer.m_Remaining  = Steppers[Motor].getRemaining()/1000;
         Answer.m_spiStatus  = Steppers[Motor].GetSpiStatus().bytes;
         Answer.m_Ioin8      =(Steppers[Motor].getIoin().bytes & 0xFF);  //IOIN
-        Answer.m_Position   = Steppers[Motor].getPosition();             //XACTUAL
-        Answer.m_xTarget    = Steppers[Motor].getTarget();               //XTARGET
-        Answer.m_Currents   = Steppers[Motor].getCurrents();             //ShadowRegs.Ihold_Irun
+        Answer.m_Position   = Steppers[Motor].getPosition();            //XACTUAL
+        Answer.m_xTarget    = Steppers[Motor].getTarget();              //XTARGET
+        Answer.m_Currents   = Steppers[Motor].getCurrents();            //ShadowRegs.Ihold_Irun
 #if defined(X_SHOW_CHOPCONF)
-        Answer.m_CHOPCONF   = Steppers[Motor].getChopconf().bytes;       //CHOPCONF
+        Answer.m_CHOPCONF   = Steppers[Motor].getChopconf().bytes;      //CHOPCONF
 #endif
-        Answer.m_DRV_STATUS = Steppers[Motor].getDrvStatus().bytes;      //DRV_STATUS
-        Answer.m_MSCURACT   = Steppers[Motor].getMscuract().bytes;       //MSCURACT
+        Answer.m_DRV_STATUS = Steppers[Motor].getDrvStatus().bytes;     //DRV_STATUS
+        Answer.m_MSCURACT   = Steppers[Motor].getMscuract().bytes;      //MSCURACT
 
         Answer.m_VSTART     = Steppers[Motor].getStartVelocity(); //18 bits limited to 16
         Answer.m_V1         = Steppers[Motor].getFirstVelocity();	//20 bits limited to 16
@@ -234,61 +243,116 @@ void AlwaysRun(void){
   }
 #endif
 
-
-void ExecuteCommand(const uint8_t* data, uint16_t len){
-  bool AnswerSent = false;
-  sCommand Cmd;
-  memcpy(&Cmd, data, sizeof(sCommand));
-
-  //ToDo, AAA I suppose Cmd.m_MsgType==eTypCommand
-  Serial.printf("Execution (Step %d):", Cmd.m_DetailProg);
-  switch(Cmd.m_SubSystem){
-    case eSystemCmd:
-      Serial.println("System Command");
-      switch(Cmd.m_Cmd){
-        case 48:
-          {
-            sAnswerVersion Answer;
-            Answer.m_Cmd = Cmd.m_Cmd;
-            Answer.Y = getYear2 (__DATE__);
-            Answer.M = getMonth (__DATE__);
-            Answer.D = getDay   (__DATE__);
-            Answer.h = getHour  (__TIME__);
-            Answer.m = getMinute(__TIME__);
-            Answer.s = getSecond(__TIME__);            
-            SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) ); AnswerSent = true;            
-          }
-          break;
-
-        default: Serial.printf("Unknown Sistem command (%d=%02x)\n", (int)Cmd.m_Cmd, (int)Cmd.m_Cmd); break;
-      }
-      break;
-
-    case eExpanders:
-      Serial.println(F("Espanders' Command"));
-      switch(Cmd.m_Cmd){
-        case 118: //'v'
-          {
-            uint16_t Mask = ExpSampler.getMask((cExpSampler::eExpOutputs)Cmd.m_Par[0]);
-            bool Enable = (Cmd.m_Par[1]!=0);
-            ExpSampler.WriteOut(Mask, Enable);
-            Serial.printf("Set %d pattern %04X to '%s'\n", (int)Cmd.m_Par[0], Mask, Enable?"True":"False");
-          }
-          break;
-        default:
-          Serial.printf("Unknown Expanders' command (%d=%02x)\n", (int)Cmd.m_Cmd, (int)Cmd.m_Cmd);
-          break;
-      }
+bool Exec_SystemCmd(SamplerHIDDevice& SamplerHID, sCommand& Cmd){ //cINA260   sina260
+  Serial.println("System Command");
+  switch(Cmd.m_Cmd){
+    case 48:  //'0'
       {
-        sExpanderStandard Answer;
+        sAnswerVersion Answer;
         Answer.m_Cmd = Cmd.m_Cmd;
-        Answer.m_CurrStatus = ExpSampler.GetLastOutput();
-        SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) ); AnswerSent = true;
+        Answer.Y = getYear2 (__DATE__);
+        Answer.M = getMonth (__DATE__);
+        Answer.D = getDay   (__DATE__);
+        Answer.h = getHour  (__TIME__);
+        Answer.m = getMinute(__TIME__);
+        Answer.s = getSecond(__TIME__);            
+        SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) );
       }
-      break;
-#if defined(USE_TMC5130)
-    case eStepDirect:
-    case eStepNoMotor:
+      return true;
+#if defined(USE_INA260)
+    case 49:  //'1'
+      {
+        sAnswerPower Answer;
+        Answer.m_Cmd  = Cmd.m_Cmd;
+        Answer.Curr   = sina260.getVal(cINA260::eCurr);
+        Answer.Volt   = sina260.getVal(cINA260::eVolt);
+        Answer.Power  = sina260.getVal(cINA260::ePwr);
+        SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) );
+      }
+      return true;
+#endif
+    default: Serial.printf("Unknown Sistem Command (%d=%02x)\n", (int)Cmd.m_Cmd, (int)Cmd.m_Cmd); break;
+  }
+  return false;
+}
+
+#if defined(USE_EXPANDERS)
+  bool Exec_ExpandersCmd(SamplerHIDDevice& SamplerHID, sCommand& Cmd){ //cExpSampler ExpSampler, TCA9555   Expanders[]
+        Serial.println(F("Espanders' Command"));
+        switch(Cmd.m_Cmd){
+          case 118: //'v'
+            {
+              uint16_t Mask = ExpSampler.getMask((cExpSampler::eExpOutputs)Cmd.m_Par[0]);
+              bool Enable = (Cmd.m_Par[1]!=0);
+              ExpSampler.WriteOut(Mask, Enable);
+              Serial.printf("Set %d pattern %04X to '%s'\n", (int)Cmd.m_Par[0], Mask, Enable?"True":"False");
+            }
+            break;
+          default:
+            Serial.printf("Unknown Expanders' command (%d=%02x)\n", (int)Cmd.m_Cmd, (int)Cmd.m_Cmd);
+            return false;
+        }
+        {
+          sExpanderStandard Answer;
+          Answer.m_Cmd = Cmd.m_Cmd;
+          Answer.m_CurrStatus = ExpSampler.GetLastOutput();
+          SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) );
+        }
+        return true;
+  }
+#endif
+
+#if defined(USE_STRIPLED)
+  bool Exec_StripLed(SamplerHIDDevice& SamplerHID, sCommand& Cmd){ //cStripLed StripLed
+    StripAnswer Answer;
+    switch(Cmd.m_Cmd){
+      case 108: Answer.m_Result = StripLed.SetGame((StripGame)Cmd.m_Par[0]) ? eCmdOk : eCmdRetry;             break; //Led Effect
+      case 103: Answer.m_Result = eCmdOk;                                                                     break; //Ask Delay
+      case 100: Answer.m_Result = StripLed.SetTimer( Cmd.m_Par[0]*1000 )  ? eCmdOk : eCmdRetry;               break; //Delay
+      case 110: Answer.m_Result = eCmdOk;  StripLed.setNumShowed(Cmd.m_Par[0]);                               break;
+      case 114: Answer.m_Result = StripLed.ResetTimer()                   ? eCmdOk : eCmdRetry;               break; //ResetTimer
+      case 119: Answer.m_Result = StripLed.WaitTimer()                    ? eCmdOk : eCmdRetry;               break; //WaitTimer
+      default:  Answer.m_Result = eCmdError;
+      return false;
+    }
+    Answer.m_MsgType	  = eTypAnswStripLed;
+    Answer.m_CurrGame   = StripLed.getCurrGame();
+    Answer.m_Remaining  = StripLed.Remaining()/1000;
+    Answer.m_Cmd        = Cmd.m_Cmd;
+    SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) );
+    return true;
+  }
+#endif
+
+#if defined(USE_TMC5130_FSA)
+  bool Exec_SteppersFSA(SamplerHIDDevice& SamplerHID, sCommand& Cmd){ //TMC5130_FSA Steppers[]
+    Serial.printf("\"FSA single TMC5130\"");
+    {
+      FsaSingleAnswer Answer;Answer.m_Cmd = Cmd.m_Cmd; // ToDo: use proper Answer
+      uint8_t         pr = 0; //Param Index
+      uint8_t         CurrentMotor  = Cmd.m_Par[pr++];
+      switch(Cmd.m_Cmd){
+        case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations()      ? eCmdOk : eCmdRetry; break;
+        case 'a': PRINTLOG("Init Motor");   Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin()         ? eCmdOk : eCmdRetry;   break;
+        case 'b': 
+          switch(Cmd.m_PatLen){
+            case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ) ? eCmdOk : eCmdRetry; break;
+            case 3: PRINTLOG("GoTo3");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++],  Cmd.m_Par[pr++]*1000  ) ? eCmdOk : eCmdRetry; break;
+          }
+          break;
+        default:  PRINTLOG("Unknown FSA single TMC5130 command"); 
+        return false;                                                 break;
+      }
+      Answer.m_Motor    = CurrentMotor;
+      Answer.m_FsaStatus = Steppers[CurrentMotor].AskStatus();
+      SamplerHID.SendBuffer( (uint8_t*)&Answer, sizeof(Answer) );
+    }
+    return true;
+  }
+#endif
+
+bool Exec_Steppers(SamplerHIDDevice& SamplerHID, sCommand& Cmd){ //Steppers[]
+  Serial.printf("\"TMC5130's Command %s\", \"", (Cmd.m_SubSystem==eStepNoMotor)?"No Motor":"");
       Serial.printf("\"TMC5130's Command %s\", \"", (Cmd.m_SubSystem==eStepNoMotor)?"No Motor":"");
       {
         static uint8_t  CM = 0; //Motor to use
@@ -296,7 +360,6 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         uint8_t         CurrentMotor  = (Cmd.m_SubSystem==eStepNoMotor) ? CM : Cmd.m_Par[pr++];
         uint8_t         ParNum        = (Cmd.m_SubSystem==eStepNoMotor) ? Cmd.m_PatLen : Cmd.m_PatLen-1;
         TmcAnswer       Answer; Answer.m_Cmd = Cmd.m_Cmd;
-        AnswerSent = true;
         switch(Cmd.m_Cmd){
           case '0': PRINTLOG("Do Nothing");    Answer.m_Result = eCmdOk;                                                                               break;
           case '1': PRINTLOG("Change Motor");  Answer.m_Result = eCmdOk; CM = Cmd.m_Par[pr++];
@@ -306,8 +369,8 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
               break;
           case '2': PRINTLOG("Set Register");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetReg(Cmd.m_Par[pr++], Cmd.m_Par[1]);                 break;
           case 'a': PRINTLOG("Chip Enable");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetChipEnable(Cmd.m_Par[pr++]!=0);
-                                                                                Steppers[CurrentMotor].TestReset();
-                                                                                Steppers[CurrentMotor].getGstat();                                            break;
+                                                                         Steppers[CurrentMotor].ClearError();
+                                                                         Steppers[CurrentMotor].getGstat();                                            break;
           case 'b': PRINTLOG("Set EndStops");  Answer.m_Result = eCmdOk;
                     switch(ParNum){
                       case 0: Steppers[CurrentMotor].DisableStops();                                        break;
@@ -316,9 +379,6 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                       case 7:                     Steppers[CurrentMotor].setStops(Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0, Cmd.m_Par[pr++]!=0);  break;
                     }
                     break;
-                    //if(ParNum==0 || Cmd.m_Par[pr]>1)  Steppers[CurrentMotor].DisableStops();
-                    //else                              Steppers[CurrentMotor].setStops(Cmd.m_Par[pr++]!=0);
-                    //                                                                                                                                        break;
           case 'c': PRINTLOG("Set Currents");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setCurrent   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);  break;
           case 'd': PRINTLOG("Set Position");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setPosition  (Cmd.m_Par[pr++]);                           break;
           case 'e': PRINTLOG("Set MicroStep");  Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setMicrosteps(Cmd.m_Par[pr++]);                           break;
@@ -349,7 +409,6 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
 
           case 'k': PRINTLOG("Advance");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].Advance(Cmd.m_Par[pr++]);                           break;
 
-
           case 'l': PRINTLOG("Init GoTo");      Answer.m_Result = eCmdOk; Steppers[CurrentMotor].InitGoTo         (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]); break;
           case 'm': PRINTLOG("FreeRunning");    Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetFreeRunning   (Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                          break;
           case 'n': PRINTLOG("Set Accel..s");   Answer.m_Result = eCmdOk; Steppers[CurrentMotor].setAccelerations ( (TMC5130::eAccelerations)Cmd.m_Par[pr++], Cmd.m_Par[pr++]);                 break;
@@ -377,7 +436,6 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                             //pr++;  diag0_int_pushpull
                             //pr++;  diag1_poscomp_pushpull
                       break;
-                    //"small_hysteresis", "stop_enable", "direct_mode", "test_mode"})},
                     case 4:       if(Cmd.m_Par[pr]) gconf.small_hysteresis = Cmd.m_Par[pr]-1;
                             pr++; if(Cmd.m_Par[pr]) gconf.stop_enable      = Cmd.m_Par[pr]-1;
                             pr++; if(Cmd.m_Par[pr]) gconf.direct_mode      = Cmd.m_Par[pr]-1;
@@ -396,7 +454,8 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
                   #endif
               break;
             break;
-          default:  PRINTLOG("Unknown TMC5130's NoMotor command"); AnswerSent = false; break;
+          default:  PRINTLOG("Unknown TMC5130's NoMotor command"); 
+            return false;
         }
         PRINTLOG("\" ... ");
         Answer.m_Motor    = CurrentMotor;
@@ -410,64 +469,44 @@ void ExecuteCommand(const uint8_t* data, uint16_t len){
         }
         SamplerHID.SendBuffer( (uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
       }
-      break;
+
+  return true;
+}
+
+
+void ExecuteCommand(const uint8_t* data, uint16_t len){
+  bool AnswerSent = false;
+  sCommand Cmd;
+  memcpy(&Cmd, data, sizeof(sCommand));
+
+  //ToDo, AAA I suppose Cmd.m_MsgType==eTypCommand
+  Serial.printf("Execution (Step %d):", Cmd.m_DetailProg);
+  switch(Cmd.m_SubSystem){
+    case eSystemCmd:    AnswerSent = Exec_SystemCmd   (SamplerHID, Cmd);  break;
+
+#if defined(USE_EXPANDERS)
+    case eExpanders:    AnswerSent = Exec_ExpandersCmd(SamplerHID, Cmd);  break;
 #endif
-#if defined(USE_TMC5130_FSA)
-    case eSteppersFSA:
-      Serial.printf("\"FSA single TMC5130\"");
-      {
-        FsaSingleAnswer Answer;Answer.m_Cmd = Cmd.m_Cmd; // ToDo: use proper Answer
-        uint8_t         pr = 0; //Param Index
-        uint8_t         CurrentMotor  = Cmd.m_Par[pr++];
-        AnswerSent = true;
-        switch(Cmd.m_Cmd){
-          case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations()      ? eCmdOk : eCmdRetry; break;
-          case 'a': PRINTLOG("Init Motor");
-            //if(CurrentMotor!=2)
-               Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin()       ? eCmdOk : eCmdRetry;
-            //else
-            //  Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin_R()      ? eCmdOk : eCmdRetry;
-            // break;
-          case 'b': 
-            switch(Cmd.m_PatLen){
-              case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ) ? eCmdOk : eCmdRetry; break;
-              case 3: PRINTLOG("GoTo3");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++],  Cmd.m_Par[pr++]*1000  ) ? eCmdOk : eCmdRetry; break;
-            }
-            break;
-          default:  PRINTLOG("Unknown FSA single TMC5130 command"); AnswerSent = false;                                                 break;
-        }
-        Answer.m_Motor    = CurrentMotor;
-        Answer.m_FsaStatus = Steppers[CurrentMotor].AskStatus();
-        SamplerHID.SendBuffer( (uint8_t*)&Answer, sizeof(Answer) ); //AnswerSent = true;
-      }
-      break;
-#endif
+
 #if defined(USE_STRIPLED)
-    case eStripLed:
-      {
-        bool Res = false;
-        StripAnswer Answer;
-        switch(Cmd.m_Cmd){
-          case 108: Answer.m_Result = StripLed.SetGame((StripGame)Cmd.m_Par[0]) ? eCmdOk : eCmdRetry;  break; //Led Effect
-          case 103: Answer.m_Result = eCmdOk;                                                                     break; //Ask Delay
-          case 100: Answer.m_Result = StripLed.SetTimer( Cmd.m_Par[0]*1000 )  ? eCmdOk : eCmdRetry;               break; //Delay
-          case 110: Answer.m_Result = eCmdOk;  StripLed.setNumShowed(Cmd.m_Par[0]);                               break;
-          case 114: Answer.m_Result = StripLed.ResetTimer()                   ? eCmdOk : eCmdRetry;               break; //ResetTimer
-          case 119: Answer.m_Result = StripLed.WaitTimer()                    ? eCmdOk : eCmdRetry;               break; //WaitTimer
-          default:  Answer.m_Result = eCmdError;                                                                  break; //
-        }
-        Answer.m_MsgType	  = eTypAnswStripLed;
-        Answer.m_CurrGame   = StripLed.getCurrGame();
-        Answer.m_Remaining  = StripLed.Remaining()/1000;
-        Answer.m_Cmd        = Cmd.m_Cmd;
-        SamplerHID.SendBuffer((uint8_t*)&Answer, sizeof(Answer) ); AnswerSent = true;
-      }
-      break;
+    case eStripLed:     AnswerSent = Exec_StripLed    (SamplerHID, Cmd);  break;
 #endif
+
+#if defined(USE_TMC5130_FSA)
+    case eSteppersFSA:  AnswerSent = Exec_SteppersFSA (SamplerHID, Cmd);  break;
+#endif
+
+#if defined(USE_TMC5130)
+    case eStepDirect:
+    case eStepNoMotor:  AnswerSent = Exec_Steppers    (SamplerHID, Cmd);  break;
+#endif
+
     default:
       Serial.printf("Unknown System: %d ('%c')\n", (int)Cmd.m_SubSystem, Cmd.m_SubSystem);
       break;
   }
+
+  
   if(!AnswerSent){
       PRINTLOG("Generic Answer\n");
       ShowBuffer(data, len);

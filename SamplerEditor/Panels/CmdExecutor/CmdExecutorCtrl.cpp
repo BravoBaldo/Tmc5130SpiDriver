@@ -64,6 +64,14 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerVersion& Answ) {
 	return eCmdOk;
 }
 
+eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerPower& Answ) {
+	LogMe("Read Power: ", true);
+	LogMe(wxString::Format("INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), false);
+	return eCmdOk;
+}
+eCmdAnswer	ParseAnswer(const sAnswerPower& Answ);
+
+
 //ToDo: Separate Tx and Rx each with own TimeOut
 /*
 template <typename Typ>
@@ -136,7 +144,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			Success = true;
 			eMessageTypes Tipo = ((eMessageTypes*)PtrAnswer)[0];
 			switch (Tipo) {
-				case eTypAnswVer:	CALLANSWERPARSER(sAnswerVersion);	break;
+				case eTypAnswVer:		CALLANSWERPARSER(sAnswerVersion);	break;
+				case eTypAnswPwReader:	CALLANSWERPARSER(sAnswerPower);		break;
 				case eTypAnswStd:
 					{
 						LogMe(wxString::Format("Received %d bytes in %ld ms.\n", res, sw.Time()), true);

@@ -24,12 +24,14 @@ inline constexpr uint8_t CollectorMAC[] = {0x26, 0x0B, 0xA1, 0x4F, 0x92, 0xC3};
 #define STEPPERS_LIST \
     X(eStep_UpDwn,	 6,  7, "Motor A: Left/Right") \
     X(eStep_LR,		 4,  5, "Motor B: Up/Dn") \
-    X(eStep_Syringe, 2,  3, "Motor C: Syringe/Diluter") \
+    X(eStep_Syringe, 2,  3, "Motor C: Rotating Arm")
+
+/*
+    X(eStep_TOP,	 0,  0, "") 
     X(eStep_Deposit,12, 13, "Motor D: Depositor") \
     X(eStep_Needle,	10, 11, "Motor E") \
     X(eStep_Spare,	 8,  9, "Motor F") \
-    X(eStep_TOP,	 0,  0, "") 
-
+*/
 
 //		Id, RunAlwais, Name
 #define STRIPLEDGAMES_LIST \
@@ -122,7 +124,6 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 
 #pragma pack(push, 1)
 typedef struct _sVerAnswer{
-	//byte	m_MsgType			= eTypAnswVer;	//1
 	ANSWERHEADER(eTypAnswVer)
 
 	byte	Y;
@@ -133,6 +134,17 @@ typedef struct _sVerAnswer{
 	byte	s;
 }sAnswerVersion;
 #pragma pack(pop)
+
+
+#pragma pack(push, 1)
+typedef struct _sPwrAnswer {
+	ANSWERHEADER(eTypAnswPwReader)
+	float	Curr;
+	float	Volt;
+	float	Power;
+}sAnswerPower;
+#pragma pack(pop)
+
 
 
 #pragma pack(push, 1)

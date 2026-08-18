@@ -3,11 +3,11 @@
 #include "cDBSampler.h"
 
 #if !defined(DBROUTINE_IN_TEST)
-void DBRoutineCtrl::FillRoutines(void) {
+void DBRoutineCtrl::FillRoutines(bool SortByNum) {
 	cDBSampler yy(SQLLITEDBPATH);
 	wxArrayString	Names;
 	wxArrayInt		Codes;
-	yy.ProgMaster_FillRoutines(Names, Codes, true);
+	yy.ProgMaster_FillRoutines(Names, Codes, true, SortByNum);
 	m_RoutineList->Clear();
 	size_t Cnt = Names.Count();
 	for (size_t i = 0; i < Cnt; i++) {

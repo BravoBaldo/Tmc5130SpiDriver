@@ -24,7 +24,7 @@ void cAnswersShow::Log_Generic_InitEnd(wxGrid* Grid) {
 void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
 	wxGrid* grid = m_Grids[eGrid_Motors];
 	if (grid == NULL)	return;
-	grid->CreateGrid(eStep_TOP, eStpShowCount);
+	grid->CreateGrid(3, eStpShowCount);	//ToDo: wxsizeof(STEPPERS_LIST)
 
 	wxGridCellAttr* LeftAlign = new wxGridCellAttr(); LeftAlign->SetAlignment(wxALIGN_LEFT, wxALIGN_CENTRE);
 

@@ -75,13 +75,14 @@ static const sSampler_Commands Sampler_Commands[] = {
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},
 	{eSystemCmd, '0',	"Get Version",			"",			RetArray2({								})},
+	{eSystemCmd, '1',	"Read Power",			"",			RetArray2({								})},
 
 
-	{eStepNoMotor,	'0', "Do Nothing",			"",			RetArray2({											})},
-	{eStepNoMotor,	'1', "Set Current Motor",	"M",		RetArray2({"Stepper"								})},
-	{eStepNoMotor,	'2', "Set Register",		"fL",		RetArray2({"Register", "Value"					})},
+	{eStepNoMotor,	'0', "Do Nothing",			"",			RetArray2({								})},
+	{eStepNoMotor,	'1', "Set Current Motor",	"M",		RetArray2({"Stepper"					})},
+	{eStepNoMotor,	'2', "Set Register",		"fL",		RetArray2({"Register", "Value"			})},
 
-	{eStepNoMotor,	'a', "ChipEnable",			"e",		RetArray2({"Chip Abilitation"				})},
+	{eStepNoMotor,	'a', "ChipEnable",			"e",		RetArray2({"Chip Abilitation"			})},
 
 	{eStepNoMotor,	'b', "EndStops NONE (DoNotUse)",	"",			RetArray2({									})},
 	{eStepNoMotor,	'b', "EndStops (DoNotUse)",			"q",		RetArray2({"Direction"						})},

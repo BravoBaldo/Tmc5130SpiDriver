@@ -129,7 +129,7 @@ public:
 	bool	Exec_SearchBegin(unsigned long T=8000){
 				if(IsRotative()) return Exec_SearchBegin_R(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); TestReset();		//getGstat();
+				SetChipEnable(true); ClearError();		//getGstat();
 				setMotorDirection(ReverseDirection);	//GCONF
 				setStops		(false, true, true, false, false, false, false);
 				setCurrent		(20, 30, 0);
@@ -142,7 +142,7 @@ public:
 	bool	Exec_SearchBegin_R(unsigned long T=3000){
 				if(!IsRotative()) return Exec_SearchBegin(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); TestReset();		//getGstat();
+				SetChipEnable(true); ClearError();		//getGstat();
 				setVelocities	( eVMAX, 0);
 				setMotorDirection(ForwardDirection);	//GCONF
 				setCurrent		(10, 11, 10);

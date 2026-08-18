@@ -149,7 +149,7 @@ public:
 	wxString	ProgMaster_GetTitle		(unsigned int Id = 0);
 
 	bool		Combo_FillSql			(wxArrayString& Titles, wxArrayInt& Codes, const wxString& SqlQuery);
-	bool		ProgMaster_FillRoutines	(wxArrayString& Titles, wxArrayInt& Codes, bool OnlySub = false);
+	bool		ProgMaster_FillRoutines	(wxArrayString& Titles, wxArrayInt& Codes, bool OnlySub = false, bool SortByNum=false);
 
 	bool	ProgDetail_Insert		(const sCommand& Cmd, bool AllowRenum = true);
 	bool	ProgDetail_Renum		(unsigned int ProgId, unsigned int Step = 3);

@@ -8,7 +8,8 @@
                                                                                 5) "USB Mode:"..................: "USB-OTG (TynyUSB)".
 */
 #ifndef ARDUINO_USB_MODE
-  #error This ESP32 SoC has no Native USB interface
+  #
+  error This ESP32 SoC has no Native USB interface
 #elif ARDUINO_USB_MODE == 1
   #error This sketch should be used when USB is in OTG mode (USB Mode: "Hardware CDC and JTAG" is NOT correct for custom HID)
 #endif
