@@ -27,14 +27,17 @@
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp">
       <Filter>Source\Executor</Filter>
     </ClCompile>
-    <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp">
-      <Filter>Source\Executor</Filter>
-    </ClCompile>
     <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Panels\CmdEditor\CoordDBctrl.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\ShowAnswers\cShowAnswers.cpp">
+      <Filter>Source\ShowAnswers</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp">
+      <Filter>Source\ShowAnswers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +55,9 @@
     </Filter>
     <Filter Include="Source\Executor">
       <UniqueIdentifier>{7d13eb9c-29bc-4590-86f9-4460f3bfbf9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ShowAnswers">
+      <UniqueIdentifier>{c5623074-3f29-459e-946b-3044cf60e021}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

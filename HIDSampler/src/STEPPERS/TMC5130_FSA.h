@@ -113,7 +113,7 @@ public:
 		//---------------------------------------
 			case WaitGoTo:
 				if(WaitMotor(eWaitPosAndVel, true)){
-					//setCurrent   (0, 0, 0);
+					if( !IsRotative() )	setCurrent   (0, 0, 0);
 					Status_SetHome = Nothing;
 				}
 				break;

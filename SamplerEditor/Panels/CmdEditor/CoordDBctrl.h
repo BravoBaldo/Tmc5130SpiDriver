@@ -42,7 +42,10 @@ public:
 
     int     GetValue()                  { return m_spinPos->GetValue(); }
     void    SetRange(int min, int max)  { m_spinPos->SetRange(min, max); }
-    void    SetValue(int val)           { m_spinPos->SetValue(val); UpdateInterface(); }
+    void    SetValue(int val)           { m_spinPos->SetValue(val);
+                                          wxCommandEvent Evt; OnChange(Evt);
+                                          UpdateInterface();
+                                        }
     int     GetMin() const              { return m_spinPos->GetMin(); }
     int     GetMax() const              { return m_spinPos->GetMax(); }
 
@@ -62,6 +65,40 @@ private:
 
     wxButton*       m_btnSave;
 
+    void ScaleResize(wxSizer* sz, bool TopToo = false){
+        if (sz) {
+            sz->Layout();
+            wxSize minSize = sz->GetMinSize();    // Ricalcola la dimensione minima necessaria per contenere SOLO gli elementi visibili
+            SetMinSize(minSize);
+            SetSize(minSize);
+        }
+        wxWindow* win = GetParent();
+        while (win) {
+            // Se incontriamo un pannello intermedio (come CmdParLabel2), aggiorna il suo sizer
+            wxSizer* szl = win->GetSizer();
+            if (szl) {
+                szl->Layout();
+                // Aggiorna la dimensione minima del pannello basandoti sul suo sizer interno
+                win->SetMinSize(szl->GetMinSize());
+            }
+
+            // Se siamo arrivati al Frame principale (Top Level Window)
+            if (win->IsTopLevel()) {
+                if (TopToo) {   //Top Level Window too
+                    wxFrame* frame = wxDynamicCast(win, wxFrame);
+                    if (frame) {
+                        wxSizer* szf = frame->GetSizer();
+                        if (szf) szf->Layout();
+                        frame->Fit(); // Costringe il Frame ad allargarsi o stringersi fisicamente sulla scrivania!
+                    }
+                }
+                break; // Usciamo dal ciclo una volta aggiornato il Frame
+            }
+            win = win->GetParent();
+        }
+
+    }
+
     void UpdateInterface(bool forceSizer = false, bool TopToo = false) {
         bool show = ChkThreshold();// ((unsigned int)m_spinPos->GetValue() > m_Theshold);
         m_spinDBVal->Show(show);
@@ -76,37 +113,7 @@ private:
         wxSizer* sz = GetSizer();
         if (show != m_shownPrevious || forceSizer) {
             m_shownPrevious = show;
-
-            if (sz) {
-                sz->Layout();
-                wxSize minSize = sz->GetMinSize();    // Ricalcola la dimensione minima necessaria per contenere SOLO gli elementi visibili
-                SetMinSize(minSize);
-                SetSize(minSize);
-            }
-            wxWindow* win = GetParent();
-            while (win) {
-                // Se incontriamo un pannello intermedio (come CmdParLabel2), aggiorna il suo sizer
-                wxSizer* szl = win->GetSizer();
-                if (szl) {
-                    szl->Layout();
-                    // Aggiorna la dimensione minima del pannello basandoti sul suo sizer interno
-                    win->SetMinSize(szl->GetMinSize());
-                }
-
-                // Se siamo arrivati al Frame principale (Top Level Window)
-                if (win->IsTopLevel()) {
-                    if (TopToo) {   //Top Level Window too
-                        wxFrame* frame = wxDynamicCast(win, wxFrame);
-                        if (frame) {
-                            wxSizer* szf = frame->GetSizer();
-                            if (szf) szf->Layout();
-                            frame->Fit(); // Costringe il Frame ad allargarsi o stringersi fisicamente sulla scrivania!
-                        }
-                    }
-                    break; // Usciamo dal ciclo una volta aggiornato il Frame
-                }
-                win = win->GetParent();
-            }
+            ScaleResize(sz, TopToo);
         } else {
             if (sz) sz->Layout();
             Refresh();

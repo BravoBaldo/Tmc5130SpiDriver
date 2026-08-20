@@ -58,7 +58,7 @@ static const sParams SamplerParams[]{
 	{ 'A', eNumber,		"Acc.n",		MIN_PARAM,		MAX_PARAM,		"Acceleration"				, RetArray2({"Acceleration"})		},
 	{ 'C', eNumber,		"Byte",			0,				0xFF																			},
 	{ 'L', eNumber,		"Uint32",		0,				wxINT32_MAX,	"if>50000 ask database"		, RetArray2({"Message"})			},	//wxUINT32_MAX = 0xffffffff
-	{ 'M', eChoice,		"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)", "Probe"})},
+	{ 'M', eChoice,		"Motor",		0,				3,				"0=X, 1=Y, 2=Z"				, RetArray2({"X (Left/Right)", "Y (Up/Down)", "Z (Rotation)"})},
 	{ 'O', eChoice,		"On/Off",		0,				1,				"Off/ON"					, RetArray2({"Off", "ON"})			},
 	{ 'R', eChoice,		"Ramp Mode",	0,				1,				"Ramp Mode"					, RetArray2({"PositionMode", "VelocityPositiveMode", "VelocityNegativeMode", "HoldMode"})},
 	{ 'S', eDBCoord,	"Steps.",		MIN_PARAM,		MAX_PARAM,		"Steps"						, RetArray2({"Steps"})},
@@ -70,7 +70,7 @@ static const sParams SamplerParams[]{
 static const sSampler_Commands Sampler_Commands[] = {
 	// Sub  cmd  Descr				ParamPattern	ParNames										ExtDescr
 
-	{eSystemCmd, 'a',	"Exec. Routine",		"P",		RetArray2({"Program Id"					})},
+	{eSystemCmd, 'a',	"Routine",		"P",		RetArray2({"Program Id"					})},
 //	{eSystemCmd, 'q',	"eDBCoord",				"Q",		RetArray2({"Program Id"					})},
 //	{eSystemCmd, 'b',	"Show Message",			"Lu",		RetArray2({"Message Code", "Wait User"	})},
 //	{eSystemCmd, 'c',	"Show Image",			"L",		RetArray2({"Image Code"					})},

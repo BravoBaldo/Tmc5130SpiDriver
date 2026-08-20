@@ -21,10 +21,10 @@ void cAnswersShow::Log_Generic_InitEnd(wxGrid* Grid) {
 	Grid_AutoSizeAll(Grid);
 }
 
-void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
+void cAnswersShow::Log_Stepper_Init(void) {
 	wxGrid* grid = m_Grids[eGrid_Motors];
 	if (grid == NULL)	return;
-	grid->CreateGrid(3, eStpShowCount);	//ToDo: wxsizeof(STEPPERS_LIST)
+	grid->CreateGrid(NUMBER_OF_MOTORS, eStpShowCount);
 
 	wxGridCellAttr* LeftAlign = new wxGridCellAttr(); LeftAlign->SetAlignment(wxALIGN_LEFT, wxALIGN_CENTRE);
 
@@ -47,8 +47,25 @@ void cAnswersShow::Log_Stepper_Init(const wxFont& /*CellFont*/) {
 
 	Log_Generic_InitEnd(grid);
 	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
-
 }
+
+void cAnswersShow::Log_FSA_Init(void) {
+	wxGrid* grid = m_Grids[eGrid_FSA];
+	if (grid == NULL)	return;
+	grid->CreateGrid(NUMBER_OF_MOTORS, 5);
+
+	//ToDo:
+#define X(eMotorId, csPin, cePin, description) {	grid->SetRowLabelValue(eMotorId, description);\
+													grid->SetRowLabelSize( 180 ); \
+												}
+	STEPPERS_LIST
+#undef X
+
+
+	Log_Generic_InitEnd(grid);
+	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+}
+
 
 void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 	wxGrid*			grid	= m_Grids[eGrid_Motors];
@@ -154,6 +171,11 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 	S = wxEmptyString;
 	S += wxString::Format("CurPos.:%ld\n", SA.m_Position);
 	S += wxString::Format("Target.:%ld\n", SA.m_xTarget);
+#if defined(USE_INA260)
+	S += wxString::Format("\nmAmp..:%.2f\n", SA.m_Curr);
+	S += wxString::Format("mVolt.:%.2f\n", SA.m_Volt);
+	S += wxString::Format("mWatt.:%.0f\n", SA.m_Power);
+#endif
 	grid->SetCellValue(R, eStpShowPos, S);
 
 //	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%d", SA.m_Position));
@@ -263,8 +285,17 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 	size_t i = eGrid_Motors;
 	m_Grids[i] = new wxGrid(this, wxID_ANY);
 		m_Grids[i]->SetDefaultCellFont(fixedFont);
-		Log_Stepper_Init(fixedFont);
+		Log_Stepper_Init();
 		this->AddPage(m_Grids[i], _("Motors"));
+
+	i = eGrid_FSA;
+	m_Grids[i] = new wxGrid(this, wxID_ANY);
+	m_Grids[i]->SetDefaultCellFont(fixedFont);
+	Log_FSA_Init();//ToDo
+	this->AddPage(m_Grids[i], _("FSA"));
+
+	m_PanMotorPowers = new cpanPower(this);
+	this->AddPage(m_PanMotorPowers, _("FSA2"));
 
 	AddSamplePages();
 }
@@ -314,3 +345,4 @@ void cAnswersShow::AddSamplePages() {
 	p2->SetBackgroundColour(*wxWHITE);
 	this->AddPage(p2, "Risposta 2");
 }
+

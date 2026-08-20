@@ -50,11 +50,10 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
 
 eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
 	LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
-	if (Answ.m_Cmd == 106)
-		LogMe("Ciao",false);
-	if (m_ptrAnswerShow)
+	if (m_ptrAnswerShow) {
 		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
-
+		m_ptrAnswerShow->Log_FSA(Answ);
+	}
 	return Answ.m_Result;
 }
 
@@ -69,7 +68,15 @@ eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerPower& Answ) {
 	LogMe(wxString::Format("INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), false);
 	return eCmdOk;
 }
-eCmdAnswer	ParseAnswer(const sAnswerPower& Answ);
+
+eCmdAnswer	CmdExecutorCtrl::ParseAnswer(const FsaSingleAnswer& Answ) {
+	LogMe("FSA: ", true);
+	LogMe(wxString::Format("Motor %d\nStatus %d\n", Answ.m_Motor, Answ.m_FsaStatus), false);
+	if (m_ptrAnswerShow)	m_ptrAnswerShow->Log_FSA(Answ);
+	return Answ.m_Result;
+}
+
+//eCmdAnswer	ParseAnswer(const sAnswerPower& Answ);
 
 
 //ToDo: Separate Tx and Rx each with own TimeOut
@@ -83,9 +90,10 @@ eCmdAnswer CallAnswerParser() {
 */
 
 #define CALLANSWERPARSER(Typ)	{	Typ Answer;														\
-								std::memcpy(&Answer, (Typ*)m_HidExec.GetBuffer(), sizeof(Typ));	\
-								Success = (ParseAnswer(Answer)==eCmdOk);										\
-							}
+									std::memcpy(&Answer, (Typ*)m_HidExec.GetBuffer(), sizeof(Typ));	\
+									eCmdAnswer Res = ParseAnswer(Answer);							\
+									Success = (Res==eCmdOk);										\
+								}
 
 void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
 	bool		Success		= false;
@@ -143,31 +151,17 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 				m_ptrAnswerShow->SetAnswer(PtrAnswer, m_HidExec.GetAnswerLen());
 			Success = true;
 			eMessageTypes Tipo = ((eMessageTypes*)PtrAnswer)[0];
+			//LogMe(wxString::Format("Received %d bytes in %ld ms.\n", res, sw.Time()), true);
 			switch (Tipo) {
-				case eTypAnswVer:		CALLANSWERPARSER(sAnswerVersion);	break;
-				case eTypAnswPwReader:	CALLANSWERPARSER(sAnswerPower);		break;
-				case eTypAnswStd:
-					{
-						LogMe(wxString::Format("Received %d bytes in %ld ms.\n", res, sw.Time()), true);
-						sAnswerStandard Answer;
-						memcpy(&Answer, (sAnswerStandard*)m_HidExec.GetBuffer(), sizeof(sAnswerStandard));
-						if (ParseAnswer(Answer) != eCmdOk)
-							Success = false;
-					}
-					break;
+				case eTypAnswVer:		CALLANSWERPARSER(sAnswerVersion);		break;
+				case eTypAnswPwReader:	CALLANSWERPARSER(sAnswerPower);			break;
+				case eTypAnswStd:		CALLANSWERPARSER(sAnswerStandard);		break;
 				case eTypAnswExpander:	CALLANSWERPARSER(sExpanderStandard);	break;
 				case eTypAnswStepDir:	CALLANSWERPARSER(TmcAnswer);			break;
-				case eTypAnswFsaSingle: 
-					{
-						FsaSingleAnswer Answer;
-						memcpy(&Answer, (FsaSingleAnswer*)m_HidExec.GetBuffer(), sizeof(FsaSingleAnswer));
-						Success = Answer.m_Result;
-					}
-					break;
+				case eTypAnswFsaSingle:	CALLANSWERPARSER(FsaSingleAnswer);		break;
 				default:
 					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
 					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);
-					//Inutile continuare!
 					break;
 			}
 			if (data[2] != PtrAnswer[1]) {

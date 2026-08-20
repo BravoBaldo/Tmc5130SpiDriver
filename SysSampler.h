@@ -1,5 +1,18 @@
 #pragma once
 
+#define USE_INA260        //Current Power, Require USE_SPI
+//#define USE_ESPNOW        //486689 bytes
+//#define USE_STRIPLED    //365675 bytes
+#define USE_HID_SAMPLER
+#define USE_EXPANDERS
+#define USE_SPI
+#define USE_TMC5130       //Require USE_EXPANDERS and USE_SPI
+#define USE_TMC5130_FSA   //Require USE_EXPANDERS and USE_SPI
+//#define USE_STEPPERS    //Require USE_EXPANDERS and USE_SPI
+//#define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
+
+
+
 #define SHOW_DEBUGS
 #define ADD_CMD_DESCRIPTION
 #define NUMOFPARAMS 10
@@ -27,11 +40,12 @@ inline constexpr uint8_t CollectorMAC[] = {0x26, 0x0B, 0xA1, 0x4F, 0x92, 0xC3};
     X(eStep_Syringe, 2,  3, "Motor C: Rotating Arm")
 
 /*
-    X(eStep_TOP,	 0,  0, "") 
     X(eStep_Deposit,12, 13, "Motor D: Depositor") \
     X(eStep_Needle,	10, 11, "Motor E") \
     X(eStep_Spare,	 8,  9, "Motor F") \
+    X(eStep_TOP,	 0,  0, "") 
 */
+
 
 //		Id, RunAlwais, Name
 #define STRIPLEDGAMES_LIST \
@@ -65,6 +79,13 @@ typedef struct {
 }sStripLedGames;
 
 
+enum {
+#define X(eMotorId, csPin, cePin, description) _dummy_##eMotorId,
+	STEPPERS_LIST
+#undef X
+	NUMBER_OF_MOTORS
+};
+
 enum eStep_List : uint8_t {
 #define X(eMotorId, csPin, cePin, description) eMotorId,
 	STEPPERS_LIST
@@ -89,7 +110,6 @@ typedef enum : uint8_t {	// AnswerType is lowercase
 	eTypAnswExpander	= 'e',	//sExpanderStandard
 	eTypAnswStepDir		= 'd',	//TmcAnswer
 	eTypAnswFsaSingle	= 'f',	//FSA Single Stepper
-//	eTypStepperRegs		= 'r',	//StepperRegsAnswer
 }eMessageTypes;
 
 
@@ -118,20 +138,19 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 
 #define ANSWERHEADER(T)		byte		m_MsgType	= T;	\
 							byte		m_Cmd		= 0;	\
-							eCmdAnswer	m_Result	= eCmdOk;
+							eCmdAnswer	m_Result	= eCmdError;
 
 
 
 #pragma pack(push, 1)
 typedef struct _sVerAnswer{
 	ANSWERHEADER(eTypAnswVer)
-
-	byte	Y;
-	byte	M;
-	byte	D;
-	byte	h;
-	byte	m;
-	byte	s;
+	byte	Y;	//Year
+	byte	M;	//Month
+	byte	D;	//Day
+	byte	h;	//Hour
+	byte	m;	//Minute
+	byte	s;	//Second
 }sAnswerVersion;
 #pragma pack(pop)
 
@@ -149,9 +168,6 @@ typedef struct _sPwrAnswer {
 
 #pragma pack(push, 1)
 typedef struct _sStdAnswer{
-	//byte			m_MsgType			= eTypAnswStd;	//1
-	//byte			m_Cmd				= 0;			//1
-	//eCmdAnswer	m_Result			= eCmdOk;
 	ANSWERHEADER(eTypAnswStd)
 	
 	eSubSysAcro		m_SubSystem			= eUnused;		//1
@@ -164,7 +180,6 @@ typedef struct _sStdAnswer{
 
 #pragma pack(push, 1)
 typedef struct _sExpAnswer{
-	//byte		m_MsgType				= eTypAnswExpander;	//1
 	ANSWERHEADER(eTypAnswExpander)
 	uint16_t	m_CurrStatus			= 0;				//1
 }sExpanderStandard;	//ToDo Rename in Aswer....
@@ -172,8 +187,6 @@ typedef struct _sExpAnswer{
 
 #pragma pack(push, 1)
 typedef struct _sStripAnswer{
-	//byte		m_MsgType	= eTypAnswStripLed;	//1
-	//eCmdAnswer	m_Result	= eCmdOk;
 	ANSWERHEADER(eTypAnswStripLed)
 	uint8_t		m_CurrGame	= 0;	//ToDo
 	uint16_t	m_Remaining	= 0;
@@ -227,6 +240,20 @@ typedef enum : uint8_t {
 #undef X
 }eStepShowAnswer;
 
+#define FSA_ANSWERS_LIST \
+	X(eFsaShowCurrents,		false,	"Currents") \
+	X(eFsaShowVel,			true,	"Velocity") \
+	X(eFsaTarget,			false,	"Target") \
+	X(eFsaShowPos,			true,	"Position") \
+	X(eFsaStatus,			false,	"FSA Status") \
+	X(eFsaShowCount,		true,	"--")
+
+typedef enum : uint8_t {
+#define X(eParamId, eIsAlign, eDescription) eParamId,
+	FSA_ANSWERS_LIST
+#undef X
+}eFsaShowAnswer;
+
 
 
 
@@ -235,14 +262,21 @@ typedef struct _sFsaSingleAnswer{	//see STEP_ANSWERS_LIST
 	ANSWERHEADER(eTypAnswFsaSingle)	//m_MsgType, m_Cmd, m_Result
 	uint8_t		m_Motor		= 0;
 	uint8_t		m_FsaStatus	= 0;
+	
+	int16_t		m_VACTUAL	= 0;	//see m_Velocity  23 bits
+	int32_t		m_Position	= 0;
+	int32_t		m_xTarget	= 0;
+	uint16_t	m_Currents	= 0;	//irun, ihold, holdDelay;
+#if defined(USE_INA260)	
+	float		m_Curr	= 0.;
+	float		m_Volt	= 0.;
+	float		m_Power	= 0.;
+#endif
 }FsaSingleAnswer;
 #pragma pack(pop)
 	
 #pragma pack(push, 1)
 typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
-//	byte		m_MsgType	= eTypAnswStepDir;	//1
-//	byte		m_Cmd		= 0;				//This is the answer of command X
-//	eCmdAnswer	m_Result	= eCmdOk;
 	ANSWERHEADER(eTypAnswStepDir)
 
 	uint8_t		m_Motor		= 0;
@@ -259,14 +293,14 @@ typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 	uint32_t	m_DRV_STATUS= 0;	//DrvStatus  getDrvStatus
 	uint32_t	m_MSCURACT	= 0;
 	
-	uint16_t	m_A1		= 0;		//16 bits
-	uint16_t	m_AMAX		= 0;		//16 bits
-	uint16_t	m_DMAX		= 0;		//16 bits
-	uint16_t	m_D1		= 0;		//16 bits
+	uint16_t	m_A1		= 0;	//16 bits
+	uint16_t	m_AMAX		= 0;	//16 bits
+	uint16_t	m_DMAX		= 0;	//16 bits
+	uint16_t	m_D1		= 0;	//16 bits
 	
 	uint16_t	m_VSTART	= 0;	//18 bits limited to 16
-	uint16_t	m_V1		= 0;		//20 bits limited to 16
-	uint16_t	m_VMAX		= 0;		//23 bits limited to 16
+	uint16_t	m_V1		= 0;	//20 bits limited to 16
+	uint16_t	m_VMAX		= 0;	//23 bits limited to 16
 	uint16_t	m_VSTOP		= 0;	//18 bits limited to 16
 	 int16_t	m_VACTUAL	= 0;	//see m_Velocity  23 bits
 #if defined(SHOW_GCONF)
@@ -275,7 +309,11 @@ typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 #if defined(SHOW_SWMODE)
 	uint16_t	m_SWMODE	= 0;	//12 bits
 #endif
-	//ChipEnabled
+#if defined(USE_INA260)	
+	float		m_Curr	= 0.;
+	float		m_Volt	= 0.;
+	float		m_Power	= 0.;
+#endif
 }TmcAnswer;
 #pragma pack(pop)
 

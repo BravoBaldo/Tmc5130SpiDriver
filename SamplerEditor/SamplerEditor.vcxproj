@@ -298,7 +298,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;C:\Program Files (x86)\Visual Leak Detector\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\Panels\ShowAnswers;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;C:\Program Files (x86)\Visual Leak Detector\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE=1;_CRT_NON_CONFORMING_SWPRINTFS=1;_SCL_SECURE_NO_WARNINGS=1;__WXMSW__;_UNICODE;_WINDOWS;NOPCH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -338,7 +338,7 @@
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(WXWIN)\lib\$(wxOutDirName)\$(wxIncSubDir);$(WXWIN)\include;.;.\ODBC;.\Panels\CmdEditor;.\Panels\ShowAnswers;.\XML;.\SqLite\SqLite;.\SqLite\Xml;.\Panels\CmdExecutor;.\HID;.\HID\hidapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE=1;_CRT_NON_CONFORMING_SWPRINTFS=1;_SCL_SECURE_NO_WARNINGS=1;__WXMSW__;NDEBUG;_UNICODE;_WINDOWS;NOPCH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -462,7 +462,8 @@
     <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
-    <ClCompile Include="Panels\CmdExecutor\cShowAnswers.cpp" />
+    <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp" />
+    <ClCompile Include="Panels\ShowAnswers\cShowAnswers.cpp" />
     <ClCompile Include="SqLite\SqLite\cDBSampler.cpp" />
     <ClCompile Include="SqLite\SqLite\sqlite3.c" />
     <ClCompile Include="stdwx.cpp" />
