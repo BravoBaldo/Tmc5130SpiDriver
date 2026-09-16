@@ -179,5 +179,6 @@ public:
 	}
 	bool Defaults_Get			(wxString DefaultName, long& DefVal, wxString& Descr);
 	bool Defaults_Set			(const wxString & DefaultName, long DefVal, const wxString & Descr);
+	bool Defaults_FillCoords	(wxArrayString& Titles, wxArrayInt& Codes, bool SortByNum = false);
 };
 

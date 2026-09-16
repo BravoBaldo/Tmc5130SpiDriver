@@ -3,7 +3,13 @@
 #include <wx/timectrl.h>
 #include <wx/spinctrl.h>
 #include <wx/dateevt.h>
-#include "CoordDBctrl.h"	//eDBCoord
+
+//#define USE_COORDDREAD	//ToDo: To refine
+#if defined(USE_COORDDREAD)
+	#include "CoordDBReadCtrl.h"	//eDBCoord
+#else
+	#include "CoordDBctrl.h"	//eDBCoord
+#endif
 #include "DBRoutineCtrl.h"	//eDBRoutine
 
 class CmdParLabel : public wxPanel {

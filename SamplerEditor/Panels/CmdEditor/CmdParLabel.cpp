@@ -49,15 +49,15 @@ void CmdParLabel::SetCurrentValue(long t) {
 		}
 		case eDBRoutine:
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, DBRoutineCtrl)) {
-				/*int minVal = spinCtrl->GetMin();
-				int maxVal = spinCtrl->GetMax();
-				long safeVal = std::max(static_cast<long>(minVal), std::min(t, static_cast<long>(maxVal)));
-				spinCtrl->SetValue(static_cast<int>(safeVal));
-				*/
 				spinCtrl->SetValue(t);
 			}
 			break;
 		case eDBCoord:
+#if defined(USE_COORDDREAD)
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBReadctrl)) {
+				spinCtrl->SetValue(static_cast<int>(t));
+			}
+#else
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
 				int minVal = spinCtrl->GetMin();
 				int maxVal = spinCtrl->GetMax();
@@ -66,6 +66,7 @@ void CmdParLabel::SetCurrentValue(long t) {
 				spinCtrl->Layout();
 				Layout();	PostSizeEventToParent();
 			}
+#endif
 			break;
 
 		case eTime: {
@@ -120,9 +121,15 @@ long CmdParLabel::GetValue(void) {
 			}
 			break;
 		case eDBCoord:
+#if defined(USE_COORDDREAD)
+			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBReadctrl)) {
+				return static_cast<long>(spinCtrl->GetValue());
+			}
+#else
 			if (auto* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl)) {
 				return static_cast<long>(spinCtrl->GetValue());
 			}
+#endif
 			break;
 
 		case eTime:
@@ -175,6 +182,11 @@ void CmdParLabel::SetValue_DBRoutine(int Val){	//eDBRoutine
 }
 
 void CmdParLabel::SetValue_DBCoord(int Val, int Min, int Max){	//eDBCoord
+#if defined(USE_COORDDREAD)
+	CoordDBReadctrl* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBReadctrl);
+	if (!spinCtrl) return;
+	spinCtrl->SetValue(Val);
+#else
 	CoordDBctrl* spinCtrl = wxDynamicCast(m_gen_Param, CoordDBctrl);
 	if (!spinCtrl) return;
 	spinCtrl->SetRange(Min, Max);
@@ -182,6 +194,7 @@ void CmdParLabel::SetValue_DBCoord(int Val, int Min, int Max){	//eDBCoord
 	spinCtrl->SetValue(safeVal);
 	spinCtrl->Layout();
 	Layout();	PostSizeEventToParent();
+#endif
 }
 
 void CmdParLabel::SetValue(wxUint32 t) {
@@ -256,10 +269,16 @@ void CmdParLabel::ChangeTo_DBRoutine(const wxString& name) {	//eDBRoutine
 void CmdParLabel::ChangeTo_DBCoord(const wxString& name, int Min, int Max) {	//eDBCoord
 	m_type = eDBCoord;	InitLabel(name);
 	wxDELETE(m_gen_Param);
+
+#if defined(USE_COORDDREAD)
+	m_gen_Param = new CoordDBReadctrl(this, wxID_ANY);
+	SetSizers();
+#else
 	m_gen_Param = new CoordDBctrl(this, wxID_ANY, wxSP_ARROW_KEYS, Min, Max, Min);
 	SetSizers();
 	m_gen_Param->Layout();
 	Layout();	PostSizeEventToParent();
+#endif
 }
 
 void CmdParLabel::ReposeSizers(void) {

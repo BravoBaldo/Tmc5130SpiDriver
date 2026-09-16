@@ -136,64 +136,6 @@ typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
 }sCommand;
 #pragma pack(pop)
 
-#define ANSWERHEADER(T)		byte		m_MsgType	= T;	\
-							byte		m_Cmd		= 0;	\
-							eCmdAnswer	m_Result	= eCmdError;
-
-
-
-#pragma pack(push, 1)
-typedef struct _sVerAnswer{
-	ANSWERHEADER(eTypAnswVer)
-	byte	Y;	//Year
-	byte	M;	//Month
-	byte	D;	//Day
-	byte	h;	//Hour
-	byte	m;	//Minute
-	byte	s;	//Second
-}sAnswerVersion;
-#pragma pack(pop)
-
-
-#pragma pack(push, 1)
-typedef struct _sPwrAnswer {
-	ANSWERHEADER(eTypAnswPwReader)
-	float	Curr;
-	float	Volt;
-	float	Power;
-}sAnswerPower;
-#pragma pack(pop)
-
-
-
-#pragma pack(push, 1)
-typedef struct _sStdAnswer{
-	ANSWERHEADER(eTypAnswStd)
-	
-	eSubSysAcro		m_SubSystem			= eUnused;		//1
-	eMessageTypes	m_UnknownMsg		= eTypCommand;	//1
-	byte			m_AnswLen			= 0;			//1
-	char			m_Msg[40]			= "No Answer";	//	
-}sAnswerStandard;
-#pragma pack(pop)
-
-
-#pragma pack(push, 1)
-typedef struct _sExpAnswer{
-	ANSWERHEADER(eTypAnswExpander)
-	uint16_t	m_CurrStatus			= 0;				//1
-}sExpanderStandard;	//ToDo Rename in Aswer....
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct _sStripAnswer{
-	ANSWERHEADER(eTypAnswStripLed)
-	uint8_t		m_CurrGame	= 0;	//ToDo
-	uint16_t	m_Remaining	= 0;
-}StripAnswer;
-#pragma pack(pop)
-
-
 
 
 #define SHOW_SWMODE
@@ -202,21 +144,21 @@ typedef struct _sStripAnswer{
 //#define SHOW_CHOPCONF
 
 #ifdef SHOW_SWMODE
-    #define X_SHOW_SWMODE X(eStpShowSWMODE, true, "SWMODE")
+#define X_SHOW_SWMODE X(eStpShowSWMODE, true, "SWMODE")
 #else
-    #define X_SHOW_SWMODE
+#define X_SHOW_SWMODE
 #endif
 
 #ifdef SHOW_GCONF
-    #define X_SHOW_GCONF X(eStpShowGCONF, true, "GCONF")
+#define X_SHOW_GCONF X(eStpShowGCONF, true, "GCONF")
 #else
-    #define X_SHOW_GCONF
+#define X_SHOW_GCONF
 #endif
 
 #ifdef SHOW_CHOPCONF
-    #define X_SHOW_CHOPCONF X(eStpShowChopConf, true, "ChopConf")
+#define X_SHOW_CHOPCONF X(eStpShowChopConf, true, "ChopConf")
 #else
-    #define X_SHOW_CHOPCONF
+#define X_SHOW_CHOPCONF
 #endif
 
 #define STEP_ANSWERS_LIST \
@@ -255,6 +197,162 @@ typedef enum : uint8_t {
 }eFsaShowAnswer;
 
 
+
+
+#define NEWCODE
+#if defined(NEWCODE)
+	#pragma pack(push, 1)
+		struct AnswerHeader {
+			eMessageTypes   m_MsgType;
+			byte			m_Cmd = 0;
+			eCmdAnswer		m_Result = eCmdError;
+
+			AnswerHeader(eMessageTypes type) : m_MsgType(type) {}	//Ctor
+		};
+		struct sAnswerVersion : public AnswerHeader {
+			sAnswerVersion() : AnswerHeader(eTypAnswVer) {}
+
+			byte    Y;  // Year
+			byte    M;  // Month
+			byte    D;  // Day
+			byte    h;  // Hour
+			byte    m;  // Minute
+			byte    s;  // Second
+		};
+		struct sAnswerPower : public AnswerHeader {
+			sAnswerPower() : AnswerHeader(eTypAnswPwReader) {}
+			float   Curr;
+			float   Volt;
+			float   Power;
+		};
+		struct sAnswerStandard : public AnswerHeader {
+			sAnswerStandard() : AnswerHeader(eTypAnswStd) {}
+			eSubSysAcro		m_SubSystem		= eUnused;		//1
+			eMessageTypes	m_UnknownMsg	= eTypCommand;	//1
+			byte			m_AnswLen		= 0;			//1
+			char			m_Msg[40]		= "No Answer";	//	
+		};
+		struct sExpanderStandard : public AnswerHeader {
+			sExpanderStandard() : AnswerHeader(eTypAnswExpander) {}
+			uint16_t	m_CurrStatus = 0;				//1
+		};
+
+		struct StripAnswer : public AnswerHeader {
+			StripAnswer() : AnswerHeader(eTypAnswStripLed) {}
+			uint8_t		m_CurrGame = 0;	//ToDo
+			uint16_t	m_Remaining = 0;
+		};
+		struct FsaSingleAnswer : public AnswerHeader {
+			FsaSingleAnswer() : AnswerHeader(eTypAnswFsaSingle) {}
+			uint8_t		m_Motor = 0;
+			uint8_t		m_FsaStatus = 0;
+
+			int16_t		m_VACTUAL = 0;	//see m_Velocity  23 bits
+			int32_t		m_Position = 0;
+			int32_t		m_xTarget = 0;
+			uint16_t	m_Currents = 0;	//irun, ihold, holdDelay;
+#if defined(USE_INA260)	
+			float		m_Curr = 0.;
+			float		m_Volt = 0.;
+			float		m_Power = 0.;
+#endif
+		};
+
+		struct TmcAnswer : public AnswerHeader {
+			TmcAnswer() : AnswerHeader(eTypAnswStepDir) {}
+			uint8_t		m_Motor = 0;
+
+			uint16_t	m_Remaining = 0;
+			uint8_t		m_spiStatus = 0;
+			uint8_t		m_Ioin8 = 0;
+			int32_t		m_Position = 0;
+			int32_t		m_xTarget = 0;
+			uint16_t	m_Currents = 0;		//irun, ihold, holdDelay;
+#if defined(X_SHOW_CHOPCONF)
+			uint32_t	m_CHOPCONF = 0;		//Chopconf		getMicrosteps
+#endif
+			uint32_t	m_DRV_STATUS = 0;	//DrvStatus  getDrvStatus
+			uint32_t	m_MSCURACT = 0;
+
+			uint16_t	m_A1 = 0;	//16 bits
+			uint16_t	m_AMAX = 0;	//16 bits
+			uint16_t	m_DMAX = 0;	//16 bits
+			uint16_t	m_D1 = 0;	//16 bits
+
+			uint16_t	m_VSTART = 0;	//18 bits limited to 16
+			uint16_t	m_V1 = 0;	//20 bits limited to 16
+			uint16_t	m_VMAX = 0;	//23 bits limited to 16
+			uint16_t	m_VSTOP = 0;	//18 bits limited to 16
+			int16_t	m_VACTUAL = 0;	//see m_Velocity  23 bits
+#if defined(SHOW_GCONF)
+			uint16_t	m_GCONF = 0;	//18 bits !!! missing direct_mode and test_mode
+#endif
+#if defined(SHOW_SWMODE)
+			uint16_t	m_SWMODE = 0;	//12 bits
+#endif
+#if defined(USE_INA260)	
+			float		m_Curr = 0.;
+			float		m_Volt = 0.;
+			float		m_Power = 0.;
+#endif
+		};
+
+	#pragma pack(pop)
+#else
+
+
+#define ANSWERHEADER(T)		byte		m_MsgType	= T;	\
+							byte		m_Cmd		= 0;	\
+							eCmdAnswer	m_Result	= eCmdError;
+
+
+
+#pragma pack(push, 1)
+typedef struct _sVerAnswer{
+	ANSWERHEADER(eTypAnswVer)
+	byte	Y;	//Year
+	byte	M;	//Month
+	byte	D;	//Day
+	byte	h;	//Hour
+	byte	m;	//Minute
+	byte	s;	//Second
+}sAnswerVersion;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct _sPwrAnswer {
+	ANSWERHEADER(eTypAnswPwReader)
+	float	Curr;
+	float	Volt;
+	float	Power;
+}sAnswerPower;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct _sStdAnswer{
+	ANSWERHEADER(eTypAnswStd)
+	
+	eSubSysAcro		m_SubSystem			= eUnused;		//1
+	eMessageTypes	m_UnknownMsg		= eTypCommand;	//1
+	byte			m_AnswLen			= 0;			//1
+	char			m_Msg[40]			= "No Answer";	//	
+}sAnswerStandard;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct _sExpAnswer{
+	ANSWERHEADER(eTypAnswExpander)
+	uint16_t	m_CurrStatus			= 0;				//1
+}sExpanderStandard;	//ToDo Rename in Aswer....
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct _sStripAnswer{
+	ANSWERHEADER(eTypAnswStripLed)
+	uint8_t		m_CurrGame	= 0;	//ToDo
+	uint16_t	m_Remaining	= 0;
+}StripAnswer;
+#pragma pack(pop)
 
 
 #pragma pack(push, 1)
@@ -316,6 +414,8 @@ typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
 #endif
 }TmcAnswer;
 #pragma pack(pop)
+
+#endif
 
 static_assert(sizeof(TmcAnswer) <= 64, "Error: TmcAnswer exceeds the maximum size of 64 bytes!");
 

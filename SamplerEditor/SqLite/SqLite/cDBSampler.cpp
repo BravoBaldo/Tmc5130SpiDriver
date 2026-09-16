@@ -1026,3 +1026,18 @@ bool cDBSampler::Defaults_Set(const wxString& DefaultName, long DefVal, const wx
     sqlite3_finalize(stmt);
     return (rc == SQLITE_DONE);
 }
+
+bool cDBSampler::Defaults_FillCoords(wxArrayString& Titles, wxArrayInt& Codes, bool ) {
+/*    wxString strQuerySQL = wxString::Format(
+        "SELECT DefaultName, DefaultValue, Description "
+        "FROM SAM_Defaults "
+        "WHERE DefaultName LIKE 'NAZMotPos%' "
+        "ORDER BY 1 ");// , SortByNum ? "1" : "2");
+*/
+    wxString strQuerySQL = 
+        "SELECT DefaultName, DefaultValue, Description "
+        "FROM SAM_Defaults "
+        "WHERE DefaultName LIKE 'NAZMotPos%' "
+        "ORDER BY 1 ";
+    return Combo_FillSql(Titles, Codes, strQuerySQL);	//No translation
+}

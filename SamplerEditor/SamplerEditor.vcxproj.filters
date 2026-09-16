@@ -4,7 +4,6 @@
     <ClCompile Include="DBCmdView.cpp" />
     <ClCompile Include="Master_App.cpp" />
     <ClCompile Include="Master_Frame.cpp" />
-    <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\CmdParLabel.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
     <ClCompile Include="stdwx.cpp" />
@@ -27,17 +26,23 @@
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp">
       <Filter>Source\Executor</Filter>
     </ClCompile>
-    <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Panels\CmdEditor\CoordDBctrl.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="Panels\ShowAnswers\cShowAnswers.cpp">
       <Filter>Source\ShowAnswers</Filter>
     </ClCompile>
     <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp">
       <Filter>Source\ShowAnswers</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\CoordDBctrl.cpp">
+      <Filter>Source\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp">
+      <Filter>Source\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\CmdEditorCtrl.cpp">
+      <Filter>Source\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdEditor\CoordDBReadCtrl.cpp">
+      <Filter>Source\Editor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +63,9 @@
     </Filter>
     <Filter Include="Source\ShowAnswers">
       <UniqueIdentifier>{c5623074-3f29-459e-946b-3044cf60e021}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Editor">
+      <UniqueIdentifier>{e04d134f-8ab0-41e6-8795-146fe6bdc5f8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -291,7 +291,7 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 	i = eGrid_FSA;
 	m_Grids[i] = new wxGrid(this, wxID_ANY);
 	m_Grids[i]->SetDefaultCellFont(fixedFont);
-	Log_FSA_Init();//ToDo
+	Log_FSA_Init();								//ToDo
 	this->AddPage(m_Grids[i], _("FSA"));
 
 	m_PanMotorPowers = new cpanPower(this);
@@ -300,37 +300,81 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 	AddSamplePages();
 }
 
-eCmdAnswer cAnswersShow::ShowAnswer_A(void* Answer, size_t ) {
-	sAnswerStandard Risposta;
-	memcpy(&Risposta, (sAnswerStandard*)Answer, sizeof(sAnswerStandard));
-
-	LogMe(wxString::Format("\tSystem    %c\n", Risposta.m_SubSystem), true);
-	LogMe(wxString::Format("\tRisultato %s\n", (Risposta.m_Result == eCmdOk) ? "Ok" : "Ko"), true);
-	return eCmdOk;// Risposta.m_Result;
-}
-
-bool cAnswersShow::SetAnswer(void* Answer, size_t AnswerLen) {
+bool cAnswersShow::SetAnswer(const AnswerHeader* ptrHeader, size_t AnswerLen ) {
 	bool Success = true;
-	eMessageTypes Tipo = ((eMessageTypes*)Answer)[0];
-	switch (Tipo) {
+	switch (ptrHeader->m_MsgType) {
 		case eTypAnswStd:
-		{
-			sAnswerStandard Risposta;
-			memcpy(&Risposta, (sAnswerStandard*)Answer, sizeof(sAnswerStandard));
-			if (ShowAnswer_A(Answer, AnswerLen) != eCmdOk)
-				Success = false;
-		}
+			LogMe("Answer Standard", true);
+			{
+				sAnswerStandard Answ = *reinterpret_cast<const sAnswerStandard*>(ptrHeader);
+				LogMe(wxString::Format("\tSystem......: %c\n", Answ.m_SubSystem), true);
+				LogMe(wxString::Format("\tCommand.....: %c\n", Answ.m_Cmd), true);
+				LogMe(wxString::Format("\tResult......: %s\n", (Answ.m_Result == eCmdOk) ? "Ok" : "Ko"), true);
+				LogMe(wxString::Format("\tUnknown Msg.: %c\n", Answ.m_UnknownMsg), true);
+				LogMe(wxString::Format("\tMessage.....: %s\n", Answ.m_Msg), true);
+			}
 		break;
 
 		case eTypAnswStepDir:
 			{
-				TmcAnswer SA;
-				memcpy(&SA, (sAnswerStandard*)Answer, sizeof(TmcAnswer));
-				Log_Stepper_Fill(SA);
+				TmcAnswer Answ = *reinterpret_cast<const TmcAnswer*>(ptrHeader);
+				LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
+				Log_Stepper_Fill(Answ);
+				Log_FSA(Answ);
 			}
-			Success = true;		
 			break;
-		default:	Success = false;	 break;
+
+		case eTypAnswFsaSingle:	//FSA Single Stepper
+			LogMe("FSA: ", true);
+			{
+				FsaSingleAnswer Answ = *reinterpret_cast<const FsaSingleAnswer*>(ptrHeader);
+				LogMe(wxString::Format("Motor %d\nStatus %d\n", Answ.m_Motor, Answ.m_FsaStatus), false);
+				Log_FSA(Answ);
+			}
+			break;
+
+		case eTypAnswStripLed:	//StripAnswer
+			LogMe("Answer from StripLED\n", true);
+			{
+				StripAnswer Answ = *reinterpret_cast<const StripAnswer*>(ptrHeader);
+				LogMe(wxString::Format("\tm_CurrGame.: %d\n", Answ.m_CurrGame), false);
+				LogMe(wxString::Format("\tm_Remaining: %d\n", Answ.m_Remaining), false);
+			}
+			break;
+
+		case eTypAnswVer:	//sAnswerVersion
+			LogMe("Firmware Version: ", true);
+			{
+				sAnswerVersion Answ = *reinterpret_cast<const sAnswerVersion*>(ptrHeader);
+				LogMe(wxString::Format("%02d-%02d-%02d %02d:%02d:%02d\n", Answ.Y, Answ.M, Answ.D, Answ.h, Answ.m, Answ.s), false);
+			}
+			break;
+
+		case eTypAnswPwReader:
+			LogMe("Read Power: ", true);
+			{
+				sAnswerPower Answ = *reinterpret_cast<const sAnswerPower*>(ptrHeader);
+				LogMe(wxString::Format("INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), false);
+			}
+			break;
+
+		case eTypAnswExpander:	//sExpanderStandard
+			LogMe("Answer from Expanders\n", true);
+			{
+				sExpanderStandard Answ = *reinterpret_cast<const sExpanderStandard*>(ptrHeader);
+				LogMe(wxString::Format("\tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), false);
+			}
+			break;
+
+		case eTypCommand:		//sCommand
+		case eTypAnswConverter:	//
+		case eTypAnswBarCode:	//
+		default:
+			LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", ptrHeader->m_MsgType), true);
+			wxString RetVal = ShowBuffer((const byte*)ptrHeader, AnswerLen);
+			LogMe(wxString::Format("\n\t'%s'\n", RetVal), true);
+			Success = false;
+			break;
 	}
 	return Success;
 }

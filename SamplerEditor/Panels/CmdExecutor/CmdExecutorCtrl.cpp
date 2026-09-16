@@ -1,4 +1,4 @@
-#include "stdwx.h"
+﻿#include "stdwx.h"
 #include "wx/artprov.h"
 #include <chrono>
 #include <wx/stopwatch.h>
@@ -26,149 +26,37 @@ void myMilliSleep(long long T){
 	}
 }
 
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerStandard& Answ) {
-	LogMe("Answer Standard", true);
-	LogMe(wxString::Format("\tSystem......: %c\n", Answ.m_SubSystem), true);
-	LogMe(wxString::Format("\tCommand.....: %c\n", Answ.m_Cmd), true);
-	LogMe(wxString::Format("\tUnknown Msg.: %c\n", Answ.m_UnknownMsg), true);
-	LogMe(wxString::Format("\tMessage.....: %s\n", Answ.m_Msg), true);
-	return eCmdOk;	//ToDo
-}
-
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sExpanderStandard& Answ) {
-	LogMe("Answer from Expanders\n", true);
-	LogMe(wxString::Format("\tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), false);
-	return eCmdOk;	//ToDo
-}
-
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const StripAnswer& Answ) {
-	LogMe("Answer from StripLED\n", true);
-	LogMe(wxString::Format("\tm_CurrGame.: %d\n", Answ.m_CurrGame), false);
-	LogMe(wxString::Format("\tm_Remaining: %d\n", Answ.m_Remaining), false);
-	return Answ.m_Result;
-}
-
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const TmcAnswer& Answ) {
-	LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
-	if (m_ptrAnswerShow) {
-		m_ptrAnswerShow->Log_Stepper_Fill(Answ);
-		m_ptrAnswerShow->Log_FSA(Answ);
-	}
-	return Answ.m_Result;
-}
-
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerVersion& Answ) {
-	LogMe("Firmware Version: ", true);
-	LogMe(wxString::Format("%02d-%02d-%02d %02d:%02d:%02d\n", Answ.Y, Answ.M, Answ.D, Answ.h, Answ.m, Answ.s), false);
-	return eCmdOk;
-}
-
-eCmdAnswer CmdExecutorCtrl::ParseAnswer(const sAnswerPower& Answ) {
-	LogMe("Read Power: ", true);
-	LogMe(wxString::Format("INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), false);
-	return eCmdOk;
-}
-
-eCmdAnswer	CmdExecutorCtrl::ParseAnswer(const FsaSingleAnswer& Answ) {
-	LogMe("FSA: ", true);
-	LogMe(wxString::Format("Motor %d\nStatus %d\n", Answ.m_Motor, Answ.m_FsaStatus), false);
-	if (m_ptrAnswerShow)	m_ptrAnswerShow->Log_FSA(Answ);
-	return Answ.m_Result;
-}
-
-//eCmdAnswer	ParseAnswer(const sAnswerPower& Answ);
-
-
-//ToDo: Separate Tx and Rx each with own TimeOut
-/*
-template <typename Typ>
-eCmdAnswer CallAnswerParser() {
-	Typ Answer;
-	std::memcpy(&Answer, m_HidExec.GetBuffer(), sizeof(Typ));
-	return ParseAnswer(Answer);
-}
-*/
-
-#define CALLANSWERPARSER(Typ)	{	Typ Answer;														\
-									std::memcpy(&Answer, (Typ*)m_HidExec.GetBuffer(), sizeof(Typ));	\
-									eCmdAnswer Res = ParseAnswer(Answer);							\
-									Success = (Res==eCmdOk);										\
-								}
-
 void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
 	bool		Success		= false;
-	int			res			= 0;
 	int			retryCount	= 0;
-	wxStopWatch	sw2;
+	uint8_t		cmdAtteso	= data[2];
+	wxStopWatch	swTotCmd;
 	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
-	sw2.Start(0);
-	while (!Success && m_Running) {		// 1. Transmission
-		if (m_HidExec.Write_NoWait(data, length) < 0) {
-			LogMe("Hardware error while writing. Open and try again....\n", true);
-			m_HidExec.Open(m_HidInfo);
-			wxMilliSleep(100); // Piccola pausa prima di riprovare
-			continue;
+	std::vector<uint8_t> responseBuffer;
+	swTotCmd.Start(0);
+	while (!Success && m_Running) {
+
+		if (!m_CommPort.Write(data, length, 1000)) {
+			LogMe("Hardware error or timeout while writing.\n", true);
+			m_Running = false; // Interrompiamo l'esecuzione in caso di guasto hardware persistente
+			break;
 		}
-		//LogMe(wxString::Format("  Attempt %d: Message sent...\n", ++retryCount), false);
 		LogMe(wxString::Format(" %d ", ++retryCount), false);
 		::wxYield();
 
-		// 2. Attesa risposta con Timeout
-		wxStopWatch sw;
-		res = 0;
-		// Continua a leggere fino a che non ricevi dati O scade il timeout O il programma si ferma
-		sw.Start(0);
-/*
-		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
-			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
-			if (res <= 0) {
-				::wxYield();
-			}
-		}
-*/
+		size_t bytesRead = m_CommPort.Read(responseBuffer, cmdAtteso, TimeoutMs);
+		const AnswerHeader* ptrHeader = reinterpret_cast<const AnswerHeader*>(responseBuffer.data());
 
-		byte* PtrAnswer = nullptr;
-		while (res <= 0 && sw.Time() < TimeoutMs && m_Running) {
-			res = m_HidExec.Read(); // Nota: assicurati che Read() sia non-bloccante o abbia un timeout interno breve
-			if (res <= 0) {
-				::wxYield();
-			}
-			PtrAnswer = (byte*)m_HidExec.GetBuffer();
-			if (data[2] != PtrAnswer[1])	res=0;
-		}
-
-
-		// 3. Verifica esito
-		if (res > 0) {
-/*			byte* PtrAnswer = (byte*)m_HidExec.GetBuffer();
-			if (data[2] != PtrAnswer[1]) {
-				m_HidExec.Read();
-				PtrAnswer = (byte*)m_HidExec.GetBuffer();
-			}
-*/
+		if (bytesRead >= sizeof(AnswerHeader)) {
 			if (m_ptrAnswerShow)
-				m_ptrAnswerShow->SetAnswer(PtrAnswer, m_HidExec.GetAnswerLen());
-			Success = true;
-			eMessageTypes Tipo = ((eMessageTypes*)PtrAnswer)[0];
-			//LogMe(wxString::Format("Received %d bytes in %ld ms.\n", res, sw.Time()), true);
-			switch (Tipo) {
-				case eTypAnswVer:		CALLANSWERPARSER(sAnswerVersion);		break;
-				case eTypAnswPwReader:	CALLANSWERPARSER(sAnswerPower);			break;
-				case eTypAnswStd:		CALLANSWERPARSER(sAnswerStandard);		break;
-				case eTypAnswExpander:	CALLANSWERPARSER(sExpanderStandard);	break;
-				case eTypAnswStepDir:	CALLANSWERPARSER(TmcAnswer);			break;
-				case eTypAnswFsaSingle:	CALLANSWERPARSER(FsaSingleAnswer);		break;
-				default:
-					LogMe(wxString::Format("\nERROR: Unknown Answer ('%c').\n", Tipo), true);
-					LogMe(wxString::Format("\n\t'%s'\n", m_HidExec.GetBuffAsString()), true);
-					break;
-			}
-			if (data[2] != PtrAnswer[1]) {
-				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)data[2], (int)PtrAnswer[1]), false);
+				m_ptrAnswerShow->SetAnswer(ptrHeader, bytesRead);
+
+			Success = (ptrHeader->m_Result == eCmdOk);
+			if (cmdAtteso != ptrHeader->m_Cmd) {
+				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)cmdAtteso, (int)ptrHeader->m_Cmd), false);
 				Success = false;
 			}
-			//LogMe(wxString::Format("\tSuccess is '%s'\n", Success?"True":"False"), false);
 			LogMe(wxString::Format(" %s ...", Success ? "True\n" : "False"), false);
 		} else {
 			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
@@ -179,9 +67,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 			}
 		}
 	}
-	LogMe(wxString::Format("  Completed in %ld ms.\n", sw2.Time()), false);
+	LogMe(wxString::Format("  Completed in %ld ms.\n", swTotCmd.Time()), false);
 }
-
 
 /*
 // Versione ottimizzata
@@ -371,19 +258,8 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 
 void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 	m_timer->Stop();
-	struct hid_device_info* devs = hid_enumerate(m_HidInfo.vendor_id, m_HidInfo.product_id);
 
-	bool isPresent = (devs != nullptr);
-	if (devs) hid_free_enumeration(devs);
-
-	// 2. Gestione connessione
-	if (isPresent) {
-		if (!m_HidExec.IsOpened()) m_HidExec.Open(m_HidInfo);	// Attempt to open only if not open
-	} else {
-		if (m_HidExec.IsOpened()) m_HidExec.Close();	// If not present but it was open, close it cleanly
-	}
-
-	bool isReady = isPresent && m_HidExec.IsOpened();
+	bool isReady = m_CommPort.IsWorking();
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
 		LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
@@ -411,14 +287,8 @@ CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 	const wxSize& size,
 	long			style,
 	const wxString& name
-) : wxPanel(parent, winid, pos, size, style, name)
+) : wxPanel(parent, winid, pos, size, style, name), m_CommPort()
 {
-	//Fill Sampler Info
-	m_HidInfo.m_Name = "Sampler";
-	m_HidInfo.vendor_id = 0x6666;
-	m_HidInfo.product_id = 0x0827;
-	m_HidInfo.serial_number = NULL;
-
 	m_Btn_ExecAll	= new wxButton(this, ID_Btn_ExecAll, _("Exec All"));
 	m_Btn_ExecStep	= new wxButton(this, ID_Btn_ExecStep, _("Exec Step"));
 	m_Btn_Panic		= new wxButton(this, ID_Btn_Panic, _("Panic"));
@@ -453,7 +323,5 @@ CmdExecutorCtrl::~CmdExecutorCtrl() {
 	m_Running = false;
 	m_timer->Stop();	wxYield();	wxDELETE(m_timer);
 
-	if (m_HidExec.IsOpened())
-		m_HidExec.Close();
 	hid_exit();	//Avoid Memory Leak about error_buffer
 }
