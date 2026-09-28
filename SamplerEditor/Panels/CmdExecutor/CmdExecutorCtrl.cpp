@@ -26,10 +26,9 @@ void myMilliSleep(long long T){
 	}
 }
 
-void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long TimeoutMs) {
+void CmdExecutorCtrl::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs) {
 	bool		Success		= false;
 	int			retryCount	= 0;
-	uint8_t		cmdAtteso	= data[2];
 	wxStopWatch	swTotCmd;
 	if (TimeoutMs <= 0) TimeoutMs = 500;	//Minimal TimeOut
 
@@ -37,7 +36,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 	swTotCmd.Start(0);
 	while (!Success && m_Running) {
 
-		if (!m_CommPort.Write(data, length, 1000)) {
+		if (!m_CommPort.Write(&vStep, length, 1000)) {
 			LogMe("Hardware error or timeout while writing.\n", true);
 			m_Running = false; // Interrompiamo l'esecuzione in caso di guasto hardware persistente
 			break;
@@ -45,7 +44,7 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 		LogMe(wxString::Format(" %d ", ++retryCount), false);
 		::wxYield();
 
-		size_t bytesRead = m_CommPort.Read(responseBuffer, cmdAtteso, TimeoutMs);
+		size_t bytesRead = m_CommPort.Read(responseBuffer, vStep.m_Cmd, TimeoutMs);
 		const AnswerHeader* ptrHeader = reinterpret_cast<const AnswerHeader*>(responseBuffer.data());
 
 		if (bytesRead >= sizeof(AnswerHeader)) {
@@ -53,8 +52,8 @@ void CmdExecutorCtrl::SendCommand(const unsigned char* data, size_t length, long
 				m_ptrAnswerShow->SetAnswer(ptrHeader, bytesRead);
 
 			Success = (ptrHeader->m_Result == eCmdOk);
-			if (cmdAtteso != ptrHeader->m_Cmd) {
-				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)cmdAtteso, (int)ptrHeader->m_Cmd), false);
+			if (vStep.m_Cmd != ptrHeader->m_Cmd) {
+				LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)vStep.m_Cmd, (int)ptrHeader->m_Cmd), false);
 				Success = false;
 			}
 			LogMe(wxString::Format(" %s ...", Success ? "True\n" : "False"), false);
@@ -109,21 +108,16 @@ uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
 	return (uint16_t)(~sum + 1);
 }
 
-#define TX_BINARY_M	//If defined, Tx via USB, Else via SERIAL
-//#define CALLSUBSINSTEPS
-
 bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 	LogMe("\n\n", false);
 	LogMe(wxString::Format("Step %d (%d)\n", vStep.m_DetailProg, vStep.m_Cmd), true);
 
-#if !defined(CALLSUBSINSTEPS)
 	//Check SubRoutine:
 	if (vStep.m_SubSystem == eSystemCmd && (vStep.m_Cmd=='a')) {
 		LogMe(wxString::Format("Execute Subroutine %d\n", vStep.m_Par[0]), false);
 		ExecuteSteps(vStep.m_Par[0]);
 		return true;
 	}
-#endif
 
 	for (size_t i = 0; i < vStep.m_PatLen; ++i) {		
 		if (vStep.m_Pattern[i] == 'S') {
@@ -136,25 +130,13 @@ bool CmdExecutorCtrl::ExecuteStep(sCommand& vStep) {
 		}
 	}
 
-	unsigned char	Msg[sizeof(sCommand) + 1];	// + Starting byte
-	size_t			Msg_Len = 0;
-
-#if defined(TX_BINARY_M)	//ToDo Check exported data
-	int j = 0;
-	//vStep.m_ChkSum = add_checksum_fast((const uint8_t*)&vStep, sizeof(sCommand) - sizeof(vStep.m_ChkSum));
 	vStep.m_ChkSum = add_checksum_fast(
 		reinterpret_cast<const uint8_t*>(&vStep),
 		sizeof(vStep) - sizeof(vStep.m_ChkSum)
 	);
 
-	memcpy(&Msg[j], &vStep, sizeof(vStep));
-	j += sizeof(vStep);
-	Msg_Len = sizeof(vStep);
-#else
-#endif
-
-
-	SendCommand(Msg, Msg_Len);
+	SendCommand(vStep, sizeof(vStep));
+	
 	return true;
 }
 
@@ -194,26 +176,8 @@ m_Btn_ExecAll->Enable(false);
 		m_ptrPrgDetail->EnsureVisibleCentered(i);
 		::wxYield();
 
-#if defined(TX_BINARY_M)	//ToDo Check exported data
 		m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);
-#if defined(CALLSUBSINSTEPS)
-		if (vStep.m_SubSystem == eSystemCmd && vStep.m_Cmd == 'a') {
-			LogMe(wxString::Format("Execute Subroutine %d\n", vStep.m_Par[0]), false);
-			ExecuteSteps(vStep.m_Par[0]);
-		}else
-#endif
-			ExecuteStep(vStep);
-#else
-		CmdStr = (m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i)) ? m_ptrEditor->DBData2String(vStep) : "------------";
-		LogMe(wxString::Format("Execute %ld: '%s'\n", i, CmdStr), false);
-
-		memcpy(Msg, CmdStr.c_str().AsUnsignedChar(), CmdStr.Length());	Msg[CmdStr.Length()] = '\0';
-		if (!m_Running) {
-			LogMe("EXECUTION INTERRUPTED\n", false);
-			return false;
-		}
-		SendCommand(CmdStr.c_str().AsUnsignedChar(), CmdStr.Length());
-#endif
+		ExecuteStep(vStep);
 //		myMilliSleep(10);	//wxMilliSleep(100);
 		if (!m_Running)
 			break;
@@ -269,7 +233,16 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 		if (m_RotatePool) {
 			IncPoolIdx();
 		}
-		sCommand AskMotor = { eTypCommand, eStepDirect, '0', 1, "M", {m_PoolIdx}, 0, 0, 0 };
+		sCommand AskMotor;// = { eTypCommand, eStepDirect, '0', 1, "M", {m_PoolIdx}, 0, 0, 0 };
+			AskMotor.m_MsgType		= eTypCommand;
+			AskMotor.m_SubSystem	= eStepDirect;
+			AskMotor.m_Cmd			= '0';
+			AskMotor.m_PatLen		= 1;
+			AskMotor.m_Pattern[0]	= 'M';
+			AskMotor.m_Par[0]		= m_PoolIdx;
+			AskMotor.m_MasterId		= 0;			//2
+			AskMotor.m_DetailProg	= 0;			//2
+			AskMotor.m_ChkSum		= 0;			//2
 
 		m_Running = true;
 		ExecuteStep(AskMotor);

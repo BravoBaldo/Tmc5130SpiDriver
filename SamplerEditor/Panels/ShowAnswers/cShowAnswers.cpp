@@ -61,9 +61,18 @@ void cAnswersShow::Log_FSA_Init(void) {
 	STEPPERS_LIST
 #undef X
 
+	Log_Generic_InitEnd(grid);
+	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+}
+
+void cAnswersShow::Log_Cmd_Init(void) {
+	wxGrid* grid = m_Grids[eGrid_Command];
+	if (grid == NULL)	return;
+	grid->CreateGrid(5, 5);
 
 	Log_Generic_InitEnd(grid);
 	grid->ShowScrollbars(wxSHOW_SB_DEFAULT, wxSHOW_SB_ALWAYS);
+
 }
 
 
@@ -293,6 +302,13 @@ cAnswersShow::cAnswersShow(wxWindow* parent) : wxAuiNotebook(parent, wxID_ANY, w
 	m_Grids[i]->SetDefaultCellFont(fixedFont);
 	Log_FSA_Init();								//ToDo
 	this->AddPage(m_Grids[i], _("FSA"));
+
+
+	i = eGrid_Command;
+	m_Grids[i] = new wxGrid(this, wxID_ANY);
+	m_Grids[i]->SetDefaultCellFont(fixedFont);
+	Log_Cmd_Init();
+	this->AddPage(m_Grids[i], _("Command"));
 
 	m_PanMotorPowers = new cpanPower(this);
 	this->AddPage(m_PanMotorPowers, _("FSA2"));

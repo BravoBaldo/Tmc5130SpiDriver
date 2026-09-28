@@ -9,6 +9,7 @@
 enum eGrids {
     eGrid_Motors,
     eGrid_FSA,
+    eGrid_Command,
 
     eGrid_TOP
 };
@@ -26,6 +27,7 @@ class cAnswersShow : public wxAuiNotebook {
 
     void Log_Stepper_Init   (void);
     void Log_FSA_Init       (void);
+    void Log_Cmd_Init       (void);
 
 public:
     cAnswersShow(wxWindow* parent);

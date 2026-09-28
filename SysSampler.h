@@ -113,30 +113,6 @@ typedef enum : uint8_t {	// AnswerType is lowercase
 }eMessageTypes;
 
 
-#pragma pack(push, 1)
-typedef struct _sCmd{	//Command from PC ToDo: See class cCmdStepper
-	eMessageTypes	m_MsgType				= eTypCommand;	//1
-	eSubSysAcro		m_SubSystem				= eUnused;		//1		//Come from sSampler_Commands
-	byte			m_Cmd					= 0;			//1		//Come from sSampler_Commands
-	byte			m_PatLen				= 0;			//1
-	byte			m_Pattern[NUMOFPARAMS]	= {'\0'};		//10	//Come from sSampler_Commands
-	ParamType  		m_Par[NUMOFPARAMS]		= {0};			//4*10	//Come from sSampler_Commands
-	uint16_t		m_MasterId				= 0;			//2
-	uint16_t		m_DetailProg			= 0;			//2
-	uint16_t  		m_ChkSum				= 0;			//2
-	inline const char* GetPatternAsChars() const noexcept {
-		return reinterpret_cast<const char*>(m_Pattern);
-	}
-	void	SetPattern(const char* s) {
-		m_PatLen = s ? strlen(s) : 0;
-		for (byte i = 0; i < NUMOFPARAMS; ++i) {
-			m_Pattern[i] = (i < m_PatLen) ? s[i] : '\0';
-		}
-	}
-}sCommand;
-#pragma pack(pop)
-
-
 
 #define SHOW_SWMODE
 #define SHOW_SWMODE_HIDELATCH
@@ -209,6 +185,27 @@ typedef enum : uint8_t {
 
 			AnswerHeader(eMessageTypes type) : m_MsgType(type) {}	//Ctor
 		};
+
+		struct sCommand : public AnswerHeader {
+			sCommand() : AnswerHeader(eTypCommand) { m_Result = eCmdOk; }
+			eSubSysAcro		m_SubSystem				= eUnused;		//1		//Come from sSampler_Commands
+			byte			m_PatLen				= 0;			//1
+			byte			m_Pattern[NUMOFPARAMS]	= { '\0' };		//10	//Come from sSampler_Commands
+			ParamType  		m_Par[NUMOFPARAMS]		= { 0 };		//4*10	//Come from sSampler_Commands
+			uint16_t		m_MasterId				= 0;			//2
+			uint16_t		m_DetailProg			= 0;			//2
+			uint16_t  		m_ChkSum				= 0;			//2
+			inline const char* GetPatternAsChars() const noexcept {
+				return reinterpret_cast<const char*>(m_Pattern);
+			}
+			void	SetPattern(const char* s) {
+				m_PatLen = s ? strlen(s) : 0;
+				for (byte i = 0; i < NUMOFPARAMS; ++i) {
+					m_Pattern[i] = (i < m_PatLen) ? s[i] : '\0';
+				}
+			}
+		};
+
 		struct sAnswerVersion : public AnswerHeader {
 			sAnswerVersion() : AnswerHeader(eTypAnswVer) {}
 
@@ -299,121 +296,6 @@ typedef enum : uint8_t {
 
 	#pragma pack(pop)
 #else
-
-
-#define ANSWERHEADER(T)		byte		m_MsgType	= T;	\
-							byte		m_Cmd		= 0;	\
-							eCmdAnswer	m_Result	= eCmdError;
-
-
-
-#pragma pack(push, 1)
-typedef struct _sVerAnswer{
-	ANSWERHEADER(eTypAnswVer)
-	byte	Y;	//Year
-	byte	M;	//Month
-	byte	D;	//Day
-	byte	h;	//Hour
-	byte	m;	//Minute
-	byte	s;	//Second
-}sAnswerVersion;
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct _sPwrAnswer {
-	ANSWERHEADER(eTypAnswPwReader)
-	float	Curr;
-	float	Volt;
-	float	Power;
-}sAnswerPower;
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct _sStdAnswer{
-	ANSWERHEADER(eTypAnswStd)
-	
-	eSubSysAcro		m_SubSystem			= eUnused;		//1
-	eMessageTypes	m_UnknownMsg		= eTypCommand;	//1
-	byte			m_AnswLen			= 0;			//1
-	char			m_Msg[40]			= "No Answer";	//	
-}sAnswerStandard;
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct _sExpAnswer{
-	ANSWERHEADER(eTypAnswExpander)
-	uint16_t	m_CurrStatus			= 0;				//1
-}sExpanderStandard;	//ToDo Rename in Aswer....
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct _sStripAnswer{
-	ANSWERHEADER(eTypAnswStripLed)
-	uint8_t		m_CurrGame	= 0;	//ToDo
-	uint16_t	m_Remaining	= 0;
-}StripAnswer;
-#pragma pack(pop)
-
-
-#pragma pack(push, 1)
-typedef struct _sFsaSingleAnswer{	//see STEP_ANSWERS_LIST
-	ANSWERHEADER(eTypAnswFsaSingle)	//m_MsgType, m_Cmd, m_Result
-	uint8_t		m_Motor		= 0;
-	uint8_t		m_FsaStatus	= 0;
-	
-	int16_t		m_VACTUAL	= 0;	//see m_Velocity  23 bits
-	int32_t		m_Position	= 0;
-	int32_t		m_xTarget	= 0;
-	uint16_t	m_Currents	= 0;	//irun, ihold, holdDelay;
-#if defined(USE_INA260)	
-	float		m_Curr	= 0.;
-	float		m_Volt	= 0.;
-	float		m_Power	= 0.;
-#endif
-}FsaSingleAnswer;
-#pragma pack(pop)
-	
-#pragma pack(push, 1)
-typedef struct _sTmcAnswer{	//see STEP_ANSWERS_LIST
-	ANSWERHEADER(eTypAnswStepDir)
-
-	uint8_t		m_Motor		= 0;
-	
-	uint16_t	m_Remaining	= 0;
-	uint8_t		m_spiStatus	= 0;
-	uint8_t		m_Ioin8		= 0;
-	int32_t		m_Position	= 0;
-	int32_t		m_xTarget	= 0;
-	uint16_t	m_Currents	= 0;		//irun, ihold, holdDelay;
-#if defined(X_SHOW_CHOPCONF)
-	uint32_t	m_CHOPCONF	= 0;		//Chopconf		getMicrosteps
-#endif
-	uint32_t	m_DRV_STATUS= 0;	//DrvStatus  getDrvStatus
-	uint32_t	m_MSCURACT	= 0;
-	
-	uint16_t	m_A1		= 0;	//16 bits
-	uint16_t	m_AMAX		= 0;	//16 bits
-	uint16_t	m_DMAX		= 0;	//16 bits
-	uint16_t	m_D1		= 0;	//16 bits
-	
-	uint16_t	m_VSTART	= 0;	//18 bits limited to 16
-	uint16_t	m_V1		= 0;	//20 bits limited to 16
-	uint16_t	m_VMAX		= 0;	//23 bits limited to 16
-	uint16_t	m_VSTOP		= 0;	//18 bits limited to 16
-	 int16_t	m_VACTUAL	= 0;	//see m_Velocity  23 bits
-#if defined(SHOW_GCONF)
-	uint16_t	m_GCONF		= 0;	//18 bits !!! missing direct_mode and test_mode
-#endif
-#if defined(SHOW_SWMODE)
-	uint16_t	m_SWMODE	= 0;	//12 bits
-#endif
-#if defined(USE_INA260)	
-	float		m_Curr	= 0.;
-	float		m_Volt	= 0.;
-	float		m_Power	= 0.;
-#endif
-}TmcAnswer;
-#pragma pack(pop)
 
 #endif
 

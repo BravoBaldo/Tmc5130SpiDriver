@@ -43,11 +43,11 @@ public:
         return m_HidExec.IsOpened();
     }
 
-    bool Write(const unsigned char* data, size_t length, long timeoutMs) {
+    bool Write(const sCommand* vStep, size_t length, long timeoutMs) {
         wxStopWatch sw;
         sw.Start(0);
         do {
-            if (m_HidExec.Write_NoWait(data, length) >= 0) {
+            if (m_HidExec.Write_NoWait((const unsigned char*)vStep, length) >= 0) {
                 return true; // Success
             }
 
@@ -108,8 +108,8 @@ class CmdExecutorCtrl : public wxPanel {
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
 	bool		ExecuteStep		(sCommand& vStep);
-	void		SendCommand		(const unsigned char* data, size_t length, long TimeoutMs = 500);
-
+    void		SendCommand     (const sCommand& vStep, size_t length, long TimeoutMs = 500);
+    
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,
