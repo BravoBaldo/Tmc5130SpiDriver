@@ -83,32 +83,57 @@ public:
         } while (sw.Time() < timeoutMs);
         return 0; // Fail
     }
-};
+};  //cCommPort
 
+class cExecutor {
+    cCommPort   m_CommPort;
+    bool		m_Running = false;
+    cAnswersShow* m_ptrAnswerShow = nullptr;
+    bool		ExecuteSteps_FromDB(uint16_t m_MasterId);
+public:
+    cExecutor   () : m_CommPort() {}
+    ~cExecutor() { m_Running = false; };
 
+    void		SendCommand(const sCommand& vStep, size_t length, long TimeoutMs = 500);
+
+    bool		ExecuteStep(sCommand& vStep);
+
+    bool        IsWorking(void) { return m_CommPort.IsWorking(); }
+    void        IsRunning(bool r) { m_Running = r; }
+    bool        IsRunning(void) { return m_Running; }
+
+    void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
+    int			GetMotorSelected(void) { return (m_ptrAnswerShow ? m_ptrAnswerShow->GetMotorSelected() : -1); }
+
+};  //cExecutor
+#define INSULA1
 class CmdExecutorCtrl : public wxPanel {
+    // GUI related
 	wxButton*	m_Btn_ExecAll	= nullptr;
 	wxButton*	m_Btn_ExecStep	= nullptr;
 	wxButton*	m_Btn_Panic		= nullptr;
 	wxTimer*	m_timer			= nullptr;
-
+    //---------------------------------------------
+#if defined(INSULA1)
+    cExecutor   m_Executor;
+#else
     cCommPort   m_CommPort;
-
 	bool		m_Running		= false;
-
+    void		SendCommand(const sCommand& vStep, size_t length, long TimeoutMs = 500);
+    cAnswersShow* m_ptrAnswerShow = nullptr;
+    bool		ExecuteStep(sCommand& vStep);
+    bool		ExecuteSteps_FromDB(uint16_t m_MasterId);
+#endif
 	ParamType	m_PoolIdx		= 0;
 	bool		m_PoolMotors	= false;
 	bool		m_RotatePool	= true;
 	//....................................
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
 	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
-	cAnswersShow*		m_ptrAnswerShow	= nullptr;
 	//...................................
 	DECLARE_EVENT_TABLE()
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
-	bool		ExecuteStep		(sCommand& vStep);
-    void		SendCommand     (const sCommand& vStep, size_t length, long TimeoutMs = 500);
     
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
@@ -123,13 +148,20 @@ public:
 		m_ptrEditor = ptrEditor;
 		m_ptrPrgDetail = ptrPrgDetail;
 	}
-	bool		ExecuteSteps(long from, long to);
-	bool		ExecuteSteps(uint16_t	m_MasterId);
-	void		SetAnswerHandler(cAnswersShow* phandler)	{ m_ptrAnswerShow = phandler; }
+	bool		ExecuteSteps_FromTo(long from, long to);
 
 	void		SetPoolMotors	(bool s, bool r = true)		{ m_PoolMotors = s; m_RotatePool = r; }
 	void		IncPoolIdx		(void)						{ m_PoolIdx = (m_PoolIdx + 1) % 3; }
 	void		SetPoolIdx		(int idx)					{ m_PoolIdx = idx; }
 
-	int			GetMotorSelected(void) { return m_ptrAnswerShow->GetMotorSelected(); }
+#if defined(INSULA1)
+    void		SetAnswerHandler(cAnswersShow* phandler)    { m_Executor.SetAnswerHandler(phandler); }
+    int			GetMotorSelected(void)                      { return m_Executor.GetMotorSelected(); }
+#else
+    void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
+    int			GetMotorSelected(void) {    if(m_ptrAnswerShow)
+                                                return m_ptrAnswerShow->GetMotorSelected();
+                                            return -1;
+                                        }
+#endif
 };

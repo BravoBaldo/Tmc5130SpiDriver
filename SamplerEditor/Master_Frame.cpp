@@ -415,19 +415,19 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 		case ID_MNU_PRGMDET_EXECSTEP:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps(itemIndex, itemIndex+1);
+				m_PanExec->ExecuteSteps_FromTo(itemIndex, itemIndex+1);
 			}
 		break;
 		case ID_MNU_PRGMDET_EXECFROM:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps(itemIndex, m_lstPrgDetail->GetItemCount());
+				m_PanExec->ExecuteSteps_FromTo(itemIndex, m_lstPrgDetail->GetItemCount());
 			}
 			break;
 		case ID_MNU_PRGMDET_EXECTO:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps(0, itemIndex+1);
+				m_PanExec->ExecuteSteps_FromTo(0, itemIndex+1);
 		}
 			break;
 
@@ -502,9 +502,12 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 #endif
 		case ID_MNU_POLL_MOTORS:	m_PanExec->SetPoolMotors(event.IsChecked()); break;
 //		case ID_MNU_POLL_NEXT:		m_PanExec->IncPoolIdx(); m_PanExec->SetPoolMotors(true, false);	break;
-		case ID_MNU_POLL_CURRENT:	
-									m_PanExec->SetPoolIdx(m_PanExec->GetMotorSelected());
-									m_PanExec->SetPoolMotors(event.IsChecked(), false);
+		case ID_MNU_POLL_CURRENT:
+			{
+				int idx = m_PanExec->GetMotorSelected();
+				if(idx>=0) m_PanExec->SetPoolIdx(idx);
+				m_PanExec->SetPoolMotors(event.IsChecked(), false);
+			}									
 			break;
 
 		default:

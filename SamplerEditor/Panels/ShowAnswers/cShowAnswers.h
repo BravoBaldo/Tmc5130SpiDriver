@@ -35,7 +35,7 @@ public:
     void Log_FSA            (const FsaSingleAnswer& Answer) { m_PanMotorPowers->Fill(Answer); }
     void Log_FSA            (const TmcAnswer& Answer)       { m_PanMotorPowers->Fill(Answer); };
 
-    bool SetAnswer(const AnswerHeader* Answer, size_t AnswerLen);
-    void AddSamplePages();
-    int GetMotorSelected(void){return m_Grids[eGrid_Motors]->GetGridCursorRow(); }
+    bool SetAnswer          (const AnswerHeader* Answer, size_t AnswerLen);
+    void AddSamplePages     (void);
+    int GetMotorSelected    (void)  {return m_Grids[eGrid_Motors]->GetGridCursorRow(); }
 };
