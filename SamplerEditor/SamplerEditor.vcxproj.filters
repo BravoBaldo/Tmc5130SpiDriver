@@ -44,6 +44,12 @@
     <ClCompile Include="Panels\CmdEditor\CoordDBReadCtrl.cpp">
       <Filter>Source\Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Panels\CmdExecutor\cCommPort.cpp">
+      <Filter>Source\Executor</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp">
+      <Filter>Source\Executor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ResFile.rc" />

@@ -1,140 +1,30 @@
 ﻿#pragma once
 #include "wx/wx.h"
 
-#include "cHIDAPI.h"
+#include "cCommPort.h"
+#include "cExecutor.h"
+
 #include "CmdEditorCtrl.h"
-#include "DBCmdView.h"
-#include "cShowAnswers.h"
-#include <wx/stopwatch.h>
+#include "DBCmdView.h"		//cDetailListCtrl
 
 
-class cCommPort {
-private:
-    sVID_PID m_HidInfo;
-    cHIDAPI  m_HidExec;
-
-public:
-    // Inizializzazione pulita tramite costruttore
-    cCommPort() { Init(); }
-
-    ~cCommPort() { Close(); }
-
-    void Init() {
-        m_HidInfo.m_Name        = wxT("Sampler");
-        m_HidInfo.vendor_id     = 0x6666;
-        m_HidInfo.product_id    = 0x0827;
-        m_HidInfo.serial_number = nullptr; // C++11 standard nullptr al posto di NULL
-    }
-
-    void Close() {
-        if (m_HidExec.IsOpened()) {
-            m_HidExec.Close();
-        }
-    }
-
-    bool IsWorking() {
-        struct hid_device_info* devs = hid_enumerate(m_HidInfo.vendor_id, m_HidInfo.product_id);
-        if (devs) {
-            hid_free_enumeration(devs);
-            if (!m_HidExec.IsOpened())  m_HidExec.Open(m_HidInfo); // Tenta l'apertura solo se chiuso
-        } else {
-            if (m_HidExec.IsOpened())   m_HidExec.Close(); // Se rimosso fisicamente, chiude la sessione aperta
-        }
-        return m_HidExec.IsOpened();
-    }
-
-    bool Write(const sCommand* vStep, size_t length, long timeoutMs) {
-        wxStopWatch sw;
-        sw.Start(0);
-        do {
-            if (m_HidExec.Write_NoWait((const unsigned char*)vStep, length) >= 0) {
-                return true; // Success
-            }
-
-            // Tentativo di ripristino in caso di errore hardware
-            m_HidExec.Open(m_HidInfo);
-            wxMilliSleep(50); // A short time
-
-            // NOTA DI SICUREZZA: Evita ::wxYield() se puoi, congela la GUI ma previene crash da re-entry.
-            // Se questa funzione viene chiamata dal thread principale della GUI, il ciclo bloccherà l'interfaccia.
-
-        } while (sw.Time() < timeoutMs);
-
-        return false; // Failed
-    }
-
-    size_t Read(std::vector<uint8_t>& outBuffer, uint8_t chk, long timeoutMs) {
-        outBuffer.clear();  // Svuota il buffer di output prima di iniziare
-
-        wxStopWatch sw;
-        sw.Start(0);
-        do {
-            size_t res = m_HidExec.Read();
-
-            if (res >= sizeof(AnswerHeader)) {
-                const AnswerHeader* ptrAnswer = reinterpret_cast<const AnswerHeader*>(m_HidExec.GetBuffer());
-                if (ptrAnswer && chk == ptrAnswer->m_Cmd) {
-                    const uint8_t* rawBuffer = reinterpret_cast<const uint8_t*>(m_HidExec.GetBuffer());
-                    outBuffer.assign(rawBuffer, rawBuffer + res);
-                    return res;
-                }
-            }
-            ::wxYield();
-        } while (sw.Time() < timeoutMs);
-        return 0; // Fail
-    }
-};  //cCommPort
-
-class cExecutor {
-    cCommPort   m_CommPort;
-    bool		m_Running = false;
-    cAnswersShow* m_ptrAnswerShow = nullptr;
-    bool		ExecuteSteps_FromDB(uint16_t m_MasterId);
-public:
-    cExecutor   () : m_CommPort() {}
-    ~cExecutor() { m_Running = false; };
-
-    void		SendCommand(const sCommand& vStep, size_t length, long TimeoutMs = 500);
-
-    bool		ExecuteStep(sCommand& vStep);
-
-    bool        IsWorking(void) { return m_CommPort.IsWorking(); }
-    void        IsRunning(bool r) { m_Running = r; }
-    bool        IsRunning(void) { return m_Running; }
-
-    void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
-    int			GetMotorSelected(void) { return (m_ptrAnswerShow ? m_ptrAnswerShow->GetMotorSelected() : -1); }
-
-};  //cExecutor
-#define INSULA1
 class CmdExecutorCtrl : public wxPanel {
-    // GUI related
-	wxButton*	m_Btn_ExecAll	= nullptr;
-	wxButton*	m_Btn_ExecStep	= nullptr;
-	wxButton*	m_Btn_Panic		= nullptr;
-	wxTimer*	m_timer			= nullptr;
-    //---------------------------------------------
-#if defined(INSULA1)
-    cExecutor   m_Executor;
-#else
-    cCommPort   m_CommPort;
-	bool		m_Running		= false;
-    void		SendCommand(const sCommand& vStep, size_t length, long TimeoutMs = 500);
-    cAnswersShow* m_ptrAnswerShow = nullptr;
-    bool		ExecuteStep(sCommand& vStep);
-    bool		ExecuteSteps_FromDB(uint16_t m_MasterId);
-#endif
-	ParamType	m_PoolIdx		= 0;
-	bool		m_PoolMotors	= false;
-	bool		m_RotatePool	= true;
-	//....................................
+    // Componenti GUI gestiti dal ciclo di vita nativo di wxWidgets
+	wxButton*	        m_Btn_ExecAll	= nullptr;
+	wxButton*	        m_Btn_ExecStep	= nullptr;
+	wxButton*	        m_Btn_Panic		= nullptr;
+
+    // Puntatori a classi esterne (risolti tramite forward declaration)
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
 	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
-	//...................................
-	DECLARE_EVENT_TABLE()
+
+    wxTimer 	m_timer;
+    cExecutor   m_Executor;
+
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
     
+    wxDECLARE_EVENT_TABLE();
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,
@@ -144,24 +34,13 @@ public:
 						const wxString&	name	= wxPanelNameStr
 					);
 	~CmdExecutorCtrl();
-	void	SetEditorAndDB(CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail) {
-		m_ptrEditor = ptrEditor;
-		m_ptrPrgDetail = ptrPrgDetail;
-	}
-	bool		ExecuteSteps_FromTo(long from, long to);
+	void	    SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
+	bool		ExecuteSteps_FromTo (long from, long to);
 
-	void		SetPoolMotors	(bool s, bool r = true)		{ m_PoolMotors = s; m_RotatePool = r; }
-	void		IncPoolIdx		(void)						{ m_PoolIdx = (m_PoolIdx + 1) % 3; }
-	void		SetPoolIdx		(int idx)					{ m_PoolIdx = idx; }
+    void		SetPoolMotors       (bool s, bool r = true) { m_Executor.SetPoolMotors(s, r); }
+    void		IncPoolIdx          ()                      { m_Executor.IncPoolIdx(); }
+    void		SetPoolIdx          (int idx)               { m_Executor.SetPoolIdx(idx); }
+    int			GetMotorSelected    ()                      { return m_Executor.GetMotorSelected(); }
 
-#if defined(INSULA1)
     void		SetAnswerHandler(cAnswersShow* phandler)    { m_Executor.SetAnswerHandler(phandler); }
-    int			GetMotorSelected(void)                      { return m_Executor.GetMotorSelected(); }
-#else
-    void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
-    int			GetMotorSelected(void) {    if(m_ptrAnswerShow)
-                                                return m_ptrAnswerShow->GetMotorSelected();
-                                            return -1;
-                                        }
-#endif
 };

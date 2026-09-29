@@ -462,6 +462,8 @@
     <ClCompile Include="Panels\CmdEditor\CoordDBReadCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\cCommPort.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cShowAnswers.cpp" />

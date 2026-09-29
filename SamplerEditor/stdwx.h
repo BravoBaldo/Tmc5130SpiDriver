@@ -79,4 +79,11 @@ C:\Program Files (x86)\Visual Leak Detector\lib\Win64\vld.lib
 #endif
 #define SIZER_STATDEBUG3(sizName,sizLabel,sizDirection)			wxBoxSizer			*sizName = new wxBoxSizer( sizDirection );
 
+
+	void myMilliSleep(long long T);
+	uint16_t CalcCheckSum(const uint8_t msg[], size_t len);
+	uint8_t xor_checksum(const uint8_t data[], size_t len);
+	uint16_t add_checksum_fast(const uint8_t* data, size_t len);
+
+
 #endif //WX_STDWX_H

@@ -1,6 +1,8 @@
 //"stdwx.cpp"
 
 #include "stdwx.h"
+#include <numeric>	//std::accumulate
+#include <chrono>
 
 wxTextCtrl* g_txtLog = NULL;
 bool		g_EnableEditor = false;
@@ -127,4 +129,31 @@ wxArrayString RetArray(const wxString& a, const wxString& b, const wxString& c, 
 	if (!x.IsEmpty())	Arr.Add(x);
 	if (!y.IsEmpty())	Arr.Add(y);
 	return Arr;
+}
+
+void myMilliSleep(long long T) {
+	auto inizio = std::chrono::steady_clock::now();
+	std::chrono::milliseconds durata(T); // Imposta la durata qui
+	while (std::chrono::steady_clock::now() - inizio < durata) {
+		wxYield();
+	}
+}
+
+uint16_t CalcCheckSum(const uint8_t msg[], size_t len) {
+	if (msg == nullptr || len == 0) return 0;
+	uint32_t sum = std::accumulate(msg, msg + len, 0u);
+	return static_cast<uint16_t>(~sum + 1);
+}
+
+uint8_t xor_checksum(const uint8_t data[], size_t len) {
+	if (data == nullptr || len == 0) return 0;
+	return std::accumulate(data, data + len, static_cast<uint8_t>(0), std::bit_xor<uint8_t>());
+}
+
+uint16_t add_checksum_fast(const uint8_t* data, size_t len) {
+	uint32_t sum = 0; // Usiamo 32 bit per evitare overflow intermedi nel loop
+	for (size_t i = 0; i < len; ++i) {
+		sum += data[i];
+	}
+	return (uint16_t)(~sum + 1);
 }
