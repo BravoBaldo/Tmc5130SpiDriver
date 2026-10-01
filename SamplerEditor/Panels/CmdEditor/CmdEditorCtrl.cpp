@@ -29,8 +29,8 @@ sCommand	CmdEditorCtrl::UI2DBData(void) {	//From UI to Database
     if (Sel >= 0) {
         const sSampler_Commands* c = (sSampler_Commands*)m_cho_StepperCmd->GetClientData(Sel);	//Si ricava la riga del comando del MicroController
         if (c) {
-            Cmd.m_SubSystem   = Cmd.m_SubSystem = c->SubSys;
-            Cmd.m_Cmd         = Cmd.m_Cmd       = c->cmd;
+            Cmd.m_SubSystem = c->SubSys;
+            Cmd.m_Cmd       = c->cmd;
             Cmd.SetPattern(c->ParamPattern);
             for (size_t i = 0; i < c->ParNames.size(); i++) {
                 Cmd.m_Par[i] = m_Params[i]->GetValue();

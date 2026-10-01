@@ -104,18 +104,6 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 	S += wxString::Format("SD_MODE........:%d\n", (SA.m_spiStatus & 0x40) ? 1 : 0);
 	S += wxString::Format("SWCOMP_IN......:%d\n", (SA.m_spiStatus & 0x80) ? 1 : 0);
 	grid->SetCellValue(R, eStpShowIoin8, S);
-/*
-	grid->SetCellValue(R, eStpShowIoin8, wxString::Format("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s"	//"%s|%s|%s|%s|%s|%s|%s|%s"
-		, (SA.m_spiStatus & 0x01) ? "REFL_STEP"			: "   "
-		, (SA.m_spiStatus & 0x02) ? "REFR_DIR"			: "   "
-		, (SA.m_spiStatus & 0x04) ? "ENCB_DCEN_CFG4"	: "   "
-		, (SA.m_spiStatus & 0x08) ? "ENCA_DCIN_CFG5"	: "   "
-		, (SA.m_spiStatus & 0x10) ? "DRV_ENN_CFG6"		: "   "
-		, (SA.m_spiStatus & 0x20) ? "ENC_N_DCO"			: "   "
-		, (SA.m_spiStatus & 0x40) ? "SD_MODE"			: "   "
-		, (SA.m_spiStatus & 0x80) ? "SWCOMP_IN"			: "   "
-	));
-*/
 
 #ifdef SHOW_SWMODE
 	S = wxEmptyString;
@@ -187,11 +175,6 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 #endif
 	grid->SetCellValue(R, eStpShowPos, S);
 
-//	grid->SetCellValue(R, eStpShowPos,			wxString::Format("%d", SA.m_Position));
-//	grid->SetCellValue(R, eStpShowTarget,		wxString::Format("%ld", SA.m_xTarget));
-
-
-
 	grid->SetCellValue(R, eStpShowCurrents,		wxString::Format("%d-%d-%d"
 													, (SA.m_Currents) & 0x1F
 													, (SA.m_Currents >>  5) & 0x1F
@@ -244,9 +227,6 @@ void cAnswersShow::Log_Stepper_Fill(const TmcAnswer& SA) {
 
 	grid->SetCellValue(R, eStpShowChopConf, wxString::FromUTF8(S));
 #endif
-
-
-
 
 	int16_t	SgRes	= (SA.m_DRV_STATUS)		& 0x3FF;	//10 bits
 	uint8_t csAct	= (SA.m_DRV_STATUS>>16) & 0x1F;		// 5 bits

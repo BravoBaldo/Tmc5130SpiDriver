@@ -13,6 +13,12 @@ void CmdExecutorCtrl::SetEditorAndDB(CmdEditorCtrl* ptrEditor, cDetailListCtrl* 
 	m_ptrPrgDetail = ptrPrgDetail;
 }
 
+void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId) {
+	m_Executor.IsRunningSet(true);
+	m_Executor.ExecuteSteps_FromDB(m_MasterId);
+	m_Executor.IsRunningSet(false);
+}
+
 void CmdExecutorCtrl::ShowCurrentStep(long i, sCommand& vStep) {
 	if (!m_ptrPrgDetail) return; //
 	m_ptrPrgDetail->EnsureVisibleCentered(i);
@@ -21,46 +27,36 @@ void CmdExecutorCtrl::ShowCurrentStep(long i, sCommand& vStep) {
 }
 
 bool CmdExecutorCtrl::ExecuteSteps_FromTo(long from, long to) {
-	m_Btn_ExecEditor->Enable(false);
-	m_Btn_ExecAll->Enable(false);
-
 	LogMe(wxString::Format("Start Execution from %ld'\n-----------------------------\n", from), false);
 
-	m_Executor.IsRunning(true);
+	m_Executor.IsRunningSet(true);
 	for (long i = from; i < to; i++) {
 		sCommand vStep;
-		ShowCurrentStep(i, vStep);
+		ShowCurrentStep(i, vStep);		//Get vStep from the ListView m_ptrPrgDetail
 		m_Executor.ExecuteStep(vStep);
 		if (!m_Executor.IsRunning())
 			break;
 	}
-	m_Executor.IsRunning(false);
+	m_Executor.IsRunningSet(false);
 	LogMe("Stop Execution --------------------------\n", true);
-
-	m_Btn_ExecEditor->Enable(true);
-	m_Btn_ExecAll->Enable(true);
 
 	return true;
 }
 
 void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 	switch (event.GetId()) {
-		case ID_Btn_ExecEditor:
-			m_Btn_ExecEditor->Enable(false);
-			m_Btn_ExecAll->Enable(false);
+		case ID_Btn_ExecEditor:		//Get sCommand from the Editor
 			if (m_ptrEditor) {
 				sCommand vStep = m_ptrEditor->UI2DBData();	//Non dal DB ma dall'editor!!!
 				m_Executor.ExecuteStepSingle(vStep);
 			}
-			m_Btn_ExecEditor->Enable(true);
-			m_Btn_ExecAll->Enable(true);
 			break;
-		case ID_Btn_ExecAll:
+		case ID_Btn_ExecAll:	//Get vStep from the ListView m_ptrPrgDetail
 			if (m_ptrPrgDetail)
-			ExecuteSteps_FromTo(0, m_ptrPrgDetail->GetItemCount());	//
+				ExecuteSteps_FromTo(0, m_ptrPrgDetail->GetItemCount());
 			break;
 		case ID_Btn_Panic:
-			m_Executor.IsRunning(false);
+			m_Executor.IsRunningSet(false);
 			::wxSafeYield(this, true);	// ::wxYield();
 			break;
 		default:
@@ -71,11 +67,17 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 
 void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 	m_timer.Stop();
-	bool isReady = m_Executor.IsWorking();
+
+	bool IsStartable = !m_Executor.IsRunning();
+	m_Btn_ExecEditor->Enable(IsStartable);
+	m_Btn_ExecAll->Enable(IsStartable);
+
+	bool isReady = m_Executor.IsWorking();	//Is USB connected
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
 		LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
 	}
+
 	m_timer.Start(250);	// Restart timer
 }
 
@@ -102,24 +104,24 @@ CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 	m_Btn_Panic->SetToolTip(_("STOP ALL"));
 
 		wxBoxSizer* SizButtons = new wxBoxSizer(wxVERTICAL);
-			SizButtons->Add(m_Btn_ExecAll, 1, wxALL | wxGROW, 1);
-		SizButtons->Add(m_Btn_ExecEditor,	1, wxALL | wxGROW, 1);
-			SizButtons->Add(m_Btn_Panic, 1, wxALL | wxGROW, 1);
+			SizButtons->Add(m_Btn_ExecAll,		1, wxALL | wxGROW, 1);
+			SizButtons->Add(m_Btn_ExecEditor,	1, wxALL | wxGROW, 1);
+			SizButtons->Add(m_Btn_Panic,		1, wxALL | wxGROW, 1);
 
 		SetSizer(SizButtons);
 	Layout();
 	PostSizeEventToParent();
 
-	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands, this, ID_Btn_ExecAll);
-	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands, this, ID_Btn_ExecEditor);
-	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands, this, ID_Btn_Panic);
-	this->Bind(wxEVT_TIMER, &CmdExecutorCtrl::OnTimer, this, m_timer.GetId());
+	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands,	this, ID_Btn_ExecAll);
+	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands,	this, ID_Btn_ExecEditor);
+	this->Bind(wxEVT_BUTTON, &CmdExecutorCtrl::OnBtnCommands,	this, ID_Btn_Panic);
+	this->Bind(wxEVT_TIMER,	 &CmdExecutorCtrl::OnTimer,			this, m_timer.GetId());
 
 	m_timer.Start(100);	// millisecond interval
 }
 
 CmdExecutorCtrl::~CmdExecutorCtrl() {
-	m_Executor.IsRunning(false);
+	m_Executor.IsRunningSet(false);
 	m_timer.Stop();
 	::wxSafeYield(this, true);	// wxYield();
 	hid_exit();	//Avoid Memory Leak about error_buffer

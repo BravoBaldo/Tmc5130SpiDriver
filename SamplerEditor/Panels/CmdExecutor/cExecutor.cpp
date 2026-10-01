@@ -29,7 +29,7 @@ void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs
 		}
 		LogMe(wxString::Format(" %d ", ++retryCount), false);
 		::wxYield();	//Required!
-
+		if (!m_Running) break;
 		size_t bytesRead = m_CommPort.Read(responseBuffer, vStep.m_Cmd, TimeoutMs);
 		if (bytesRead >= sizeof(AnswerHeader)) {
 			const AnswerHeader* ptrHeader = reinterpret_cast<const AnswerHeader*>(responseBuffer.data());
@@ -63,18 +63,15 @@ bool cExecutor::ExecuteSteps_FromDB(uint16_t	m_MasterId) {	//Execute Steps from 
 
 #if defined(USE_ODBC)
 #else
-	{
-		cDBSampler yy(SQLLITEDBPATH);
-		do {
-			if (!m_Running)
-				break;
-			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
-			if (recordFound) {
-	ExecuteStep(vStep);
-				detailProg = vStep.m_DetailProg + 1;
-			}
-		} while (recordFound);
-	}
+	cDBSampler yy(SQLLITEDBPATH);
+	do {
+		if (!m_Running)	break;
+		recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
+		if (recordFound) {
+			ExecuteStep(vStep);
+			detailProg = vStep.m_DetailProg + 1;
+		}
+	} while (recordFound && m_Running);
 #endif
 
 	return true;
@@ -120,16 +117,14 @@ bool cExecutor::ExecuteStep(sCommand& vStep) {
 }
 
 void cExecutor::ExecuteStepSingle(sCommand& vStep) {
-	IsRunning(true);
-				ExecuteStep(vStep);
-	IsRunning(false);
+	IsRunningSet(true);
+	ExecuteStep(vStep);
+	IsRunningSet(false);
 }
 
 int cExecutor::GetMotorSelected(void) {
 	return (m_ptrAnswerShow ? m_ptrAnswerShow->GetMotorSelected() : -1);
 }
-
-void cExecutor::IncPoolIdx(void) { m_PoolIdx = (m_PoolIdx + 1) % 3; }    //AAA count Motors
 
 void cExecutor::OnTimer(wxTimerEvent&) {
 	m_Timer.Stop();
@@ -141,19 +136,19 @@ void cExecutor::OnTimer(wxTimerEvent&) {
 			IncPoolIdx();
 		}
 		sCommand AskMotor{};// = { eTypCommand, eStepDirect, '0', 1, "M", {m_PoolIdx}, 0, 0, 0 };
-		AskMotor.m_MsgType = eTypCommand;
-		AskMotor.m_SubSystem = eStepDirect;
-		AskMotor.m_Cmd = '0';
-		AskMotor.m_PatLen = 1;
-		AskMotor.m_Pattern[0] = 'M';
-		AskMotor.m_Par[0] = m_PoolIdx;
-		AskMotor.m_MasterId = 0;			//2
-		AskMotor.m_DetailProg = 0;			//2
-		AskMotor.m_ChkSum = 0;			//2
+		AskMotor.m_MsgType		= eTypCommand;
+		AskMotor.m_SubSystem	= eStepDirect;
+		AskMotor.m_Cmd			= '0';
+		AskMotor.m_PatLen		= 1;
+		AskMotor.m_Pattern[0]	= 'M';
+		AskMotor.m_Par[0]		= m_PoolIdx;
+		AskMotor.m_MasterId		= 0;			//2
+		AskMotor.m_DetailProg	= 0;			//2
+		AskMotor.m_ChkSum		= 0;			//2
 
-		IsRunning(true);
+		IsRunningSet(true);
 		ExecuteStep(AskMotor);
-		IsRunning(false);
+		IsRunningSet(false);
 		
 		//::wxYield();
 	}

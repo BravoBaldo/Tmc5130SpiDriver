@@ -43,6 +43,10 @@ enum {
 	ID_MNU_PRGMAIN_DROP,
 	ID_MNU_PRGMAIN_PRINT,
 	ID_MNU_PRGMAIN_Export,
+#define TESTEXECUTION
+#if defined(TESTEXECUTION)
+	ID_MNU_PRGMAIN_ExecProcess,
+#endif
 
 	ID_MNU_PRGMDET_EXECFROM,
 	ID_MNU_PRGMDET_EXECTO,
@@ -81,6 +85,9 @@ BEGIN_EVENT_TABLE(SamplerFrame, wxFrame)
 	EVT_MENU			( ID_MNU_PRGMAIN_DROP,		OnMenu )
 	EVT_MENU			( ID_MNU_PRGMAIN_PRINT,		OnMenu )
 	EVT_MENU			( ID_MNU_PRGMAIN_Export,	OnMenu )
+#if defined(TESTEXECUTION)
+	EVT_MENU(ID_MNU_PRGMAIN_ExecProcess, OnMenu)
+#endif
 
 	EVT_MENU			(ID_MNU_PRGMDET_EXECSTEP,	OnMenu)
 	EVT_MENU			(ID_MNU_PRGMDET_EXECFROM,	OnMenu)
@@ -412,6 +419,19 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 				}
 			}
 			break;
+#if defined(TESTEXECUTION)
+		case ID_MNU_PRGMAIN_ExecProcess:
+			{
+				wxString		OldName;
+				unsigned int	ProgId;
+				long			CurrItemIdx = m_lstPrgMaster->GetCurrRow(&ProgId, &OldName);
+				if (CurrItemIdx >= 0) {
+					m_PanExec->ExecuteProcess(ProgId);
+				}
+			}
+			break;
+#endif
+
 		case ID_MNU_PRGMDET_EXECSTEP:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
@@ -574,6 +594,10 @@ void SamplerFrame::OnListEvent(wxListEvent& evt) {
 				m_menuPopUp->AppendSeparator();
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_PRINT,	_("Print (.lst)"));
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_Export,	_("Export (.xml)"));
+#if defined(TESTEXECUTION)
+				m_menuPopUp->AppendSeparator();
+				m_menuPopUp->Append(ID_MNU_PRGMAIN_ExecProcess, _("Execute"));
+#endif
 
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());
 				wxDELETE(m_menuPopUp);
