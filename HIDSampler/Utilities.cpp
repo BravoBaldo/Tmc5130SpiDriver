@@ -3,7 +3,7 @@
 
 void ShowBuffer(const uint8_t* data, uint16_t len){
     uint16_t nvalids = sizeof(sCommand); 
-    Serial.printf("\nReceiced %d bytes, valids %d:\n", len, nvalids);
+    Serial.printf("\nReceived %d bytes, valids %d:\n", len, nvalids);
 
     Serial.print("        : ");
     for(int i=0; i<nvalids; i++) Serial.printf("%d  ", (i%10));

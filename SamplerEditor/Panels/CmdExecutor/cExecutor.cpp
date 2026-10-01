@@ -12,7 +12,6 @@ cExecutor::~cExecutor() {
 	m_Timer.Stop();
 };
 
-
 void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs) {
 	bool		Success = false;
 	int			retryCount = 0;
@@ -29,7 +28,7 @@ void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs
 			break;
 		}
 		LogMe(wxString::Format(" %d ", ++retryCount), false);
-		//::wxYield();
+		::wxYield();	//Required!
 
 		size_t bytesRead = m_CommPort.Read(responseBuffer, vStep.m_Cmd, TimeoutMs);
 		if (bytesRead >= sizeof(AnswerHeader)) {
@@ -46,7 +45,7 @@ void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs
 				LogMe(wxString::Format(" %s ...", Success ? "True\n" : "False"), false);
 			}
 		} else {
-			LogMe(wxString::Format("Timeout scaduto (%ld ms). Ritrasmetto...\n", TimeoutMs), true);
+			LogMe(wxString::Format("Timeout expired (%ld ms). Retransmitting...\n", TimeoutMs), true);
 			if (retryCount > 50) {	// Opzionale: aggiungi un limite massimo di tentativi per evitare loop infiniti
 				LogMe("\n******* Too many failed attempts. Operation aborted. ****\n\n", true);
 				m_Running = false;	//Stop Execution
@@ -57,10 +56,28 @@ void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs
 	LogMe(wxString::Format("  Completed in %ld ms.\n", swTotCmd.Time()), false);
 }
 
-void cExecutor::ExecuteStepSingle(sCommand& vStep) {
-	IsRunning(true);
+bool cExecutor::ExecuteSteps_FromDB(uint16_t	m_MasterId) {	//Execute Steps from DB
+	int64_t		detailProg = 0;
+	sCommand	vStep;
+	bool		recordFound;
+
+#if defined(USE_ODBC)
+#else
+	{
+		cDBSampler yy(SQLLITEDBPATH);
+		do {
+			if (!m_Running)
+				break;
+			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
+			if (recordFound) {
 	ExecuteStep(vStep);
-	IsRunning(false);
+				detailProg = vStep.m_DetailProg + 1;
+			}
+		} while (recordFound);
+	}
+#endif
+
+	return true;
 }
 
 bool cExecutor::ExecuteStep(sCommand& vStep) {
@@ -74,46 +91,38 @@ bool cExecutor::ExecuteStep(sCommand& vStep) {
 		return true;
 	}
 
+	//Check if value come from DB
+#if defined(USE_ODBC)
+#else
+	std::unique_ptr<cDBSampler> dbPtr = nullptr;
+#endif
 	for (size_t i = 0; i < vStep.m_PatLen; ++i) {
 		if (vStep.m_Pattern[i] == 'S') {
 			int	iVal = vStep.m_Par[i];
 			if (iVal >= 50000) {
-				cDBSampler yy(SQLLITEDBPATH);
-				vStep.m_Par[i] = yy.Defaults_NazSteps(iVal - 50000);
+#if defined(USE_ODBC)
+#else
+				if (!dbPtr)	dbPtr = std::make_unique<cDBSampler>(SQLLITEDBPATH);
+				vStep.m_Par[i] = dbPtr->Defaults_NazSteps(iVal - 50000);
+#endif
 			}
-
 		}
 	}
 
+	//Add CheckSum
 	vStep.m_ChkSum = add_checksum_fast(
 		reinterpret_cast<const uint8_t*>(&vStep),
 		sizeof(vStep) - sizeof(vStep.m_ChkSum)
 	);
 
 	SendCommand(vStep, sizeof(vStep));
-
 	return true;
 }
-bool cExecutor::ExecuteSteps_FromDB(uint16_t	m_MasterId) {	//Execute Steps from DB
-	int64_t detailProg = 0;
-	sCommand vStep;
-	bool recordFound;
 
-#if defined(USE_ODBC)
-#else
-	{
-		cDBSampler yy(SQLLITEDBPATH);
-		do {
-			recordFound = yy.ProgDetail_Select(m_MasterId, detailProg, vStep);
-			if (recordFound) {
+void cExecutor::ExecuteStepSingle(sCommand& vStep) {
+	IsRunning(true);
 				ExecuteStep(vStep);
-				detailProg = vStep.m_DetailProg + 1;
-			}
-		} while (recordFound && m_Running );
-	}
-#endif
-
-	return true;
+	IsRunning(false);
 }
 
 int cExecutor::GetMotorSelected(void) {

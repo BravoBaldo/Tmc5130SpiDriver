@@ -7,11 +7,10 @@
 #include "CmdEditorCtrl.h"
 #include "DBCmdView.h"		//cDetailListCtrl
 
-
 class CmdExecutorCtrl : public wxPanel {
     // Componenti GUI gestiti dal ciclo di vita nativo di wxWidgets
 	wxButton*	        m_Btn_ExecAll	= nullptr;
-	wxButton*	        m_Btn_ExecStep	= nullptr;
+	wxButton*	m_Btn_ExecEditor	= nullptr;
 	wxButton*	        m_Btn_Panic		= nullptr;
 
     // Puntatori a classi esterne (risolti tramite forward declaration)
@@ -23,8 +22,7 @@ class CmdExecutorCtrl : public wxPanel {
 
 	void		OnBtnCommands	(wxCommandEvent& Evt);
 	void		OnTimer			(wxTimerEvent& Evt);
-    
-    wxDECLARE_EVENT_TABLE();
+	void		ShowCurrentStep	(long i, sCommand& vStep);
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,
