@@ -7,7 +7,7 @@ void CoordDBctrl::OnChange(wxCommandEvent& Evt) {
 	long DefVal=0;
 	wxString Descr;
 	wxString DefaultName;
-	bool up = ChkThreshold();// Val > (int)m_Theshold;
+	bool up = ChkThreshold();
 	if (up) {
 		int Val = m_spinPos->GetValue();
 		DefaultName = wxString::Format("%s%03d", m_Prefix, Val - m_Theshold);

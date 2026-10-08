@@ -2,18 +2,13 @@
 #include <Arduino.h>
 #include "TMC5130.h"
 
-#define NEW_HOMING
-
 class TMC5130_FSA : public TMC5130 {
 	typedef enum : uint8_t {
 		Nothing,
 		//---------------------------------------
 		WaitHomeA,
-//		WaitHomeB,
-#if defined(NEW_HOMING)
 		WaitHomeC,
 		WaitHomeD,
-#endif
 		WaitStopAtHome,
 		WaitPosZero,
 		//---------------------------------------
@@ -31,7 +26,6 @@ public:
 			default:
 				break;
 		//---------------------------------------
-#if defined(NEW_HOMING)
 			case WaitHomeA:
 				if(WaitMotor(eWaitHomeL, true))	{
 					setVelocities    ( eVMAX, 0);
@@ -39,7 +33,7 @@ public:
 					setStops		(true, false, false, true, false, false, false);
 					SetTimer		(500);
 					//SetFreeRunning	(1, 8, true);
-					SetFreeRunning_base(200, 50, 50, 1000, true);
+					SetFreeRunning_base(200, 50, 50, 1000, true);	//(200, 50, 50, 1000, true);
 					Status_SetHome = WaitHomeD;
 				}
 				break;
@@ -56,14 +50,7 @@ public:
 					Status_SetHome = WaitPosZero;
 				}
 				break;
-#else
-			case WaitHomeA:
-				if(WaitMotor(eWaitHomeL, true))	{
-					setVelocities    ( eVMAX, 0);
-					Status_SetHome = WaitStopAtHome;
-				}
-				break;
-#endif
+
 			case WaitStopAtHome:
 				if(WaitMotor(eWaitVelocity, false)){
 					setRampMode(PositionMode);
@@ -75,8 +62,9 @@ public:
 						Status_SetHome = WaitPosZero;
 				}
 				break;
-			case WaitPosZero:
-				if(WaitMotor(eWaitPosition, false)){
+			case WaitPosZero:	//ToDo: AAA if velocity==0, position never reached!!!
+				//if(WaitMotor(eWaitPosition, false)){
+				if(WaitMotor(eWaitPosAndVel, false)){
 					SetTrapezoidal(60, 5000);
 					setCurrent   (0, 0, 0);	//Homing does not graps
 					Status_SetHome = Nothing;
@@ -129,12 +117,17 @@ public:
 	bool	Exec_SearchBegin(unsigned long T=8000){
 				if(IsRotative()) return Exec_SearchBegin_R(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); ClearError();		//getGstat();
+				SetChipEnable(true); ClearError();	getGstat();
+				setVelocities	( eVMAX, 0);
 				setMotorDirection(ReverseDirection);	//GCONF
 				setStops		(false, true, true, false, false, false, false);
 				setCurrent		(20, 30, 0);
 
-				SetFreeRunning	(ResetSpeed(), 8, 0);	//SetFreeRunning	(20, 8, 0);
+				//SetFreeRunning	(ResetSpeed(), 8, 0);	//SetFreeRunning	(20, 8, 0);
+				setMicrosteps(8);	//(MaxVel, a1, a2, d1, bool Positive){
+				SetFreeRunning_base((uint32_t)(53687*ResetSpeed())>>(8), 2, 40, 1000, 0);
+
+				
 				SetTimer		(T);
 				Status_SetHome = WaitHomeA;
 				return true;
@@ -142,7 +135,7 @@ public:
 	bool	Exec_SearchBegin_R(unsigned long T=3000){
 				if(!IsRotative()) return Exec_SearchBegin(T);
 				if(Status_SetHome != Nothing) return false;
-				SetChipEnable(true); ClearError();		//getGstat();
+				SetChipEnable(true); ClearError();	getGstat();
 				setVelocities	( eVMAX, 0);
 				setMotorDirection(ForwardDirection);	//GCONF
 				setCurrent		(10, 11, 10);

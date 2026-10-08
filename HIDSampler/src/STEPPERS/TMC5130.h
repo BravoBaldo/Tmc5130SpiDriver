@@ -345,8 +345,73 @@ public:
 
 
 private:
+
+#define TMC5130_REGISTERS_LIST \
+	X(GCONF,		0x00,	RW,	0x0	)	\
+	X(GSTAT,		0x01,	RC,	0x0	)	\
+	X(IFCNT,		0x02,	 R,	0x0	)	\
+	X(NODECONF,		0x03,	 W,	0x0	)	\
+	X(IOIN,			0x04,	RD,	0x0	)	\
+	X(X_COMPARE,	0x05,	 W,	0xFFFFFFFF	)	\
+	X(IHOLD_IRUN,	0x10,	 W,	0x0			)	\
+	X(TPOWERDOWN,	0x11,	 W,	0x00FF		)	\
+	X(TSTEP,		0x12,	 R,	0xFFFFF		)	\
+	X(TPWMTHRS,		0x13,	 W,	0xFFFFF		)	\
+	X(TCOOLTHRS,	0x14,	 W,	0xFFFFF		)	\
+	X(THIGH,		0x15,	 W,	0xFFFFF		)	\
+	X(RAMPMODE,		0x20,	RW,	0x03		)	\
+	X(XACTUAL,		0x21,	RW,	0xFFFFFFFF	)	\
+	X(VACTUAL,		0x22,	 R,	0x00FFFFFF	)	\
+	X(VSTART,		0x23,	 W,	0x0003FFFF	)	\
+	X(A1,			0x24,	 W,	0xFFFF		)		\
+	X(V1,			0x25,	 W,	0x000FFFFF	)	\
+	X(AMAX,			0x26,	 W,	0xFFFF		)	\
+	X(VMAX,			0x27,	 W,	0x7FFFFF	)	\
+	X(DMAX,			0x28,	 W,	0xFFFF		)	\
+	X(D1,			0x2A,	 W,	0xFFFF		)	\
+	X(VSTOP,		0x2B,	 W,	0x0003FFFF	)	\
+	X(TZEROWAIT,	0x2C,	 W,	0xFFFF		)	\
+	X(XTARGET,		0x2D,	RW,	0xFFFFFFFF	)	\
+	X(VDCMIN,		0x33,	 W,	0x007FFFFF	)	\
+	X(SW_MODE,		0x34,	RW,	0x0			)	\
+	X(RAMP_STAT,	0x35,	RC,	0x0			)	\
+	X(XLATCH,		0x36,	 R,	0xFFFFFFFF	)	\
+	X(ENCMODE,		0x38,	RW,	0x0			)	\
+	X(X_ENC,		0x39,	RW,	0xFFFFFFFF	)	\
+	X(ENC_CONST,	0x3A,	 W,	0x0			)	\
+	X(ENC_STATUS,	0x3B,	RC,	0x0001		)	\
+	X(ENC_LATCH,	0x3C,	 R,	0xFFFFFFFF	)	\
+	X(MSLUT_0,		0x60,	 W,	0x0	)	\
+	X(MSLUT_1,		0x61,	 W,	0x0	)	\
+	X(MSLUT_2,		0x62,	 W,	0x0	)	\
+	X(MSLUT_3,		0x63,	 W,	0x0	)	\
+	X(MSLUT_4,		0x64,	 W,	0x0	)	\
+	X(MSLUT_5,		0x65,	 W,	0x0	)	\
+	X(MSLUT_6,		0x66,	 W,	0x0	)	\
+	X(MSLUT_7,		0x67,	 W,	0x0	)	\
+	X(MSLUTSEL,		0x68,	 W,	0x0	)	\
+	X(MSLUTSTART,	0x69,	 W,	0x0	)	\
+	X(MSCNT,		0x6A,	 R,	0x3FF	)	\
+	X(MSCURACT,		0x6B,	 R,	0x0	)	\
+	X(CHOPCONF,		0x6C,	RW,	0x0	)	\
+	X(COOLCONF,		0x6D,	 W,	0x0	)	\
+	X(DCCTRL,		0x6E,	 W,	0x0	)	\
+	X(DRV_STATUS,	0x6F,	 R,	0x0	)	\
+	X(PWMCONF,		0x70,	 W,	0x0	)	\
+	X(PWM_SCALE,	0x71,	 R,	0x0	)	\
+	X(ENCM_CTRL,	0x72,	 W,	0x0	)	\
+	X(LOST_STEPS,	0x73,	 R,	0x0	)	// Last
+
+
+#define USELISTINGREGS
   // ====== Registers ======
   typedef enum : uint8_t {
+#if defined(USELISTINGREGS)
+#define X(RegName, RegAddr, RWMode, RegMask) RegName = RegAddr,
+	TMC5130_REGISTERS_LIST
+#undef X
+
+#else
     GCONF       = 0x00,   // Gconf and GconfBits  RW
     GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
     IFCNT       = 0x02,   // 0xFF                 R      Interface counter
@@ -407,6 +472,7 @@ private:
     PWM_SCALE   = 0x71,   // PwmScale             R
     ENCM_CTRL   = 0x72,   // EncmCrtl             W
     LOST_STEPS  = 0x73,   //                      R
+#endif
   }Reg;
 
   enum InterfaceMode {
@@ -449,7 +515,7 @@ public:
     uint32_t cool_step_threshold = 0;
   };
 
-	void ClearError(){	//Clear Error AAA: ToDo Rename in ClearError
+	void ClearError(){
 		Chopconf chopconf;
 		chopconf.bytes = readReg(CHOPCONF);
 		chopconf.toff = 0;
@@ -743,38 +809,23 @@ public:
 		SetRamp(a, v, a, 0);	//Trapezoidal
 	}
 
+#define SUSPECT_BUG_FREERUNNING
 	void SetFreeRunning_base(uint32_t MaxVel, uint16_t a1, uint16_t a2, uint16_t d1, bool Positive){
 		setFirstAcceleration	(a1);
 		setSecondAcceleration	(a2);
 		setFirstDeceleration	(d1);
 		setMaxVelocity			( MaxVel );
+#if defined(SUSPECT_BUG_FREERUNNING)
+		setTargetBase(Positive ? 10000:-10000);
+#else
 		setRampMode(Positive ? VelocityPositiveMode : VelocityNegativeMode);
+#endif
 	}
 
 	void SetFreeRunning(uint8_t SpeedFor1RPS, uint8_t mres, bool Positive){ //
 		setMicrosteps(mres);
 		SetFreeRunning_base((uint32_t)(53687*SpeedFor1RPS)>>(mres), 1000, 1000, 1000, Positive);
-/*		
-		setFirstAcceleration(1000);
-		setSecondAcceleration(1000);
-		setFirstDeceleration(1000);
-		setMaxVelocity( (uint32_t)(53687*SpeedFor1RPS)>>(mres));
-		setRampMode(Positive ? VelocityPositiveMode : VelocityNegativeMode);
-*/
-	}
-	/*
-	void SetPositional(uint8_t SpeedFor1RPS, uint8_t mres){ //
-		StopMotor             (1000);
-		setMicrosteps         (mres);
-		setFirstAcceleration  (100);
-		setSecondAcceleration (100);
-		setFirstDeceleration  (100);
-		setMaxVelocity        ( (uint32_t)(53687*SpeedFor1RPS)>>(stepper.getMicrosteps()));
-		setRampMode           (PositionMode);
-		setPosition           (0);
-		setTarget             (0);  //Include setRampMode
-	}*/
-	
+	}	
 	
 
   inline uint8_t  getIcVersion  (void)          { return (readReg(IOIN)>>24) & 0xFF; }
@@ -858,14 +909,13 @@ public:
 
 	typedef enum { eWaitVelocity, eWaitPosition, eWaitHomeL, eWaitPosAndVel, eWaitTimer, eWaitHomeR, eWaitHomeRL} eWaitingMotor;
   
-	//#define DEBUGINFO(Str)	{Serial.printf("  %6s=%s\n", Str, res?"True":"False");}
-	#define DEBUGINFO(Str)
+	#define DEBUGINFO(Str)	{Serial.printf("\"  %6s=%s\t", Str, res?"True":"False");}
+	//#define DEBUGINFO(Str)
 	
 	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
 		bool wt = WaitTimer();
 		if (CheckTimeOut && wt)	{
 			Serial.print(" Exit for Timeout: ");
-			 
 			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
 			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
 			return true;
@@ -873,7 +923,7 @@ public:
 		bool res;
 		switch (Ty) {
 			case eWaitVelocity:	res = ChkStop();							DEBUGINFO("Stop  ");	return res;
-			case eWaitPosition:	res = GetSpiStatus().position_reached;		DEBUGINFO("Posit ");	return res;
+			case eWaitPosition:	res = GetSpiStatus().position_reached;		DEBUGINFO("Posit ");	return res;		//ToDo: AAA if velocity==0, position never reached!!!
 			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	DEBUGINFO("HomeL ");	return res;
 			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	DEBUGINFO("HomeR ");	return res;
 			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	DEBUGINFO("HomeRL");	return res;
@@ -905,20 +955,6 @@ public:
 		}
 		return true;
 	}
-
-	bool	WaitMotorOrg(eWaitingMotor Ty, bool CheckTimeOut=false){
-		if (CheckTimeOut && WaitTimer())	return true; 
-		switch (Ty) {
-			case eWaitVelocity:		return ChkStop();
-			case eWaitPosition:		return GetSpiStatus().position_reached;
-			case eWaitHomeL:		return (GetSpiStatus().bytes & 0x40) != 0;
-			case eWaitHomeR:		return (GetSpiStatus().bytes & 0x80) != 0;
-			case eWaitHomeRL:		return (GetSpiStatus().bytes & 0xC0) != 0;
-			case eWaitPosAndVel:	return ChkEndOfSteps();
-			case eWaitTimer:		return WaitTimer();			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
-		}
-		return true;	//Error!!!!
-  }
 
 private:
 

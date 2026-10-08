@@ -8,8 +8,6 @@
 #define USE_SPI
 #define USE_TMC5130       //Require USE_EXPANDERS and USE_SPI
 #define USE_TMC5130_FSA   //Require USE_EXPANDERS and USE_SPI
-//#define USE_STEPPERS    //Require USE_EXPANDERS and USE_SPI
-//#define USE_TMC_Multi_FSA //Require USE_EXPANDERS, USE_SPI, USE_TMC5130, USE_TMC5130_FSA
 
 
 

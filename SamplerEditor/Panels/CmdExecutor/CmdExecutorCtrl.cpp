@@ -13,9 +13,9 @@ void CmdExecutorCtrl::SetEditorAndDB(CmdEditorCtrl* ptrEditor, cDetailListCtrl* 
 	m_ptrPrgDetail = ptrPrgDetail;
 }
 
-void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId) {
+void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(uint16_t n, sCommand&)> onStepCallback) {
 	m_Executor.IsRunningSet(true);
-	m_Executor.ExecuteSteps_FromDB(m_MasterId);
+	m_Executor.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
 	m_Executor.IsRunningSet(false);
 }
 
@@ -27,9 +27,11 @@ void CmdExecutorCtrl::ShowCurrentStep(long i, sCommand& vStep) {
 }
 
 bool CmdExecutorCtrl::ExecuteSteps_FromTo(long from, long to) {
-	LogMe(wxString::Format("Start Execution from %ld'\n-----------------------------\n", from), false);
-
+	LogMe(wxString::Format("--- Start Execution from %ld to %ld\n", from, to), true);
 	m_Executor.IsRunningSet(true);
+
+#define USE_MASTERID
+#if defined(USE_MASTERID)
 	for (long i = from; i < to; i++) {
 		sCommand vStep;
 		ShowCurrentStep(i, vStep);		//Get vStep from the ListView m_ptrPrgDetail
@@ -37,8 +39,16 @@ bool CmdExecutorCtrl::ExecuteSteps_FromTo(long from, long to) {
 		if (!m_Executor.IsRunning())
 			break;
 	}
+#else
+	m_Executor.ExecuteSteps_FromDB(1, from, to);
+/*		m_Executor.ExecuteSteps_FromDB(1, from, to, [this](uint16_t n, sCommand&) -> void {
+		m_ptrPrgDetail->EnsureVisibleCentered(n);
+		::wxSafeYield(this, true);
+		});
+*/
+#endif
 	m_Executor.IsRunningSet(false);
-	LogMe("Stop Execution --------------------------\n", true);
+	LogMe(" Stop Execution --------------------------\n", true);
 
 	return true;
 }
@@ -70,12 +80,12 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 
 	bool IsStartable = !m_Executor.IsRunning();
 	m_Btn_ExecEditor->Enable(IsStartable);
-	m_Btn_ExecAll->Enable(IsStartable);
+	m_Btn_ExecAll	->Enable(IsStartable);
 
 	bool isReady = m_Executor.IsWorking();	//Is USB connected
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
-		LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
+		//LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
 	}
 
 	m_timer.Start(250);	// Restart timer

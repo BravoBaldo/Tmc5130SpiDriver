@@ -78,7 +78,7 @@ void SamplerHIDDevice::SendBuffer(uint8_t* Buffer, size_t len, uint8_t ReportId)
 
   if (HID.ready()) {
     HID.SendReport(ReportId, m_OutBuffer, sizeof(m_OutBuffer));
-    Serial.printf("Sent buffer (%d bytes or %d)!\n\n", sizeof(m_OutBuffer), len);
+    //Serial.printf("Sent buffer (%d bytes or %d)!\n\n", sizeof(m_OutBuffer), len);
   }
 }
 

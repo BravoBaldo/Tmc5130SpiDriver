@@ -41,12 +41,10 @@ uint32_t TMC5130::genSpiFunct(Reg reg, uint32_t value, bool Read){
   return val;
 }
 
-// Funzione privata: scrive un registro via SPI
 void TMC5130::spiWrite(Reg reg, uint32_t value) {
   genSpiFunct(reg, value, false);
 }
 
-// Funzione privata: legge un registro via SPI
 uint32_t TMC5130::spiRead(Reg reg) {
   // 1) Prima transazione = prefetch (dati non validi)
   genSpiFunct(reg, 0, true);
@@ -209,14 +207,14 @@ void TMC5130::setStops(bool SwapLR, bool EnStopL, bool EnPoolL, bool EnStopR, bo
 
 	sw_mode.swap_lr			= (SwapLR)	?1:0;	//1: Swap the left and the right reference switch input REFL and REFR
 
-	sw_mode.stop_l_enable	= (EnStopL)	?1:0;			//1: Enables automatic motor stop during active left reference switch input
-	sw_mode.pol_stop_l		= (EnPoolL)	?1:0;			//0=non-inverted, high active, 1=inverted, low active
+	sw_mode.stop_l_enable	= (EnStopL)	?1:0;	//1: Enables automatic motor stop during active left reference switch input
+	sw_mode.pol_stop_l		= (EnPoolL)	?1:0;	//0=non-inverted, high active, 1=inverted, low active
 
-	sw_mode.stop_r_enable	= (EnStopR)	?1:0;			//1: Enables automatic motor stop during active right reference switch input
-	sw_mode.pol_stop_r		= (EnPoolR)	?1:0;			//0=non-inverted, high active, 1=inverted, low active
+	sw_mode.stop_r_enable	= (EnStopR)	?1:0;	//1: Enables automatic motor stop during active right reference switch input
+	sw_mode.pol_stop_r		= (EnPoolR)	?1:0;	//0=non-inverted, high active, 1=inverted, low active
 
-	sw_mode.sg_stop			= (EnSg)	?1:0;			//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
-	sw_mode.en_softstop		= (EnSoft)	?1:0;			//0: Hard stop 1: Soft stop    
+	sw_mode.sg_stop			= (EnSg)	?1:0;	//1: Enable stop by StallGuard2 (also available in DcStep mode). Disable to release motor after stop event.           
+	sw_mode.en_softstop		= (EnSoft)	?1:0;	//0: Hard stop 1: Soft stop    
 
 	setSwMode(sw_mode);
 }
@@ -241,9 +239,10 @@ void TMC5130::setStops(bool Swap){	//enable both side, but I suppose switch only
 // =====================================================
 
 void TMC5130::writeReg(Reg reg, uint32_t value) {
-  if (mode == MODE_SPI) spiWrite(reg, value);
+	Serial.printf("\n>>write Reg=0x%02X Val=0x%08X\n", reg, value);
+	if (mode == MODE_SPI) spiWrite(reg, value);
 #if defined(INCLUDE_UNTESTED)
-  else if (mode == MODE_UART) writeRegUART(uartAddr, reg, value);
+	else if (mode == MODE_UART) writeRegUART(uartAddr, reg, value);
 #endif
 }
 

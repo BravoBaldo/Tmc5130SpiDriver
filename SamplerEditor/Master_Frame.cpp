@@ -421,17 +421,35 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 			break;
 #if defined(TESTEXECUTION)
 		case ID_MNU_PRGMAIN_ExecProcess:
-			{
-				wxString		OldName;
-				unsigned int	ProgId;
-				long			CurrItemIdx = m_lstPrgMaster->GetCurrRow(&ProgId, &OldName);
-				if (CurrItemIdx >= 0) {
-					m_PanExec->ExecuteProcess(ProgId);
+		case ID_MNU_PRGMDET_EXECSTEP:
+		case ID_MNU_PRGMDET_EXECFROM:
+		case ID_MNU_PRGMDET_EXECTO:
+		{
+			wxString		OldName;
+			unsigned int	ProgId;
+			long			CurrItemIdx = m_lstPrgMaster->GetCurrRow(&ProgId, &OldName);
+			if (CurrItemIdx >= 0) {
+				uint16_t from=0, to=0;
+				sCommand	vStep = m_lstPrgDetail->GetSelectedItem();
+				switch (event.GetId()) {
+					case ID_MNU_PRGMAIN_ExecProcess:	from = 0;					to = wxUINT16_MAX;			break;
+					case ID_MNU_PRGMDET_EXECSTEP:		from = vStep.m_DetailProg;	to = vStep.m_DetailProg;	break;
+					case ID_MNU_PRGMDET_EXECFROM:		from = vStep.m_DetailProg;	to = wxUINT16_MAX;			break;
+					case ID_MNU_PRGMDET_EXECTO:			from = 0;					to = vStep.m_DetailProg;	break;
 				}
+				m_PanExec->ExecuteProcess(ProgId, from, to, [this](uint16_t , sCommand& v) -> void {
+					long n = m_lstPrgDetail->FindItem(-1, wxString::Format("%d", v.m_DetailProg), false);
+					m_lstPrgDetail->EnsureVisibleCentered(n);
+					::wxSafeYield(this, true);
+					});
 			}
-			break;
+		}
+		break;
 #endif
 
+
+
+#ifdef EEEEEEEEEEEEEEEEEEEEE
 		case ID_MNU_PRGMDET_EXECSTEP:
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
@@ -448,9 +466,9 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 			{
 				long itemIndex = m_lstPrgDetail->GetFirstSelected();
 				m_PanExec->ExecuteSteps_FromTo(0, itemIndex+1);
-		}
+			}
 			break;
-
+#endif
 /*		case ID_MNU_PRGMAIN_SORT:
 			m_lstPrgMaster->ChangeSort();	//m_SortByName = !m_SortByName;
 			m_lstPrgMaster->MainPrg_Fill();
@@ -595,8 +613,10 @@ void SamplerFrame::OnListEvent(wxListEvent& evt) {
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_PRINT,	_("Print (.lst)"));
 				m_menuPopUp->Append(ID_MNU_PRGMAIN_Export,	_("Export (.xml)"));
 #if defined(TESTEXECUTION)
-				m_menuPopUp->AppendSeparator();
-				m_menuPopUp->Append(ID_MNU_PRGMAIN_ExecProcess, _("Execute"));
+				if (!m_PanExec->IsRunning()) {
+					m_menuPopUp->AppendSeparator();
+					m_menuPopUp->Append(ID_MNU_PRGMAIN_ExecProcess, _("Execute"));
+				}
 #endif
 
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());
@@ -648,9 +668,12 @@ void SamplerFrame::OnListEvent(wxListEvent& evt) {
 				//.............................................................
 				wxMenu* m_menuPopUp;
 				m_menuPopUp = new wxMenu;
-				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECFROM, _("(Re)Start From here"));
-				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECSTEP, _("Execute Single Step"));
-				m_menuPopUp->Append(ID_MNU_PRGMDET_EXECTO, _("Execute Until here"));
+				if (!m_PanExec->IsRunning()) {
+					m_menuPopUp->Append(ID_MNU_PRGMDET_EXECFROM, _("(Re)Start From here"));
+					m_menuPopUp->Append(ID_MNU_PRGMDET_EXECSTEP, _("Execute Single Step"));
+					m_menuPopUp->Append(ID_MNU_PRGMDET_EXECTO, _("Execute Until here"));
+				}else
+					m_menuPopUp->Append(wxID_NONE, _("...Running..."));
 				//-----------------------------------------------------------------
 				PopupMenu(m_menuPopUp, wxDefaultPosition); //event.GetPosition());
 				wxDELETE(m_menuPopUp);

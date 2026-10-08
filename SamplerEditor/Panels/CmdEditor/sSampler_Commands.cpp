@@ -42,7 +42,7 @@ static const sParams SamplerParams[]{
 	{ 'h', eChoice,	"Comparison",		0,				1,			"Compare"					, RetArray2({">=", "==", "<="})},
 	{ 'i', eNumber,	"Current",			0,				31,			"Current31"},
 	{ 'j', eNumber,	"Current",			0,				15,			"Current15"},
-	{ 'l', eChoice,	"Left/Right",		0,				1,			"Direction"					, RetArray2({"Left", "RIGHT"})								},
+	{ 'l', eChoice,	"Left/Right",		0,				1,			"Direction"					, RetArray2({"Left (Forward)", "RIGHT (Reverse)"})								},
 	{ 'm', eChoice,	"MicroSteps",		0,				8,			"Microsteps"				, RetArray2({"0=51200=1/256", "1=25600=1/128", "2=12800=1/64", "3=6400=1/32", "4=3200=1/16", "5=1600=1/8", "6=800=1/4", "7=400=1/2", "8=200=1/1"})},
 	{ 'n', eNumber,	"ShowedNumber",		0,				6,			"Show Number"},
 	{ 'o', eChoice,	"Open/Close",		0,				1,			"Open/Close"				, RetArray2({"Open", "Close"})								},
@@ -107,7 +107,18 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepNoMotor,	'k', "Set Advance",			"S",		RetArray2({"Steps"					})},
 
 	{eStepNoMotor,	'l', "InitGoto",			"VVAAV",	RetArray2({"StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
+
+
+
 	{eStepNoMotor,	'm', "Set Free Running",	"Vml",		RetArray2({"SpeedFor1RPS", "MicroSteps", "Direction"	})},
+	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
+
+	{eStepNoMotor,	'm', "Set FreeRunning Base","VAAAl",		RetArray2({"MaxVel", "A1", "A2", "D1", "Direction"})},
+	{eStepDirect,	'm', "Set FreeRunning Base","MVAAAl",		RetArray2({"Stepper", "MaxVel", "A1", "A2", "D1", "Direction"})},
+
+
+
+
 	{eStepNoMotor,	'n', "Set Accelerations",	"aA",		RetArray2({"Acc/De-celeration type", "Accel. Value"		})},
 	{eStepNoMotor,	'o', "Set Velocities",		"dV",		RetArray2({"Velocity type", "Velocity Value"			})},
 
@@ -147,7 +158,6 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'k', "Set Advance",			"MS",		RetArray2({"Stepper", "Steps"					})},
 
 	{eStepDirect,	'l', "InitGoto",			"MVVAAV",	RetArray2({"Stepper", "StartVelocity", "StopVelocity", "FirstAcceleration", "SecondDeceleration", "FirstVelocity"})},
-	{eStepDirect,	'm', "Set Free Running",	"MVml",		RetArray2({"Stepper", "SpeedFor1RPS", "MicroSteps", "Direction"		})},
 	{eStepDirect,	'n', "Set Accelerations",	"MaA",		RetArray2({"Stepper", "Acc/De-celeration type", "Accel. Value"		})},
 	{eStepDirect,	'o', "Set Velocities",		"MdV",		RetArray2({"Stepper", "Velocity type", "Velocity Value"				})},
 	{eStepDirect,	'p', "Set Direction",		"Ml",		RetArray2({"Stepper", "Direction"			})},

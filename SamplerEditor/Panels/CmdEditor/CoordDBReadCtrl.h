@@ -9,9 +9,7 @@
 ToDo: To refine:
     If value <=50000, use wxSpinCtrl
     else    wxComboBox
-
 */
-
 
 
 //#define DBROUTINEREAD_IN_TEST
@@ -87,8 +85,7 @@ class CoordDBReadctrl : public wxControl {
 
         if (mouseState.ShiftDown()|| mouseState.ControlDown()) {
             FillRoutines(true); // Shift-Click: Ordine crescente (alfabetico)
-        }
-        else {
+        } else {
             // Click normale: Ordine nativo
             FillRoutines(false);
         }

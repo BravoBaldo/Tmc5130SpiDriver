@@ -38,7 +38,7 @@ public:
 
     virtual ~CoordDBctrl() = default;
 
-    inline bool ChkThreshold()  {return ((unsigned int)m_spinPos->GetValue() > m_Theshold); }
+    inline bool ChkThreshold()  {return (m_spinPos->GetValue() > m_Theshold); }
 
     int     GetValue()                  { return m_spinPos->GetValue(); }
     void    SetRange(int min, int max)  { m_spinPos->SetRange(min, max); }
@@ -50,7 +50,7 @@ public:
     int     GetMax() const              { return m_spinPos->GetMax(); }
 
     wxString        m_Prefix = "NAZMotPos";
-    unsigned int    m_Theshold = 50000;
+    int             m_Theshold = 50000;
 private:
     bool            m_shownPrevious = false;
     wxSpinCtrl*     m_spinPos;

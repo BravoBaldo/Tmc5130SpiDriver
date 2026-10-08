@@ -314,51 +314,45 @@ bool cAnswersShow::SetAnswer(const AnswerHeader* ptrHeader, size_t AnswerLen ) {
 		case eTypAnswStepDir:
 			{
 				TmcAnswer Answ = *reinterpret_cast<const TmcAnswer*>(ptrHeader);
-				LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
+				//LogMe(wxString::Format("\tAnswer from Tmc: Cmd:%d, m_Result:%d, m_Remaining: %d", Answ.m_Cmd, Answ.m_Result, Answ.m_Remaining), false);
 				Log_Stepper_Fill(Answ);
 				Log_FSA(Answ);
 			}
 			break;
 
 		case eTypAnswFsaSingle:	//FSA Single Stepper
-			LogMe("FSA: ", true);
 			{
 				FsaSingleAnswer Answ = *reinterpret_cast<const FsaSingleAnswer*>(ptrHeader);
-				LogMe(wxString::Format("Motor %d\nStatus %d\n", Answ.m_Motor, Answ.m_FsaStatus), false);
+				//LogMe(wxString::Format("FSA: Motor %d\tStatus %d\n", Answ.m_Motor, Answ.m_FsaStatus), true);
 				Log_FSA(Answ);
 			}
 			break;
 
 		case eTypAnswStripLed:	//StripAnswer
-			LogMe("Answer from StripLED\n", true);
 			{
 				StripAnswer Answ = *reinterpret_cast<const StripAnswer*>(ptrHeader);
-				LogMe(wxString::Format("\tm_CurrGame.: %d\n", Answ.m_CurrGame), false);
-				LogMe(wxString::Format("\tm_Remaining: %d\n", Answ.m_Remaining), false);
+				LogMe(wxString::Format("Answer from StripLED: m_CurrGame.: %d\tm_Remaining: %d\n", Answ.m_CurrGame, Answ.m_Remaining), true);
 			}
 			break;
 
 		case eTypAnswVer:	//sAnswerVersion
-			LogMe("Firmware Version: ", true);
 			{
 				sAnswerVersion Answ = *reinterpret_cast<const sAnswerVersion*>(ptrHeader);
-				LogMe(wxString::Format("%02d-%02d-%02d %02d:%02d:%02d\n", Answ.Y, Answ.M, Answ.D, Answ.h, Answ.m, Answ.s), false);
+				LogMe(wxString::Format("Firmware Version: %02d-%02d-%02d %02d:%02d:%02d\n", Answ.Y, Answ.M, Answ.D, Answ.h, Answ.m, Answ.s), true);
 			}
 			break;
 
 		case eTypAnswPwReader:
-			LogMe("Read Power: ", true);
 			{
 				sAnswerPower Answ = *reinterpret_cast<const sAnswerPower*>(ptrHeader);
-				LogMe(wxString::Format("INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), false);
+				LogMe(wxString::Format("Read Power: INA260 -> Current: %.3f mA | Voltage: %.3f mV | Power: %.3f mW\n", Answ.Curr, Answ.Volt, Answ.Power), true);
 			}
 			break;
 
 		case eTypAnswExpander:	//sExpanderStandard
-			LogMe("Answer from Expanders\n", true);
 			{
 				sExpanderStandard Answ = *reinterpret_cast<const sExpanderStandard*>(ptrHeader);
-				LogMe(wxString::Format("\tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), false);
+				//LogMe(wxString::Format("Answer from Expanders: \tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), true);
 			}
 			break;
 

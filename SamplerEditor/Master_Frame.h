@@ -42,11 +42,10 @@ private:
 	void OnClearLog		(wxMouseEvent& Evt);
 
 	void OnMenu			( wxCommandEvent&	Evt );
-	void		OnBtnCommands	( wxCommandEvent&	Evt );
-	void		SetLayouts ( void );
-
+	void OnBtnCommands	( wxCommandEvent&	Evt );
+	void SetLayouts		();
 #ifdef USE_AUI
-	wxString	Perspective_Get	( void )			{ return m_mgr.SavePerspective(); }
+	wxString	Perspective_Get	()					{ return m_mgr.SavePerspective(); }
 	void		Perspective_Set	(const wxString& p)	{	if(p.Len()>0){
 															this->Freeze();
 															m_mgr.LoadPerspective(p);
@@ -62,6 +61,7 @@ private:
 	wxString	m_FrameTitle;
 	wxLocale*	m_locale					= nullptr;
 	wxTimer*	m_timer						= nullptr;
+//	wxMenu*		m_menuPopUp					= nullptr;
 
 	wxPanel*			m_PanEditor			= nullptr;
 	wxButton*			m_Btn_InsertAfter	= nullptr;
