@@ -116,6 +116,7 @@ public:
 
 	bool	Exec_SearchBegin(unsigned long T=8000){
 				if(IsRotative()) return Exec_SearchBegin_R(T);
+				
 				if(Status_SetHome != Nothing) return false;
 				SetChipEnable(true); ClearError();	getGstat();
 				setVelocities	( eVMAX, 0);
@@ -132,8 +133,10 @@ public:
 				Status_SetHome = WaitHomeA;
 				return true;
 			}
+			
 	bool	Exec_SearchBegin_R(unsigned long T=3000){
 				if(!IsRotative()) return Exec_SearchBegin(T);
+				
 				if(Status_SetHome != Nothing) return false;
 				SetChipEnable(true); ClearError();	getGstat();
 				setVelocities	( eVMAX, 0);
@@ -145,6 +148,7 @@ public:
 				Status_SetHome = WaitHomeA_R;
 				return true;
 			}
+			
 	bool	Exec_GoTo(int32_t xTarget, unsigned long T=5000){
 				if(Status_SetHome != Nothing) return false;
 				setCurrent(15, 15, 0);		//Motor_On

@@ -15,13 +15,13 @@ ToDo: To refine:
 //#define DBROUTINEREAD_IN_TEST
 
 class CoordDBReadctrl : public wxControl {
-    wxSizer* m_mainSizer;
-    wxComboBox* m_RoutineList; // Sostituito wxChoice con wxComboBox
+    wxSizer*    m_mainSizer;
+    wxComboBox* m_CoordsList;
 
 #if defined(DBROUTINEREAD_IN_TEST)
     // Aggiunto il parametro booleano per gestire l'ordinamento richiesto
     void FillRoutines(bool SortByName = false) {
-        m_RoutineList->Clear();
+        m_CoordsList->Clear();
 
         if (SortByName) {
             // Struttura temporanea per ordinare alfabeticamente mantenendo i dati associati
@@ -39,12 +39,12 @@ class CoordDBReadctrl : public wxControl {
                 });
 
             for (const auto& item : lista) {
-                m_RoutineList->Append(item.stringa, reinterpret_cast<void*>(static_cast<intptr_t>(item.id)));
+                m_CoordsList->Append(item.stringa, reinterpret_cast<void*>(static_cast<intptr_t>(item.id)));
             }
         } else {
             // Ordine nativo/originale numerico
             for (int i = 2001; i < 2050; i++) {
-                m_RoutineList->Append(
+                m_CoordsList->Append(
                     wxString::Format("Test Routine %d", i),
                     reinterpret_cast<void*>(static_cast<intptr_t>(i)));
             }
@@ -81,7 +81,7 @@ class CoordDBReadctrl : public wxControl {
         wxMouseState mouseState = wxGetMouseState();
 
         // Salviamo i dati correnti per riapplicarli dopo il Clear
-        void* dati_selezionati = gGetSelectedClientData(m_RoutineList);
+        void* dati_selezionati = gGetSelectedClientData(m_CoordsList);
 
         if (mouseState.ShiftDown()|| mouseState.ControlDown()) {
             FillRoutines(true); // Shift-Click: Ordine crescente (alfabetico)
@@ -93,7 +93,7 @@ class CoordDBReadctrl : public wxControl {
         // Ripristiniamo la selezione corretta cercando il ClientData salvato
         if (dati_sevisivi(dati_selezionati)) {
             int targetVal = static_cast<int>(reinterpret_cast<intptr_t>(dati_selezionati));
-            gGetIndexFromClientData(m_RoutineList, targetVal);
+            gGetIndexFromClientData(m_CoordsList, targetVal);
         }
 
         event.Skip(); // Permette a wxWidgets di mostrare fisicamente la tendina a schermo
@@ -104,7 +104,7 @@ class CoordDBReadctrl : public wxControl {
 public:
     CoordDBReadctrl(wxWindow* parent, wxWindowID id = wxID_ANY) : wxControl(parent, id) {
         // Creato wxComboBox con lo stile wxCB_READONLY per emulare perfettamente il comportamento grafico del wxChoice
-        m_RoutineList = new wxComboBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
+        m_CoordsList = new wxComboBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_READONLY);
 
         FillRoutines();
         SetLayout();
@@ -112,14 +112,14 @@ public:
         GetParent()->Layout();
 
         // Bind dell'evento macro per intercettare l'apertura del dropdown
-        m_RoutineList->Bind(wxEVT_COMBOBOX_DROPDOWN, &CoordDBReadctrl::OnDropdownAperto, this);
+        m_CoordsList->Bind(wxEVT_COMBOBOX_DROPDOWN, &CoordDBReadctrl::OnDropdownAperto, this);
     }
 
     void SetLayout(void) {
         m_mainSizer = new wxBoxSizer(wxHORIZONTAL);
-        m_mainSizer->Add(m_RoutineList, 1, wxEXPAND | wxALL, 0);
+        m_mainSizer->Add(m_CoordsList, 1, wxEXPAND | wxALL, 0);
         SetSizer(m_mainSizer);
     }
-    int GetValue() { return static_cast<int>(reinterpret_cast<intptr_t>(gGetSelectedClientData(m_RoutineList))); }
-    void SetValue(int val) { gGetIndexFromClientData(m_RoutineList, val); }
+    int GetValue() { return static_cast<int>(reinterpret_cast<intptr_t>(gGetSelectedClientData(m_CoordsList))); }
+    void SetValue(int val) { gGetIndexFromClientData(m_CoordsList, val); }
 };

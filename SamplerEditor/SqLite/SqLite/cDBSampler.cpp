@@ -1028,14 +1028,8 @@ bool cDBSampler::Defaults_Set(const wxString& DefaultName, long DefVal, const wx
 }
 
 bool cDBSampler::Defaults_FillCoords(wxArrayString& Titles, wxArrayInt& Codes, bool ) {
-/*    wxString strQuerySQL = wxString::Format(
-        "SELECT DefaultName, DefaultValue, Description "
-        "FROM SAM_Defaults "
-        "WHERE DefaultName LIKE 'NAZMotPos%' "
-        "ORDER BY 1 ");// , SortByNum ? "1" : "2");
-*/
     wxString strQuerySQL = 
-        "SELECT DefaultName, DefaultValue, Description "
+        "SELECT DefaultName ||' (' || Description || ')='||DefaultValue, 50000+SUBSTR(DefaultName,10) "
         "FROM SAM_Defaults "
         "WHERE DefaultName LIKE 'NAZMotPos%' "
         "ORDER BY 1 ";

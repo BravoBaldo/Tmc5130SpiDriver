@@ -406,74 +406,46 @@ private:
 #define USELISTINGREGS
   // ====== Registers ======
   typedef enum : uint8_t {
-#if defined(USELISTINGREGS)
 #define X(RegName, RegAddr, RWMode, RegMask) RegName = RegAddr,
 	TMC5130_REGISTERS_LIST
 #undef X
-
-#else
-    GCONF       = 0x00,   // Gconf and GconfBits  RW
-    GSTAT       = 0x01,   // Gstat                RC      Global status (write 1 to clear flags)
-    IFCNT       = 0x02,   // 0xFF                 R      Interface counter
-    NODECONF    = 0x03,   // Nodeconf             W      SLAVECONF or NODECONF
-    IOIN        = 0x04,   // Ioin                 RD      Input pins
-    X_COMPARE   = 0x05,   //0xFFFF FFFF           W
-
-    IHOLD_IRUN  = 0x10,   // IholdIrun            W      Corrente run/hold
-    TPOWERDOWN  = 0x11,   //0x00FF                W
-    TSTEP       = 0x12,   //0xFFFFF               R
-    TPWMTHRS    = 0x13,   //0xFFFFF               W
-    TCOOLTHRS   = 0x14,   //0xFFFFF               W
-    THIGH       = 0x15,   //0xFFFFF               W
-   
-    RAMPMODE    = 0x20,   //0x03                  RW
-    XACTUAL     = 0x21,   //0xFFFF FFFF           RW
-    VACTUAL     = 0x22,   //0x00FF FFFF           R
-    VSTART      = 0x23,   //0x0003 FFFF           W
-    A1          = 0x24,   //0xFFFF                W
-    V1          = 0x25,   //0x000F FFFF           W
-    AMAX        = 0x26,   //0xFFFF                W
-    VMAX        = 0x27,   //0x7F FFFF             W
-    DMAX        = 0x28,   //0xFFFF                W
-
-    D1          = 0x2A,   //0xFFFF                W
-    VSTOP       = 0x2B,   //0x0003 FFFF           W
-    TZEROWAIT   = 0x2C,   //0xFFFF                W
-    XTARGET     = 0x2D,   //0xFFFF FFFF           RW
-
-    VDCMIN      = 0x33,   //0x007F FFFF           W    Ramp Generator Driver Feature Control Register Set
-    SW_MODE     = 0x34,   // SwMode               RW
-    RAMP_STAT   = 0x35,   // RampStat             RC
-    XLATCH      = 0x36,   //0xFFFF FFFF           R
-    ENCMODE     = 0x38,   // Encmode              RW    Encoder Registers 
-    X_ENC       = 0x39,   //0xFFFF FFFF           RW
-    ENC_CONST   = 0x3A,   // EncConst             W
-    ENC_STATUS  = 0x3B,   //0x0001                RC
-    ENC_LATCH   = 0x3C,   //0xFFFF FFFF           R
-
-    MSLUT_0     = 0x60,   //0sf[0...31]           W    Motor Driver Registers  - MICROSTEPPING CONTROL REGISTER SET
-    MSLUT_1     = 0x61,   //0sf[32...63]          W
-    MSLUT_2     = 0x62,   //0sf[64...95]          W
-    MSLUT_3     = 0x63,   //0sf[96...127]         W
-    MSLUT_4     = 0x64,   //0sf[128...159]        W
-    MSLUT_5     = 0x65,   //0sf[160...191]        W
-    MSLUT_6     = 0x66,   //0sf[192...223]        W
-    MSLUT_7     = 0x67,   //0sf[224...255]        W
-    MSLUTSEL    = 0x68,   // Mslutsel             W
-    MSLUTSTART  = 0x69,   // Mslutstart           W
-    MSCNT       = 0x6A,   //0x3FF                 R
-    MSCURACT    = 0x6B,   // Mscuract             R
-    CHOPCONF    = 0x6C,   // Chopconf             RW    DRIVER REGISTER SET    
-    COOLCONF    = 0x6D,   // Coolconf             W
-    DCCTRL      = 0x6E,   // Dcctrl               W
-    DRV_STATUS  = 0x6F,   // DrvStatus            R
-
-    PWMCONF     = 0x70,   // Pwmconf              W
-    PWM_SCALE   = 0x71,   // PwmScale             R
-    ENCM_CTRL   = 0x72,   // EncmCrtl             W
-    LOST_STEPS  = 0x73,   //                      R
-#endif
   }Reg;
+
+static constexpr Reg RegsReadable[] = {
+#if defined(USELISTINGREGS)
+	#define FILTRO_R(reg)   reg,
+	#define FILTRO_RW(reg)  reg,
+	#define FILTRO_W(reg)   // Scartato
+	#define FILTRO_RC(reg)  reg,
+	#define FILTRO_RD(reg)  reg,
+
+	#define ESPANDI_SE_R_O_RW(reg, accesso) FILTRO_##accesso(reg)
+
+	#define X(name, address, access, reset_val) ESPANDI_SE_R_O_RW(name, access)
+		TMC5130_REGISTERS_LIST
+	#undef X
+
+	#undef FILTRO_R
+	#undef FILTRO_RW
+	#undef FILTRO_W
+	#undef FILTRO_RC
+	#undef FILTRO_RD
+	#undef ESPANDI_SE_R_O_RW
+#else
+		GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
+		RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
+		CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
+#endif
+	};
+
+const char* GetRegName(Reg reg) {
+	switch(reg){
+		#define X(RegName, RegAddr, RWMode, RegMask) case RegAddr: return #RegName;
+		TMC5130_REGISTERS_LIST
+		#undef X
+		default: return "UNKNOWN";
+	}
+}
 
   enum InterfaceMode {
     MODE_SPI,
@@ -490,11 +462,6 @@ public:
 	uint8_t	ResetSpeed(void)			{return m_ResetSpeed;}
 	void	ResetSpeed(uint8_t Speed)	{m_ResetSpeed = Speed;}
 	
- static constexpr Reg RegsReadable[] = {GCONF,GSTAT,IFCNT,IOIN,TSTEP,RAMPMODE,XACTUAL,VACTUAL,XTARGET,SW_MODE,
-                                            RAMP_STAT,XLATCH,ENCMODE,X_ENC,ENC_STATUS,ENC_LATCH,MSCNT,MSCURACT,
-                                            CHOPCONF,DRV_STATUS,PWM_SCALE,LOST_STEPS,
-                                        };
-
   struct ConverterParameters {
     uint8_t   clock_frequency_mhz               = 12;
     uint32_t  microsteps_per_real_position_unit = 1;
@@ -816,6 +783,7 @@ public:
 		setFirstDeceleration	(d1);
 		setMaxVelocity			( MaxVel );
 #if defined(SUSPECT_BUG_FREERUNNING)
+		setVelocities    		(eVSTART, 800);
 		setTargetBase(Positive ? 10000:-10000);
 #else
 		setRampMode(Positive ? VelocityPositiveMode : VelocityNegativeMode);
@@ -915,22 +883,28 @@ public:
 	bool	WaitMotor(eWaitingMotor Ty, bool CheckTimeOut=false){
 		bool wt = WaitTimer();
 		if (CheckTimeOut && wt)	{
-			Serial.print(" Exit for Timeout: ");
+			//Show Status
+			//Show 
+			uint8_t s = GetSpiStatus().bytes;	//uint8_t
+			Serial.printf(" Exit for Timeout: ");
 			Serial.printf(" TimeStart=%ld m_TimerSet=%ld\t", m_TimerStart, m_TimerSet);
-			Serial.printf(" Chk=%s, Timeout=%s\n", CheckTimeOut?"True":"False", wt?"True":"False");
-			return true;
+			Serial.printf(" Chk=%s, Timeout=%s\t", CheckTimeOut?"True":"False", wt?"True":"False");
+			Serial.printf(" Wait type %d, SpiStatus=%02X\n", Ty, s);
+
+			return true;	//eCmdError
 		}
 		bool res;
 		switch (Ty) {
-			case eWaitVelocity:	res = ChkStop();							DEBUGINFO("Stop  ");	return res;
-			case eWaitPosition:	res = GetSpiStatus().position_reached;		DEBUGINFO("Posit ");	return res;		//ToDo: AAA if velocity==0, position never reached!!!
-			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	DEBUGINFO("HomeL ");	return res;
-			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	DEBUGINFO("HomeR ");	return res;
-			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	DEBUGINFO("HomeRL");	return res;
-			case eWaitPosAndVel:res = ChkEndOfSteps();						DEBUGINFO("PosVel");	return res;
-			case eWaitTimer:	res = wt;									DEBUGINFO("Timer ");	return res;			// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
+			case eWaitVelocity:	res = ChkStop();							DEBUGINFO("Stop  ");	return res;	//eCmdOk or eCmdRetry
+			case eWaitPosition:	res = GetSpiStatus().position_reached;		DEBUGINFO("Posit ");	return res;	//eCmdOk or eCmdRetry	//ToDo: AAA if velocity==0, position never reached!!!
+			case eWaitHomeL:	res = (GetSpiStatus().bytes & 0x40) != 0;	DEBUGINFO("HomeL ");	return res;	//eCmdOk or eCmdRetry
+			case eWaitHomeR:	res = (GetSpiStatus().bytes & 0x80) != 0;	DEBUGINFO("HomeR ");	return res;	//eCmdOk or eCmdRetry
+			case eWaitHomeRL:	res = (GetSpiStatus().bytes & 0xC0) != 0;	DEBUGINFO("HomeRL");	return res;	//eCmdOk or eCmdRetry
+			case eWaitPosAndVel:res = ChkEndOfSteps();						DEBUGINFO("PosVel");	return res;	//eCmdOk or eCmdRetry
+			case eWaitTimer:	res = wt;									DEBUGINFO("Timer ");	return res;	//eCmdOk or eCmdRetry		// Restituisce true se il tempo è scaduto, false se sta ancora aspettando
 		}
-		return true;	//Error!!!!
+		Serial.printf("\nERROR: Unknown Type: %d", Ty);
+		return true;	//eCmdError
 	}
 
 	typedef enum { eLessThan, eSameAs, eGreaterOf} eComparePosition;

@@ -171,25 +171,6 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eSteppersFSA,	'b', "Set Target 2",		"MS",		RetArray2({"Stepper", "Final Position"				})},
 	{eSteppersFSA,	'b', "Set Target 3",		"MSt",		RetArray2({"Stepper", "Final Position", "TimeOut"	})},
 
-/*
-	{eSteppersFSA,	'f', "FreeRotation",		"Ml",			RetArray2({"Stepper", "l_direction"})},
-	{eSteppersFSA,	'w', "WaitPrevCommand",		"M",			RetArray2({"Stepper"})},
-	{eSteppersFSA,	'C', "Set Currents",		"Miij",			RetArray2({"Stepper", "IHOLD", "IRUN", "IHOLDDELAY"})},
-
-	{eSteppersFSA,	'h', "Halt",				"MA",			RetArray2({"Stepper", "Deceleration"})},
-	{eSteppersFSA,	'G', "Goto",				"MAVS",			RetArray2({"Stepper", "Acceleration", "Velocity", "Steps"})},
-
-	{eSteppersFSA,	'x', "Demo1",				"MbeoMO",		RetArray2({"Stepper", "t_False/True","t_Disable/Enable","t_Open/Close", "t_X/Y/Z/P","t_Off/On"})},
-	{eSteppersFSA,	'y', "Demo2",				"MCsAtM",		RetArray2({"Stepper", "t_byte","t_Speed","t_Accel", "t_Time","t_Motor"})},
-	{eSteppersFSA,	'y', "Demo3",				"MSVA",			RetArray2({"Stepper", "t_Step","t_Vel","t_Acc.n"})},
-
-	{eSteppersFSA,	'E', "GoEnd",				"M",			RetArray2({"Stepper"})},
-	{eSteppersFSA,	'E', "GoEnd 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
-	{eSteppersFSA,	'H', "Home",				"M",			RetArray2({"Stepper"})},
-	{eSteppersFSA,	'H', "Home 1",				"MV",			RetArray2({"Stepper", "Velocity"})},
-	{eSteppersFSA,	'T', "Set Trapezoidal",		"MAc",			RetArray2({"Stepper", "Acceleration", "Velocity"})},
-	{eSteppersFSA,	'w', "Wait End Of",			"MMt",			RetArray2({"Stepper", "Motor", "delay"})},
-*/
 	{eADCConverter,	'a', "GetADC",			"",				RetArray2({							})},
 
 	{eBarCode,		'l', "Laser ON",		"O",			RetArray2({"Laser On/Off"			})},

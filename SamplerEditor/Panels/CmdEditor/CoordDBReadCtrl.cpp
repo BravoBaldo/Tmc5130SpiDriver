@@ -8,10 +8,10 @@ void CoordDBReadctrl::FillRoutines(bool SortByNum) {
 	wxArrayString	Names;
 	wxArrayInt		Codes;
 	yy.Defaults_FillCoords(Names, Codes, SortByNum);
-	m_RoutineList->Clear();
+	m_CoordsList->Clear();
 	size_t Cnt = Names.Count();
 	for (size_t i = 0; i < Cnt; i++) {
-		m_RoutineList->Append(Names[i], reinterpret_cast<void*>(static_cast<intptr_t>(Codes[i])));
+		m_CoordsList->Append(Names[i], reinterpret_cast<void*>(static_cast<intptr_t>(Codes[i])));
 	}
 }
 #endif
