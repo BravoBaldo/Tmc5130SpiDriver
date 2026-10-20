@@ -139,23 +139,24 @@ bool Exec_SystemCmd(SamplerHIDDevice& SamplerHID, const sCommand& Cmd){ //cINA26
       uint8_t         CurrentMotor  = Cmd.m_Par[pr++];
 	  if (CurrentMotor >= wxSIZEOF(Steppers)) return false;
       switch(Cmd.m_Cmd){
-        case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations()      ? eCmdOk : eCmdRetry; break;
-        case 'a': PRINTLOG("Init Motor");   Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin()         ? eCmdOk : eCmdRetry;   break;
+        case '0': PRINTLOG("Wait Command"); Answer.m_Result = Steppers[CurrentMotor].Exec_WaitOperations(); break;
+        case 'a': PRINTLOG("Init Motor");   Answer.m_Result = Steppers[CurrentMotor].Exec_SearchBegin();   	break;
         case 'b': 
           switch(Cmd.m_PatLen){
-            case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ) ? eCmdOk : eCmdRetry; break;
-            case 3: PRINTLOG("GoTo3");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++],  Cmd.m_Par[pr++]*1000  ) ? eCmdOk : eCmdRetry; break;
+            case 2: PRINTLOG("GoTo2");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++]                         ); break;
+            case 3: PRINTLOG("GoTo3");         Answer.m_Result = Steppers[CurrentMotor].Exec_GoTo(Cmd.m_Par[pr++],  Cmd.m_Par[pr++]*1000  ); break;
           }
           break;
-        default:  PRINTLOG("Unknown FSA single TMC5130 command"); 
-        return false;                                                 break;
+        default:  PRINTLOG("Unknown FSA single TMC5130 command"); Answer.m_Result = eCmdError; break;
+        return false;
       }
-      Answer.m_Motor      = CurrentMotor;
-      Answer.m_FsaStatus  = Steppers[CurrentMotor].AskStatus();
-      Answer.m_VACTUAL    = Steppers[CurrentMotor].getVelocity();      //23 bits limited to 16
-      Answer.m_Position   = Steppers[CurrentMotor].getPosition();      //XACTUAL
-      Answer.m_xTarget    = Steppers[CurrentMotor].getTarget();        //XTARGET
-      Answer.m_Currents   = Steppers[CurrentMotor].getCurrents();      //ShadowRegs.Ihold_Irun
+      Answer.m_Motor		= CurrentMotor;
+      Answer.m_FsaStatus	= Steppers[CurrentMotor].AskStatus();
+      Answer.m_VACTUAL		= Steppers[CurrentMotor].getVelocity();      //23 bits limited to 16
+      Answer.m_Position		= Steppers[CurrentMotor].getPosition();      //XACTUAL
+      Answer.m_xTarget		= Steppers[CurrentMotor].getTarget();        //XTARGET
+      Answer.m_Currents		= Steppers[CurrentMotor].getCurrents();      //ShadowRegs.Ihold_Irun
+	  Answer.m_spiStatus	= Steppers[CurrentMotor].GetSpiStatus().bytes;
 #if defined(USE_INA260)
         Answer.m_Curr   = sina260.getVal(cINA260::eCurr);
         Answer.m_Volt   = sina260.getVal(cINA260::eVolt);
@@ -204,7 +205,7 @@ bool Exec_Steppers(SamplerHIDDevice& SamplerHID, const sCommand& Cmd){ //Stepper
 	  case 'g': switch(ParNum){
 				  case 3:   PRINTLOG("Set Ramp Trapezoidal");       Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
 				  case 5:   PRINTLOG("Set Ramp Six Points Simple"); Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
-				  case 8:   PRINTLOG("Set Ramp Six Points");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetRamp(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
+				  case 8:   PRINTLOG("Set Ramp Six Points");        Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetSixPoints(Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], Cmd.m_Par[pr++], 0);  break;
 				  case 2:
 				  default:  PRINTLOG("Set Trapezoidal");            Answer.m_Result = eCmdOk; Steppers[CurrentMotor].SetTrapezoidal(Cmd.m_Par[pr++], Cmd.m_Par[pr++]);            break;                      
 				}

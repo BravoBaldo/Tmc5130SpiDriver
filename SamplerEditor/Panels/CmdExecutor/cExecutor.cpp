@@ -145,7 +145,27 @@ void cExecutor::SendCommand(const sCommand& vStep, size_t length, long TimeoutMs
 			if (ptrHeader) {
 				if (m_ptrAnswerShow)	m_ptrAnswerShow->SetAnswer(ptrHeader, bytesRead);
 
-				Success = (ptrHeader->m_Result == eCmdOk);
+				switch (ptrHeader->m_Result) {
+					case eCmdRetry:		Success = false;	break;
+					case eCmdOk:		Success = true;		break;
+					case eCmdError:
+						{
+							LogMe("\tERROR Received. Ask if continue...", false);
+							wxMessageDialog dialog(NULL, wxT("ERROR received"), wxT("Continue?"), wxNO_DEFAULT | wxYES_NO | wxICON_ERROR);
+							switch (dialog.ShowModal()) {
+								case wxID_YES:	LogMe("\tCONTINUE\n", false);		Success = true;	break;
+								case wxID_NO:	LogMe("\tEND PROCESS\n", false);	Success = false; m_Running = false; return;
+								default:		LogMe("\tUNKNOWN ANSWER\n", false);	Success = false; m_Running = false; return;
+							}
+						}
+						break;	//Ask if continue
+					default:			//Error in Code
+						LogMe(wxString::Format("\tERROR: Unknown Result: %d\n", (int)ptrHeader->m_Result), false);
+						Success = false;
+						break;
+				}
+
+				//Success = (ptrHeader->m_Result == eCmdOk);
 				if (vStep.m_Cmd != ptrHeader->m_Cmd) {
 					LogMe(wxString::Format("\tAAA: Answer non coherent %d != %d\n", (int)vStep.m_Cmd, (int)ptrHeader->m_Cmd), false);
 					Success = false;

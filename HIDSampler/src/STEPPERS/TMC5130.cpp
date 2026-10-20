@@ -239,8 +239,11 @@ void TMC5130::setStops(bool Swap){	//enable both side, but I suppose switch only
 // =====================================================
 
 void TMC5130::writeReg(Reg reg, uint32_t value) {
-	//Serial.printf("\n>>write Reg=0x%02X Val=0x%08X\n", reg, value);
-	Serial.printf("\n>>write Reg=0x%02X (%s) Val=0x%08X (%ld)\n", reg, GetRegName(reg), value, (long)value);
+  //Serial.printf("\n>>write Reg=0x%02X Val=0x%08X\n", reg, value);
+  //Serial.printf("\n>>write Reg=0x%02X (%s) Val=0x%08X (%ld)\n", reg, GetRegName(reg), value, (long)value);
+	Serial.printf("\n>>(%0X) write Reg=0x%02X (%s) Val=0x%08X (%ld) (%0X)\n", SPI_Status.bytes, reg, GetRegName(reg), value, (long)value, SPI_Status.bytes);
+//SPI_Status
+
 	if (mode == MODE_SPI) spiWrite(reg, value);
 #if defined(INCLUDE_UNTESTED)
 	else if (mode == MODE_UART) writeRegUART(uartAddr, reg, value);

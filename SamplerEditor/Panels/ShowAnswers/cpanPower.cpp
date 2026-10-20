@@ -1,11 +1,77 @@
-#include "stdwx.h"
+﻿#include "stdwx.h"
 #include "cpanPower.h"
 
+#include "GridTools.h"
 
-void cpanPower::InitGridFSA(void){
+#define USE_OLD_TOOLTIP
+#if !defined(USE_OLD_TOOLTIP)
+#include <wx/richtooltip.h>
+#endif
+
+void cpanPower::OnGridMouseMotion(wxMouseEvent& event) {
+	static int m_lastMouseCol = wxNOT_FOUND;
+//	static int m_lastMouseRow = wxNOT_FOUND;
+
+// 1. Ricaviamo la sotto-finestra interna che ha scatenato l'evento
+	wxWindow* gridWindow = wxDynamicCast(event.GetEventObject(), wxWindow);
+    if (!gridWindow) { event.Skip(); return; }
+
+    // 2. Risaliamo alla wxGrid principale (che è il Parent della sotto-finestra)
+    wxGrid* grid = wxDynamicCast(gridWindow->GetParent(), wxGrid);
+    if (!grid) { event.Skip(); return; }
+
+	// 1. Convertiamo le coordinate dello schermo nei riferimenti logici della griglia
+	wxPoint pos = event.GetPosition();
+	wxGridCellCoords coords = grid->XYToCell(pos);
+
+//	int row = coords.GetRow();
+	int col = coords.GetCol();
+
+	if (col != m_lastMouseCol) {
+		//m_lastMouseRow = row;
+		m_lastMouseCol = col;
+
+		wxString testoTooltip = "";
+		switch (col) {
+			case eFsaShowCurrents:	testoTooltip = "irun-ihold-iholddelay";	break;
+			case eFsaShowVel:		testoTooltip = "Current Velocity";		break;
+			case eFsaShowPos:		testoTooltip = "Current Position";		break;
+			case eFsaStatus:		testoTooltip = "FSA Status";			break;
+			case eSPIStatus:		testoTooltip =	"Rst: A reset has occurred\n"
+													"Err: Driver error\n"
+													"SG2: StallGuard flag active\n"
+													"STL: Motor stand still\n"
+													"Vok: Target velocity reached\n"
+													"Pok: Target reached\n"
+													"s_L: Stop left switch status\n"
+													"s_R: Stop right switch status";
+
+			
+				break;
+			default: break;
+		}
+#if defined(USE_OLD_TOOLTIP)
+		wxToolTip::SetAutoPop(20000);
+		wxToolTip::SetDelay(10);
+		grid->GetGridWindow()->SetToolTip(testoTooltip);
+#else
+		gridWindow->UnsetToolTip();
+		wxRichToolTip richTip("Informazioni Canale", testoTooltip);
+		richTip.SetIcon(wxICON_INFORMATION);
+		richTip.SetTipKind(wxTipKind_Auto);
+		richTip.SetTimeout(20000, 10);	//msShow, msDelay
+		richTip.ShowFor(gridWindow);
+#endif
+	}
+	event.Skip(); // Fondamentale: permette a wxGrid di elaborare normalmente le altre interazioni del mouse (selezioni, ecc.)
+}
+
+void cpanPower::InitGrid(void){
 	m_grid_Motors = new wxGrid(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0);
-	// Grid
-	m_grid_Motors->CreateGrid(NUMBER_OF_MOTORS, 5);
+	m_grid_Motors->CreateGrid(NUMBER_OF_MOTORS, eFsaShowCount);
+
+	wxFont fixedFont(wxFontInfo(8).Family(wxFONTFAMILY_TELETYPE).Bold());
+	m_grid_Motors->SetDefaultCellFont(fixedFont);
 
 	m_grid_Motors->EnableEditing(false);
 	m_grid_Motors->EnableGridLines(true);
@@ -31,99 +97,67 @@ void cpanPower::InitGridFSA(void){
 	STEPPERS_LIST
 #undef X
 
-#define X(eParamId, eIsAlign, eDescription) {	m_grid_Motors->SetColLabelValue(eParamId, eDescription); \
-											}
-		FSA_ANSWERS_LIST
+#define X(eParamId, eIsAlign, eDescription) {	m_grid_Motors->SetColLabelValue(eParamId, eDescription); }
+	FSA_ANSWERS_LIST
 #undef X
+	m_grid_Motors->SetDefaultRowSize(40, true);
 
-		
+	m_grid_Motors->GetGridWindow()->Bind(wxEVT_MOTION, &cpanPower::OnGridMouseMotion, this);
 }
-
 
 cpanPower::cpanPower( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name )
 	: wxPanel( parent, id, pos, size, style, name )
 {
-	
-	m_lbl_Volt = new wxStaticText( this, wxID_ANY, _("mV:"), wxDefaultPosition, wxDefaultSize, 0 );		m_lbl_Volt->Wrap( -1 );
-	m_txt_Volt = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	m_gau_Volt = new wxGauge( this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize, wxGA_HORIZONTAL );	m_gau_Volt->SetValue( 55 );
+	InitGrid();
 
-	m_lbl_Amp = new wxStaticText( this, wxID_ANY, _("mA:"), wxDefaultPosition, wxDefaultSize, 0 );		m_lbl_Amp->Wrap( -1 );
-	m_txt_Amp = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	m_gau_Amp = new wxGauge( this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize, wxGA_HORIZONTAL );	m_gau_Amp->SetValue( 15 );
-
-	m_lbl_Watt = new wxStaticText( this, wxID_ANY, _("mW:"), wxDefaultPosition, wxDefaultSize, 0 );		m_lbl_Watt->Wrap( -1 );
-	m_txt_Watt = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
-	m_gau_Watt = new wxGauge( this, wxID_ANY, 100, wxDefaultPosition, wxDefaultSize, wxGA_HORIZONTAL );	m_gau_Watt->SetValue( 77 );
-
-	m_gau_Volt->SetRange(25000);
-	m_gau_Amp->SetRange(  2000);
-	m_gau_Watt->SetRange(50000);
-
-	InitGridFSA();
-	
-
-	wxFlexGridSizer* sizPowers = new wxFlexGridSizer( 3, 3, 0, 0 );
-		sizPowers->AddGrowableCol( 2 );
-		sizPowers->SetFlexibleDirection( wxBOTH );
-		sizPowers->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
-
-	sizPowers->Add( m_lbl_Volt, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_txt_Volt, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_gau_Volt, 1, wxALL | wxEXPAND, 5);
-
-	sizPowers->Add( m_lbl_Amp, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_txt_Amp, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_gau_Amp, 1, wxALL|wxEXPAND, 5 );
-
-	sizPowers->Add( m_lbl_Watt, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_txt_Watt, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-	sizPowers->Add( m_gau_Watt, 1, wxALL|wxEXPAND, 5 );
-
-
-	wxBoxSizer* sizMaster = new wxBoxSizer( wxVERTICAL );
-		sizMaster->Add( sizPowers, 0, wxEXPAND, 5 );
-		sizMaster->Add( m_grid_Motors, 1, wxALL|wxEXPAND, 5 );
-
+	wxBoxSizer* sizMaster = new wxBoxSizer(wxVERTICAL);
+	sizMaster->Add( m_grid_Motors,	1, wxALL|wxEXPAND, 0 );
 
 	this->SetSizer( sizMaster );
 	this->Layout();
 }
 
+void cpanPower::Fill(const AnswerHeader* ptrHeader) {
+	if (!ptrHeader) return;
+
+	switch (ptrHeader->m_MsgType) {
+		case eTypAnswStepDir:	//TmcAnswer
+			{
+				TmcAnswer Answ = *reinterpret_cast<const TmcAnswer*>(ptrHeader);
+				Fill(Answ);
+			}
+			break;
+		case eTypAnswFsaSingle:	//FSA Single Stepper
+			{
+				FsaSingleAnswer Answ = *reinterpret_cast<const FsaSingleAnswer*>(ptrHeader);
+				Fill(Answ);
+			}
+			break;
+		default:
+			return;
+	}
+}
+
 void cpanPower::Fill(const FsaSingleAnswer& SA) {
-#if defined(USE_INA260)
-	m_txt_Volt	->SetValue(wxString::Format("%06.2f", SA.m_Volt));
-	m_txt_Amp	->SetValue(wxString::Format("%06.2f", SA.m_Curr));
-	m_txt_Watt	->SetValue(wxString::Format("%7.0f", SA.m_Power));
-
-	m_gau_Volt->SetValue(SA.m_Volt	);
-	m_gau_Amp->SetValue (SA.m_Curr	);
-	m_gau_Watt->SetValue(SA.m_Power	);
-#endif
-
 	unsigned int	R = SA.m_Motor;
-	m_grid_Motors->SetCellValue(R, eFsaShowVel, wxString::Format("%d", SA.m_VACTUAL));
-	m_grid_Motors->SetCellValue(R, eFsaShowPos, wxString::Format("%d", SA.m_Position));
-	m_grid_Motors->SetCellValue(R, eFsaTarget, wxString::Format("%d", SA.m_xTarget));
+	m_grid_Motors->BeginBatch();
+		Grid_Show_vActual_VertTxt	(m_grid_Motors, R, eFsaShowVel,			SA.m_VACTUAL);
+		Grid_Show_PosTarget_VertTxt	(m_grid_Motors, R, eFsaShowPos,			SA.m_Position, SA.m_xTarget);
+		Grid_Show_FsaStatus_Txt		(m_grid_Motors, R, eFsaStatus,			SA.m_FsaStatus);
+		Grid_Show_SpiStatus_Vert	(m_grid_Motors, R, eSPIStatus,			SA.m_spiStatus, false);
+		Grid_Show_Currents_Hor		(m_grid_Motors, R, eFsaShowCurrents,	SA.m_Currents);
 
-	m_grid_Motors->SetCellValue(R, eFsaStatus,  wxString::Format("%d", SA.m_FsaStatus));
-
-	m_grid_Motors->SetCellValue(R, eFsaShowCurrents, wxString::Format("%2d-%2d-%2d", (SA.m_Currents) & 0x1F, (SA.m_Currents >> 5) & 0x1F, (SA.m_Currents >> 10) & 0x0F));
+	m_grid_Motors->EndBatch();
 }
 
 void cpanPower::Fill(const TmcAnswer& SA) {
-#if defined(USE_INA260)
-	m_txt_Volt->SetValue(wxString::Format("%06.2f", SA.m_Volt));
-	m_txt_Amp->SetValue(wxString::Format("%06.2f", SA.m_Curr));
-	m_txt_Watt->SetValue(wxString::Format("%7.0f", SA.m_Power));
-
-	m_gau_Volt->SetValue(SA.m_Volt);
-	m_gau_Amp->SetValue(SA.m_Curr);
-	m_gau_Watt->SetValue(SA.m_Power);
-#endif
 	unsigned int	R = SA.m_Motor;
-	m_grid_Motors->SetCellValue(R, eFsaShowVel, wxString::Format("%d", SA.m_VACTUAL));
-	m_grid_Motors->SetCellValue(R, eFsaShowPos, wxString::Format("%d", SA.m_Position));
-	m_grid_Motors->SetCellValue(R, eFsaShowPos, wxString::Format("%d", SA.m_xTarget));
-	m_grid_Motors->SetCellValue(R, eFsaShowCurrents, wxString::Format("%2d-%2d-%2d", (SA.m_Currents) & 0x1F, (SA.m_Currents >> 5) & 0x1F, (SA.m_Currents >> 10) & 0x0F));
+	m_grid_Motors->BeginBatch();
+		Grid_Show_vActual_VertTxt	(m_grid_Motors, R, eFsaShowVel, SA.m_VACTUAL);
+		Grid_Show_PosTarget_VertTxt	(m_grid_Motors, R, eFsaShowPos, SA.m_Position, SA.m_xTarget);
+		Grid_Show_Currents_Hor		(m_grid_Motors, R, eFsaShowCurrents, SA.m_Currents);
+		m_grid_Motors->AutoSizeColumn(eSPIStatus, true);
+		//m_grid_Motors->SetGridCursor(R, 0);
+		m_grid_Motors->SelectRow(R);
+	m_grid_Motors->EndBatch();
 }

@@ -748,7 +748,7 @@ public:
   }
 
 	//Set Ramp Six Points
-	void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop, uint16_t tzerowait = 0){ //SixPoint
+	void SetSixPoints(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t d1, uint32_t vstop, uint16_t tzerowait = 0){ //SixPoint
 		setStartVelocity		(vstart);	//Set VSTART=0. Higher velocity for abrupt start (limited by motor).
 		setFirstAcceleration	(a1);		//A1 Set acceleration A1 as desired by application
 		setFirstVelocity		(v1);		//V1: Determine velocity, where max. motor torque or current sinks appreciably, write to V1
@@ -762,18 +762,19 @@ public:
 	}
 
 	//Set Ramp Six Points Simple (Symmetric)
-	void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t tzerowait = 0){ //SixPoint
-		SetRamp(vstart, a1, v1, amax, vmax, amax, a1, vstart, tzerowait); //SixPoint
+	inline void SetRamp(uint32_t vstart, uint16_t a1, uint32_t v1, uint16_t amax, uint32_t vmax, uint16_t tzerowait = 0){ //SixPoint
+		SetSixPoints(vstart, a1, v1, amax, vmax, amax, a1, vstart, tzerowait); //SetSixPoints(vstart=vstart, a1=a1, v1=v1, amax=amax, vmax=vmax, dmax=amax, d1=a1, vstop=vstart, tzerowait=tzerowait);
 	}
+	
 	//Set Ramp Trapezoidal
-	void SetRamp(uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t tzerowait=0){	//Trapezoidal
-		//	if v1==0: Disables A1 and D1 phase, use AMAX, DMAX only
-		//SetRamp(	vstart,	a1,	v1,	amax,	vmax,	dmax,	d1,	vstop,	tzerowait
-		SetRamp(	10,     10, 0,	amax,	vmax,	dmax,	10,	10,		tzerowait);
+	inline void SetRamp(uint16_t amax, uint32_t vmax, uint16_t dmax, uint16_t tzerowait=0){	//Trapezoidal
+		SetSixPoints(	10,     10, 0,	amax,	vmax,	dmax,	10,	10,		tzerowait);	//--> SetSixPoints(vstart=10, a1=10, v1=0, amax=amax, vmax=vmax, dmax=dmax, d1=10, vstop=10, tzerowait=0);
 	}
+	
 	//Set Trapezoidal
-	void  SetTrapezoidal(uint16_t a, uint32_t v){
-		SetRamp(a, v, a, 0);	//Trapezoidal
+	inline void  SetTrapezoidal(uint16_t a, uint32_t v){
+		//SetRamp(a, v, a, 0);	//SetSixPoints(vstart=10, a1=10, v1=0, amax=a, vmax=v, dmax=a, d1=10, vstop=10, tzerowait=0);
+		SetSixPoints(10, 10, 0, a, v, a, 10, 10, 0);
 	}
 
 #define SUSPECT_BUG_FREERUNNING

@@ -50,6 +50,15 @@
     <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp">
       <Filter>Source\Executor</Filter>
     </ClCompile>
+    <ClCompile Include="Panels\ShowAnswers\GridTools.cpp">
+      <Filter>Source\ShowAnswers</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\ShowAnswers\cEnergy.cpp">
+      <Filter>Source\ShowAnswers</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\ShowAnswers\cpanSteppers.cpp">
+      <Filter>Source\ShowAnswers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ResFile.rc" />

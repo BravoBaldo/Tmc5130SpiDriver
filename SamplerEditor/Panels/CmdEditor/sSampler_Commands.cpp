@@ -145,7 +145,7 @@ static const sSampler_Commands Sampler_Commands[] = {
 	{eStepDirect,	'f', "Set Target",			"MS",		RetArray2({"Stepper", "Final Position"				})},
 
 	{eStepDirect,	'g', "Set Trapezoidal 2",	"MAV",		RetArray2({"Stepper", "Acceleration", "Max Velocity"})},
-	{eStepDirect,	'g', "Set SixPoint",		"MVAVAVAAV",RetArray2({"Stepper", "vstart", "a1", "v1", "amax", "vmax", "dmax", "d1", "vstop"	})},
+	{eStepDirect,	'g', "Set SixPoint",		"MVAVAVAAV",RetArray2({"Stepper", "vstart",       "a1",    "v1", "amax",      "vmax", "dmax", "d1", "vstop"	})},
 	{eStepDirect,	'g', "Set SixPoint Simple",	"MVAVAV",	RetArray2({"Stepper", "vstart/vstop", "a1/d1", "v1", "amax/dmax", "vmax"	})},
 	{eStepDirect,	'g', "Set Trapezoidal 3",	"MAVA",		RetArray2({"Stepper", "amax", "vmax", "dmax"	})},
 

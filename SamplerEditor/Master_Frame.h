@@ -71,7 +71,7 @@ private:
 	wxButton*			m_Btn_Delete		= nullptr;
 	CmdExecutorCtrl*	m_PanExec			= nullptr;
 	cAnswersShow*		m_PanAnswers		= nullptr;
-
+//	cShowLogs*			m_PanAnswers2		= nullptr;
 	wxBitmap			m_bitmap;
 
 #if defined(USE_MAIN_LOG)

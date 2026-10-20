@@ -159,9 +159,9 @@ typedef enum : uint8_t {
 #define FSA_ANSWERS_LIST \
 	X(eFsaShowCurrents,		false,	"Currents") \
 	X(eFsaShowVel,			true,	"Velocity") \
-	X(eFsaTarget,			false,	"Target") \
 	X(eFsaShowPos,			true,	"Position") \
 	X(eFsaStatus,			false,	"FSA Status") \
+	X(eSPIStatus,			false,	"SPI Status") \
 	X(eFsaShowCount,		true,	"--")
 
 typedef enum : uint8_t {
@@ -207,18 +207,18 @@ typedef enum : uint8_t {
 		struct sAnswerVersion : public AnswerHeader {
 			sAnswerVersion() : AnswerHeader(eTypAnswVer) {}
 
-			byte    Y;  // Year
-			byte    M;  // Month
-			byte    D;  // Day
-			byte    h;  // Hour
-			byte    m;  // Minute
-			byte    s;  // Second
+			byte    Y=0;  // Year
+			byte    M=0;  // Month
+			byte    D=0;  // Day
+			byte    h=0;  // Hour
+			byte    m=0;  // Minute
+			byte    s=0;  // Second
 		};
 		struct sAnswerPower : public AnswerHeader {
 			sAnswerPower() : AnswerHeader(eTypAnswPwReader) {}
-			float   Curr;
-			float   Volt;
-			float   Power;
+			float   Curr  = 0.0f;
+			float   Volt  = 0.0f;
+			float   Power = 0.0f;
 		};
 		struct sAnswerStandard : public AnswerHeader {
 			sAnswerStandard() : AnswerHeader(eTypAnswStd) {}
@@ -242,10 +242,11 @@ typedef enum : uint8_t {
 			uint8_t		m_Motor = 0;
 			uint8_t		m_FsaStatus = 0;
 
-			int16_t		m_VACTUAL = 0;	//see m_Velocity  23 bits
-			int32_t		m_Position = 0;
-			int32_t		m_xTarget = 0;
-			uint16_t	m_Currents = 0;	//irun, ihold, holdDelay;
+			int16_t		m_VACTUAL	= 0;	//see m_Velocity  23 bits
+			int32_t		m_Position	= 0;
+			int32_t		m_xTarget	= 0;
+			uint16_t	m_Currents	= 0;	//irun, ihold, holdDelay;
+			uint8_t		m_spiStatus	= 0;
 #if defined(USE_INA260)	
 			float		m_Curr = 0.;
 			float		m_Volt = 0.;
@@ -278,9 +279,9 @@ typedef enum : uint8_t {
 			uint16_t	m_V1 = 0;	//20 bits limited to 16
 			uint16_t	m_VMAX = 0;	//23 bits limited to 16
 			uint16_t	m_VSTOP = 0;	//18 bits limited to 16
-			int16_t	m_VACTUAL = 0;	//see m_Velocity  23 bits
+			int16_t		m_VACTUAL = 0;	//see m_Velocity  23 bits
 #if defined(SHOW_GCONF)
-			uint16_t	m_GCONF = 0;	//18 bits !!! missing direct_mode and test_mode
+			uint32_t 	m_GCONF = 0;	//18 bits !!! missing direct_mode and test_mode
 #endif
 #if defined(SHOW_SWMODE)
 			uint16_t	m_SWMODE = 0;	//12 bits

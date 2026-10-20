@@ -465,8 +465,11 @@
     <ClCompile Include="Panels\CmdExecutor\cCommPort.cpp" />
     <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
+    <ClCompile Include="Panels\ShowAnswers\cEnergy.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp" />
+    <ClCompile Include="Panels\ShowAnswers\cpanSteppers.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cShowAnswers.cpp" />
+    <ClCompile Include="Panels\ShowAnswers\GridTools.cpp" />
     <ClCompile Include="SqLite\SqLite\cDBSampler.cpp" />
     <ClCompile Include="SqLite\SqLite\sqlite3.c" />
     <ClCompile Include="stdwx.cpp" />

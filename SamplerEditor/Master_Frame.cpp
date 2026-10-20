@@ -288,6 +288,8 @@ SamplerFrame::SamplerFrame(const wxString& title, const wxPoint& pos, const wxSi
 	m_PanAnswers = new cAnswersShow(this);
 	m_PanExec->SetAnswerHandler(m_PanAnswers);
 
+//	m_PanAnswers2 = new cShowLogs(this);
+
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+wxT("\\") ), false);
 
@@ -306,6 +308,7 @@ void SamplerFrame::SetLayouts ( void ) {
 	m_mgr.AddPane(m_CmdEditor,		wxAuiPaneInfo().Name(wxT("m_CmdEditor"))	.Caption(_("m_CmdEditor"))	.Bottom()		.PaneBorder(false));
 
 	m_mgr.AddPane(m_PanAnswers,		wxAuiPaneInfo().Name(wxT("m_PanAnswers"))	.Caption(_("Status"))		.Right()		.PaneBorder(false));
+//	m_mgr.AddPane(m_PanAnswers2,	wxAuiPaneInfo().Name(wxT("m_PanAnswers2"))	.Caption(_("Status2"))		.Right()		.PaneBorder(false));
 	m_mgr.AddPane(m_PanEditor,		wxAuiPaneInfo().Name(wxT("m_PanEditor"))	.Caption(_("Editor"))		.Right()		.PaneBorder(false));
 #if defined(USE_MAIN_LOG)
 	m_mgr.AddPane(m_txt_Log,		wxAuiPaneInfo().Name(wxT("m_txt_Log"))		.Caption(_("m_txt_Log"))	.Right()		.PaneBorder(false));
@@ -447,28 +450,6 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 		break;
 #endif
 
-
-
-#ifdef EEEEEEEEEEEEEEEEEEEEE
-		case ID_MNU_PRGMDET_EXECSTEP:
-			{
-				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps_FromTo(itemIndex, itemIndex+1);
-			}
-		break;
-		case ID_MNU_PRGMDET_EXECFROM:
-			{
-				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps_FromTo(itemIndex, m_lstPrgDetail->GetItemCount());
-			}
-			break;
-		case ID_MNU_PRGMDET_EXECTO:
-			{
-				long itemIndex = m_lstPrgDetail->GetFirstSelected();
-				m_PanExec->ExecuteSteps_FromTo(0, itemIndex+1);
-			}
-			break;
-#endif
 /*		case ID_MNU_PRGMAIN_SORT:
 			m_lstPrgMaster->ChangeSort();	//m_SortByName = !m_SortByName;
 			m_lstPrgMaster->MainPrg_Fill();

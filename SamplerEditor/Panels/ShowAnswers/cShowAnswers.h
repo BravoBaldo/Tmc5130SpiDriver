@@ -5,37 +5,22 @@
 #include "stdwx.h"
 
 #include "cpanPower.h"
+#include "cEnergy.h"
+#include "cpanSteppers.h"
 
-enum eGrids {
-    eGrid_Motors,
-    eGrid_FSA,
-    eGrid_Command,
+class cAnswersShow : public wxPanel {
+	cEnergy*	    m_Energy            = nullptr;
+    wxAuiNotebook*  m_NoteBook          = nullptr;
 
-    eGrid_TOP
-};
-
-class cAnswersShow : public wxAuiNotebook {
-    wxGrid* m_Grids[eGrid_TOP];
-    cpanPower* m_PanMotorPowers;
+    cpanPower*      m_PanMotorPowers    = nullptr;  //"FSA2"
+    cpanSteppers*   m_panSteppers       = nullptr;  //"Steppers"
 #if !defined(USE_MAIN_LOG)
-    wxTextCtrl* m_txt_Log = nullptr;
+    wxTextCtrl*     m_txt_Log           = nullptr;  //Last Status
 #endif
-    void Grid_AllReadOnly(wxGrid* Grid);
-    void Grid_AutoSizeAll(wxGrid* Grid, bool setAsMin = true);
-
-    void Log_Generic_InitEnd(wxGrid* Grid);
-
-    void Log_Stepper_Init   (void);
-    void Log_FSA_Init       (void);
-    void Log_Cmd_Init       (void);
-
+    void AddSamplePages     (wxAuiNotebook* NB);
 public:
-    cAnswersShow(wxWindow* parent);
-    void Log_Stepper_Fill   (const TmcAnswer& Answer);
-    void Log_FSA            (const FsaSingleAnswer& Answer) { m_PanMotorPowers->Fill(Answer); }
-    void Log_FSA            (const TmcAnswer& Answer)       { m_PanMotorPowers->Fill(Answer); };
+    cAnswersShow            (wxWindow* parent);
 
     bool SetAnswer          (const AnswerHeader* Answer, size_t AnswerLen);
-    void AddSamplePages     (void);
-    int GetMotorSelected    (void)  {return m_Grids[eGrid_Motors]->GetGridCursorRow(); }
+    int  GetMotorSelected() { return m_panSteppers ? m_panSteppers->GetMotorSelected() : 0; }
 };
