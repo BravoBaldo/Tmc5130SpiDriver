@@ -65,7 +65,6 @@ size_t cCommPort::Read(std::vector<uint8_t>& outBuffer, uint8_t chk, long timeou
 				return res;
 			}
 		}
-		//wxMilliSleep(5); //::wxYield();
 	} while (sw.Time() < timeoutMs);
 	return 0; // Fail
 }

@@ -16,7 +16,7 @@
 #define NUMOFPARAMS 10
 typedef int32_t		ParamType;	//See in stdwx
 
-typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError }eCmdAnswer;
+typedef enum : uint8_t { eCmdRetry, eCmdOk, eCmdError, eErrTimeout, eErrShortMsg }eCmdAnswer;
 
 inline constexpr uint8_t CollectorMAC[] = {0x26, 0x0B, 0xA1, 0x4F, 0x92, 0xC3};
 
@@ -175,7 +175,8 @@ typedef enum : uint8_t {
 
 #define NEWCODE
 #if defined(NEWCODE)
-	#pragma pack(push, 1)
+
+#pragma pack(push, 1)
 		struct AnswerHeader {
 			eMessageTypes   m_MsgType;
 			byte			m_Cmd = 0;

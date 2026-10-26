@@ -26,32 +26,6 @@ void CmdExecutorCtrl::ShowCurrentStep(long i, sCommand& vStep) {
 	m_ptrPrgDetail->PrgDetail_FillListItem(vStep, i);	//Read from List
 }
 
-bool CmdExecutorCtrl::ExecuteSteps_FromTo(long from, long to) {
-	LogMe(wxString::Format("--- Start Execution from %ld to %ld\n", from, to), true);
-	m_Executor.IsRunningSet(true);
-
-#define USE_MASTERID
-#if defined(USE_MASTERID)
-	for (long i = from; i < to; i++) {
-		sCommand vStep;
-		ShowCurrentStep(i, vStep);		//Get vStep from the ListView m_ptrPrgDetail
-		m_Executor.ExecuteStep(vStep);
-		if (!m_Executor.IsRunning())
-			break;
-	}
-#else
-	m_Executor.ExecuteSteps_FromDB(1, from, to);
-/*		m_Executor.ExecuteSteps_FromDB(1, from, to, [this](uint16_t n, sCommand&) -> void {
-		m_ptrPrgDetail->EnsureVisibleCentered(n);
-		::wxSafeYield(this, true);
-		});
-*/
-#endif
-	m_Executor.IsRunningSet(false);
-	LogMe(" Stop Execution --------------------------\n", true);
-
-	return true;
-}
 
 void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 	switch (event.GetId()) {
@@ -62,8 +36,16 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 			}
 			break;
 		case ID_Btn_ExecAll:	//Get vStep from the ListView m_ptrPrgDetail
-			if (m_ptrPrgDetail)
-				ExecuteSteps_FromTo(0, m_ptrPrgDetail->GetItemCount());
+			{
+				sCommand vStep;
+				ShowCurrentStep(0, vStep);		//Get vStep from the ListView m_ptrPrgDetail
+				ExecuteProcess(vStep.m_MasterId, 0, wxUINT16_MAX, 
+					[this](uint16_t, sCommand& v) -> void {
+					long n = m_ptrPrgDetail->FindItem(-1, wxString::Format("%d", v.m_DetailProg), false);
+					m_ptrPrgDetail->EnsureVisibleCentered(n);
+					::wxSafeYield(this, true);
+					});
+			}
 			break;
 		case ID_Btn_Panic:
 			m_Executor.IsRunningSet(false);

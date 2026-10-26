@@ -20,9 +20,9 @@ class CmdExecutorCtrl : public wxPanel {
     wxTimer 	m_timer;
     cExecutor   m_Executor;
 
-	void		OnBtnCommands	(wxCommandEvent& Evt);
-	void		OnTimer			(wxTimerEvent& Evt);
-	void		ShowCurrentStep	(long i, sCommand& vStep);
+	void		OnBtnCommands		(wxCommandEvent& Evt);
+	void		OnTimer				(wxTimerEvent& Evt);
+	void		ShowCurrentStep		(long i, sCommand& vStep);
 public:
 	CmdExecutorCtrl	(	wxWindow*		parent,
 						wxWindowID		winid	= wxID_ANY,
@@ -33,7 +33,6 @@ public:
 					);
 	~CmdExecutorCtrl();
 	void	    SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
-	bool		ExecuteSteps_FromTo (long from, long to);
 
 	void		ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(uint16_t n, sCommand&)> onStepCallback = nullptr);
     void		SetPoolMotors       (bool s, bool r = true) { m_Executor.SetPoolMotors(s, r); }
