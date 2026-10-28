@@ -13,7 +13,7 @@ void CmdExecutorCtrl::SetEditorAndDB(CmdEditorCtrl* ptrEditor, cDetailListCtrl* 
 	m_ptrPrgDetail = ptrPrgDetail;
 }
 
-void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(uint16_t n, sCommand&)> onStepCallback) {
+void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
 	m_Executor.IsRunningSet(true);
 	m_Executor.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
 	m_Executor.IsRunningSet(false);
@@ -40,7 +40,7 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 				sCommand vStep;
 				ShowCurrentStep(0, vStep);		//Get vStep from the ListView m_ptrPrgDetail
 				ExecuteProcess(vStep.m_MasterId, 0, wxUINT16_MAX, 
-					[this](uint16_t, sCommand& v) -> void {
+					[this](sCommand& v) -> void {
 					long n = m_ptrPrgDetail->FindItem(-1, wxString::Format("%d", v.m_DetailProg), false);
 					m_ptrPrgDetail->EnsureVisibleCentered(n);
 					::wxSafeYield(this, true);

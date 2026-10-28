@@ -83,7 +83,7 @@ bool cAnswersShow::SetAnswer(const AnswerHeader* ptrHeader, size_t AnswerLen ) {
 			{
 			LogMe("\n", false);
 			const auto& Answ = *reinterpret_cast<const sExpanderStandard*>(ptrHeader);
-				LogMe(wxString::Format(" Expanders: \tm_CurrStatus......: 0x%04X\t", Answ.m_CurrStatus), true);
+				LogMe(wxString::Format("\n\tExpanders: \tm_CurrStatus......: 0x%04X\n", Answ.m_CurrStatus), true);
 			}
 			break;
 

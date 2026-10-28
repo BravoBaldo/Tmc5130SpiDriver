@@ -34,7 +34,7 @@ public:
 	~CmdExecutorCtrl();
 	void	    SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
 
-	void		ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(uint16_t n, sCommand&)> onStepCallback = nullptr);
+	void		ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
     void		SetPoolMotors       (bool s, bool r = true) { m_Executor.SetPoolMotors(s, r); }
     void		IncPoolIdx          ()                      { m_Executor.IncPoolIdx(); }
     void		SetPoolIdx          (int idx)               { m_Executor.SetPoolIdx(idx); }

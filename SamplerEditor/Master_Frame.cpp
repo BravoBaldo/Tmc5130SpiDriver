@@ -440,7 +440,7 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 					case ID_MNU_PRGMDET_EXECFROM:		from = vStep.m_DetailProg;	to = wxUINT16_MAX;			break;
 					case ID_MNU_PRGMDET_EXECTO:			from = 0;					to = vStep.m_DetailProg;	break;
 				}
-				m_PanExec->ExecuteProcess(ProgId, from, to, [this](uint16_t , sCommand& v) -> void {
+				m_PanExec->ExecuteProcess(ProgId, from, to, [this](sCommand& v) -> void {
 					long n = m_lstPrgDetail->FindItem(-1, wxString::Format("%d", v.m_DetailProg), false);
 					m_lstPrgDetail->EnsureVisibleCentered(n);
 					::wxSafeYield(this, true);
