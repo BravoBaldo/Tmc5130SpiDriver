@@ -59,6 +59,9 @@
     <ClCompile Include="Panels\ShowAnswers\cpanSteppers.cpp">
       <Filter>Source\ShowAnswers</Filter>
     </ClCompile>
+    <ClCompile Include="Panels\CmdExecutor\cExecTools.cpp">
+      <Filter>Source\Executor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ResFile.rc" />

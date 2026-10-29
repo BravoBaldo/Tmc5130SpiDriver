@@ -6,14 +6,16 @@
 
 #include <functional>       //Callback
 #include <deque>
+#include <vector>
+#include <atomic>           // Sostituisce volatile per thread-safety
 
-#define USE_FSA_EXEC
-#define USE_FSA_QUEUE
-//#define USE_THREAD
+#define USE_CFSA_TIMED
+#define USE_CFSA_TIMEDQ
 
-#if defined(USE_THREAD)
-#include <wx/thread.h>
-#endif
+#define MAX_SAFETY_STEPS  50000
+
+
+wxDECLARE_EVENT(wxEVT_EXEC_PROMPT_USER, wxCommandEvent);
 
 #define EXEC_ERRORS_LIST \
     X(EXEC_ERROR_WRITE) \
@@ -37,6 +39,7 @@ enum eExecutorErrors : uint8_t {
     X(EXECSTATE_ENDSEND) \
     X(EXECSTATE_CHKCNT) \
     X(EXECSTATE_ERROR) \
+    X(EXECSTATE_WAIT_USER) /* Nuovo stato di attesa asincrona */ \
     X(EXECSTATE_IDLE)
 
 
@@ -60,62 +63,110 @@ enum eEnqueueState : uint8_t {
 #undef X
 };
 
-
-
-class cExecutor : public wxEvtHandler 
-#if defined(USE_THREAD)
-    , public wxThreadHelper
+class cFsaExec
+#if defined(USE_CFSA_TIMED)
+    : public wxEvtHandler 
 #endif
 {
-    wxString StateName      (eExecutorState s);
-#if defined(USE_FSA_EXEC)
-    void    fsaExecutor     ();
-    bool    SendCommandOld  (const sCommand& vStep, long TimeoutMs);
-    wxStopWatch     m_swTotCmd;
-    eExecutorState  m_State         = EXECSTATE_IDLE;
-    eExecutorErrors m_Error         = EXEC_ERROR_NONE;
-    int			    m_retryCount    = 0;
-    long            m_TimeoutMs     = 500;
-    eCmdAnswer      m_Answ          = eCmdOk;
-    sCommand        m_vStep;
-#endif
-#if defined(USE_FSA_QUEUE)
-    void    fsaEnqueue();
-    eEnqueueState                   m_enqStatus = ENQUEUE_IDLE;
-    size_t			                m_safetyLoopCounter = 0;
-    std::deque<sCommand>*           m_ptrExecutionQueue;
-    std::function<void(sCommand&)>  m_onStepCallback;
-    bool                            m_flagShow;
-    sCommand                        m_currentStep;
-    bool                    ProcessExecutionQueueOld(std::deque<sCommand>& executionQueue, std::function<void(sCommand&)> onStepCallback, bool Show = false);
-#endif
+public:
+    cFsaExec();
+    virtual ~cFsaExec();
+    void    SetRunning(std::atomic<bool>* ptrRunning) { m_ptrRunning = ptrRunning; }
 
-#if defined(USE_THREAD)
-    bool StartParallelExecution();
-    void StopParallelExecution(); 
-    virtual wxThread::ExitCode Entry();// override;
+    void    SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
+    int     GetMotorSelected() { return (m_ptrAnswerShow ? m_ptrAnswerShow->GetMotorSelected() : -1); }
+
+    bool    IsWorking           ()  { return m_CommPort.IsWorking(); }
+    bool    SendCommand         (const sCommand& vStep, long TimeoutMs = 500);
+    bool    IsIdle              ()  {return m_State == EXECSTATE_IDLE;}
+    void    PostUserResponse    (bool continueProcess);    // Metodo che la UI chiamerà per inviare la risposta dell'utente
+
+    // Permette all'esecutore di sapere a chi inviare la notifica (es. il Frame principale)
+    void SetParentTarget(wxEvtHandler* target) { m_parentTarget = target; }
+private:
+    wxEvtHandler* m_parentTarget = nullptr; 
+
+#if defined(USE_CFSA_TIMED)
+    wxTimer     m_execTimer;
+void            OnExecTimer(wxTimerEvent& event);
 #endif
-    const size_t	MAX_SAFETY_STEPS = 50000;
-    bool                    SendCommand         (const sCommand& vStep, long TimeoutMs = 500);
-    bool                    DoExecuteSingleStep (sCommand& vStep);
-    sCommand                Fetch                   (std::deque<sCommand>& executionQueue, std::function<void(sCommand&)> onStepCallback, bool Show = false);
-    bool                    ProcessExecutionQueue   (std::deque<sCommand>& executionQueue, std::function<void(sCommand&)> onStepCallback, bool Show = false);
-    void	    SureCommandFromDB   (sCommand& vStep);
-    void        LogStep             (const sCommand& vStep);
+    void        fsaExecutor         ();
+    eCmdAnswer  GetAndShowMessage   (uint8_t chk, long TimeoutMs = 500);
+    wxString    ExecStateName       (eExecutorState s);
+
     cCommPort               m_CommPort;
-    wxTimer                 m_Timer;
-volatile bool               m_Running       = false;
+    std::vector<uint8_t>    m_ResponseBuffer;
     cAnswersShow*           m_ptrAnswerShow = nullptr;
+
+    std::atomic<bool>* m_ptrRunning = nullptr;
+    eExecutorState          m_State = EXECSTATE_IDLE;
+    eExecutorErrors         m_Error = EXEC_ERROR_NONE;
+    eCmdAnswer              m_Answ = eCmdOk;
+    sCommand                m_vStep;
+
+    wxStopWatch             m_swTotCmd;
+    long                    m_TimeoutMs = 500;
+    int			            m_retryCount = 0;
+};
+
+
+wxDECLARE_EVENT(wxEVT_QUEUE_COMPLETED, wxCommandEvent); // Dichiarazione dell'evento di fine coda
+
+class cFsaQueue 
+#if defined(USE_CFSA_TIMEDQ)
+    : public wxEvtHandler
+#endif
+{
+public:
+    cFsaQueue();
+    virtual ~cFsaQueue();
+
+    void                    SetRunningFlag(std::atomic<bool>& RunningFlag) {
+                                                                            m_ptrQRunning =      &RunningFlag;
+                                                                            m_FsaExec.SetRunning(&RunningFlag);
+                                                                        }
+    void		SetAnswerHandler    (cAnswersShow* phandler)    { m_FsaExec.SetAnswerHandler(phandler); }
+    bool        IsWorking           ()                          { return m_FsaExec.IsWorking(); }
+    int         GetMotorSelected    ()                          { return m_FsaExec.GetMotorSelected(); }
+
+    bool		ExecuteStep             (sCommand& vStep);
+    bool        ExecuteSteps_FromDB     (uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
+
+private:
+#if defined(USE_CFSA_TIMEDQ)
+    wxTimer m_queueTimer;
+    void    OnqueueTimer(wxTimerEvent& event);
+    void    fsaEnqueue();
+#endif
+    bool        ProcessExecutionQueue(std::function<void(sCommand&)> onStepCallback, bool Show = false);
+
+    eEnqueueState                   m_enqStatus             = ENQUEUE_IDLE;
+    size_t			                m_safetyLoopCounter     = 0;
+
+    std::deque<sCommand>            m_executionQueue;
+
+    std::function<void(sCommand&)>  m_onStepCallback;
+    sCommand                        m_currentStep;
+
+    std::atomic<bool>*              m_ptrQRunning           = nullptr;
+    bool                            m_flagShow              = false;
+    cFsaExec                        m_FsaExec;
+};
+
+
+
+class cExecutor : public wxEvtHandler {
+    cFsaQueue               m_FsaQueue;
+
+    wxTimer                 m_Timer;
+    std::atomic<bool>       m_Running       = false;
 	ParamType	            m_PoolIdx		= 0;
 	bool		            m_PoolMotors	= false;
 	bool		            m_RotatePool	= true;
     std::vector<uint8_t>    m_ResponseBuffer;
 
-    void            OnTimer(wxTimerEvent& event);
-
-    std::vector<sCommand>   FetchStepsFromDatabase  (uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX);
-    void                    PoolElements            ();
-    bool		            ExecuteStep             (sCommand& vStep);
+    void    OnTimer         (wxTimerEvent& event);
+    void    PoolElements    ();
 public:
     cExecutor();
     ~cExecutor();
@@ -123,17 +174,15 @@ public:
     bool        ExecuteSteps_FromDB     (uint16_t m_MasterId, uint16_t from=0, uint16_t to=wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
     void		ExecuteStepSingle       (sCommand& vStep);
 
-    bool        IsWorking           ()              { return m_CommPort.IsWorking(); }
+
     void        IsRunningSet        (bool r)        { m_Running = r; }
     bool        IsRunning           () const        { return m_Running; }
 
-    void		SetAnswerHandler	(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
-    int			GetMotorSelected	();
+    void		SetAnswerHandler    (cAnswersShow* phandler)    { m_FsaQueue.SetAnswerHandler(phandler);}
+    bool        IsWorking           ()                          { return m_FsaQueue.IsWorking(); }
+    int         GetMotorSelected    ()                          { return m_FsaQueue.GetMotorSelected(); }
 
     void		SetPoolMotors   	(bool s, bool r = true) { m_PoolMotors = s; m_RotatePool = r; }
     void        IncPoolIdx          ()                      { m_PoolIdx = (m_PoolIdx + 1) % NUMBER_OF_MOTORS; }
     void		SetPoolIdx      	(int idx)               { m_PoolIdx = idx; }
-
-    eCmdAnswer  GetAndShowMessage   (uint8_t chk, long TimeoutMs = 500);
-
 };

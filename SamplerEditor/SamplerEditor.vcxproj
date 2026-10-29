@@ -463,6 +463,7 @@
     <ClCompile Include="Panels\CmdEditor\DBRoutineCtrl.cpp" />
     <ClCompile Include="Panels\CmdEditor\sSampler_Commands.cpp" />
     <ClCompile Include="Panels\CmdExecutor\cCommPort.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\cExecTools.cpp" />
     <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cEnergy.cpp" />
