@@ -466,6 +466,7 @@
     <ClCompile Include="Panels\CmdExecutor\cExecTools.cpp" />
     <ClCompile Include="Panels\CmdExecutor\cExecutor.cpp" />
     <ClCompile Include="Panels\CmdExecutor\CmdExecutorCtrl.cpp" />
+    <ClCompile Include="Panels\CmdExecutor\cMotorPoller.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cEnergy.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cpanPower.cpp" />
     <ClCompile Include="Panels\ShowAnswers\cpanSteppers.cpp" />

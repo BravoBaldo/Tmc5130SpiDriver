@@ -1,10 +1,22 @@
 ﻿#include "stdwx.h"
 #include "cExecTools.h"
 
-void tool_LogStep(const sCommand& vStep, bool f) {
+void tool_LogMe(wxEvtHandler* m_EventTarget, const wxString str, bool ShowDate) {
+	if (m_EventTarget) {
+		sFsaExecParams* answ = new sFsaExecParams();
+		answ->ToLog = str;
+		answ->UseDate = ShowDate;
+		wxCommandEvent* event = new wxCommandEvent(wxEVT_FSAEXEC_ANSWER, ID_EXEC_LOGME);
+		event->SetClientData(static_cast<void*>(answ));
+		wxQueueEvent(m_EventTarget, event);
+	}
+}
+
+
+wxString tool_LogStepStr(const sCommand& vStep, bool f) {
 	const sSampler_Commands* x = Command_GetByCmd(vStep.m_SubSystem, vStep.m_Cmd, vStep.m_PatLen);
-	LogMe(wxString::Format(" Step %5d/%03d, cmd:%3d (%c) %-25s\t%s\t",
-		vStep.m_MasterId, vStep.m_DetailProg, vStep.m_Cmd, vStep.m_Cmd, (x ? x->Descr : "UNKNOWN CMD"), (f ? "XXX" : "YYY")), true);
+	return wxString::Format(" Step %5d/%03d, cmd:%3d (%c) %-25s\t%s\t",
+		vStep.m_MasterId, vStep.m_DetailProg, vStep.m_Cmd, vStep.m_Cmd, (x ? x->Descr : "UNKNOWN CMD"), (f ? "XXX" : "YYY"));
 }
 
 std::vector<sCommand> tool_FetchStepsFromDB(std::atomic<bool>* ptrIsRunning, uint16_t m_MasterId, uint16_t from, uint16_t to) {
@@ -39,10 +51,9 @@ sCommand tool_Fetch(std::atomic<bool>* ptrIsRunning, std::deque<sCommand>& execu
 	sCommand currentStep = std::move(executionQueue.front());
 	executionQueue.pop_front();
 
-	if (flagShow) {
-		// Esegue la notifica sulla callback per l'interfaccia se presente
+	if (flagShow) { // Esegue la notifica sulla callback per l'interfaccia se presente
 		if (onStepCallback) onStepCallback(currentStep);
-		tool_LogStep(currentStep, false); // AAA always log!
+		LogMe(tool_LogStepStr(currentStep, false), true);
 	}
 
 	// CASO A: Il comando estratto è una chiamata a una sotto-routine

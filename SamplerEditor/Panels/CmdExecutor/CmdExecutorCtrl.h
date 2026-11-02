@@ -15,7 +15,7 @@ class CmdExecutorCtrl : public wxPanel {
 
     // Puntatori a classi esterne (risolti tramite forward declaration)
 	CmdEditorCtrl*		m_ptrEditor		= nullptr;
-	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;
+	cDetailListCtrl*	m_ptrPrgDetail	= nullptr;	//cDetailListCtrl
 
     wxTimer 	m_timer;
     cExecutor   m_Executor;
@@ -35,11 +35,13 @@ public:
 	void	    SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
 
 	void		ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
-    void		SetPoolMotors       (bool s, bool r = true) { m_Executor.SetPoolMotors(s, r); }
-    void		IncPoolIdx          ()                      { m_Executor.IncPoolIdx(); }
+    void		SetPoolMotors       (bool enable, bool rotate) { m_Executor.SetPoolMotors(enable, rotate); }
     void		SetPoolIdx          (int idx)               { m_Executor.SetPoolIdx(idx); }
-    int			GetMotorSelected    ()                      { return m_Executor.GetMotorSelected(); }
 	bool        IsRunning			() const				{ return m_Executor.IsRunning(); }
 
-    void		SetAnswerHandler(cAnswersShow* phandler)    { m_Executor.SetAnswerHandler(phandler); }
+	void        OnThreadNotification(wxCommandEvent& event);
+	void        OnThreadAskUser(wxCommandEvent& event);
+
+	cAnswersShow* m_ptrAnswerShow = nullptr;
+	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
 };

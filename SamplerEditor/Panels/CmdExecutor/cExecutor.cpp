@@ -1,27 +1,20 @@
-﻿
-/*
-[Pubblic]
-ExecuteSteps_FromDB ────(FetchStepsFromDatabase)──────> [Private] ProcessExecutionQueue ─(FetchStepsFromDatabase)─> SureCommandFromDB ──> SendCommand
-                                                    ^
-                  ExecuteStep ──────────────────────┴
-                      ^
- ExecuteStepSingle ───┘
---------------------------------------------------------------
-	
-*/
-
-#include "stdwx.h"
+﻿#include "stdwx.h"
 #include <wx/stopwatch.h>
 #include <array>
 #include "cExecutor.h"
 #include "cExecTools.h"
 
-// Definizione dell'evento personalizzato
-wxDEFINE_EVENT(wxEVT_EXEC_PROMPT_USER, wxCommandEvent);
+wxDEFINE_EVENT(wxEVT_EXEC_PROMPT_USER,	wxCommandEvent);
+wxDEFINE_EVENT(wxEVT_FSAEXEC_ANSWER,	wxCommandEvent);
 
-//#define ChangeStatus(s)	{LogMe(wxString::Format("\tStatus FROM %s --> %s \n", StateName(m_State), StateName(s)), false);	m_State = s; }
-#define ChangeStatus(s)	{m_State = s; }
-
+void cFsaExec::ChangeStatus(eExecutorState newState) {
+#ifdef USE_LOG_CHANGESTATUS // Abilita il log esteso solo in modalità Debug per non appesantire la seriale in Release
+	if (m_State != newState && m_EventTarget) {
+		tool_LogMe(m_EventTarget, wxString::Format("\tFSM: %s --> %s\n", ExecStateName(m_State), ExecStateName(newState)), false);
+	}
+#endif
+	m_State = newState;
+}
 
 wxString cFsaExec::ExecStateName(eExecutorState s) {
 	switch (s) {
@@ -32,29 +25,20 @@ wxString cFsaExec::ExecStateName(eExecutorState s) {
 	return "???";
 }
 
-#if defined(USE_CFSA_TIMED)
 void cFsaExec::OnExecTimer(wxTimerEvent& WXUNUSED(event)) {
 	if (m_ptrRunning && m_ptrRunning->load(std::memory_order_relaxed)) 
 		fsaExecutor();
 }
-#endif
 
-cFsaExec::cFsaExec() : m_CommPort()
-#if defined(USE_CFSA_TIMED)
-, m_execTimer(this)
-#endif
-{
-#if defined(USE_CFSA_TIMED)
+cFsaExec::cFsaExec() : m_CommPort(), m_execTimer(this) {
 	this->Bind(wxEVT_TIMER, &cFsaExec::OnExecTimer, this, m_execTimer.GetId());
 	m_execTimer.Start(15);	// millisecond interval
-#endif
 	m_ResponseBuffer.reserve(sizeof(AnswerHeader) + 2);
 }
 
 cFsaExec::~cFsaExec() {
-#if defined(USE_CFSA_TIMED)
+	this->Unbind(wxEVT_TIMER, &cFsaExec::OnExecTimer, this, m_execTimer.GetId());
 	m_execTimer.Stop();
-#endif
 	if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
 }
 
@@ -65,7 +49,15 @@ eCmdAnswer cFsaExec::GetAndShowMessage(uint8_t chk, long TimeoutMs) {
 	if (bytesRead < sizeof(AnswerHeader))	return eErrShortMsg;
 	const auto* ptrHeader = reinterpret_cast<const AnswerHeader*>(m_ResponseBuffer.data());
 	if (!ptrHeader)							return eErrTimeout; //ToDo: maybe never happen
-	if (m_ptrAnswerShow)	m_ptrAnswerShow->SetAnswer(ptrHeader, bytesRead);
+
+	if (m_EventTarget) {
+		sFsaExecParams* answ = new sFsaExecParams();
+		answ->lenAnswer	= bytesRead;
+		answ->Response	= m_ResponseBuffer;
+		wxCommandEvent* event = new wxCommandEvent(wxEVT_FSAEXEC_ANSWER, ID_EXEC_ANSWER);
+		event->SetClientData(static_cast<void*>(answ));
+		wxQueueEvent(m_EventTarget, event);
+	}
 	return ptrHeader->m_Result;
 }
 
@@ -81,10 +73,10 @@ bool cFsaExec::SendCommand(const sCommand& vStep, long TimeoutMs) {
 void cFsaExec::PostUserResponse(bool continueProcess) {
 	if (m_State == EXECSTATE_WAIT_USER) {
 		if (continueProcess) {
-			LogMe("\tUSER DECISION: CONTINUE\n", false);
+			tool_LogMe(m_EventTarget, "\tUSER DECISION: CONTINUE\n", false);
 			ChangeStatus(EXECSTATE_ENDSEND);
 		} else {
-			LogMe("\tUSER DECISION: END PROCESS\n", false);
+			tool_LogMe(m_EventTarget, "\tUSER DECISION: END PROCESS\n", false);
 			if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
 			ChangeStatus(EXECSTATE_IDLE);
 		}
@@ -119,21 +111,22 @@ void cFsaExec::fsaExecutor() {
 				case eCmdOk:										ChangeStatus(EXECSTATE_ENDSEND);	break;
 				case eCmdRetry:										ChangeStatus(EXECSTATE_TRYSEND);	break;
 				case eCmdError:		m_Error = EXEC_ERROR_ASK;		ChangeStatus(EXECSTATE_ERROR);		break;
-				case eErrTimeout:
+				case eErrTimeout:	m_Error = EXEC_ERROR_TIMEOUT;	ChangeStatus(EXECSTATE_ERROR);		break;
 				case eErrShortMsg:									ChangeStatus(EXECSTATE_CHKCNT);		break;
 				default:			m_Error = EXEC_ERROR_UNKNOWN;	ChangeStatus(EXECSTATE_ERROR);		break;
 			}
 			break;
 
 		case EXECSTATE_ENDSEND:
-			tool_LogStep(m_vStep, true);
-			LogMe(wxString::Format("  %d/%d Completed in %ld ms.\n", m_vStep.m_MasterId, m_vStep.m_DetailProg, m_swTotCmd.Time()), false);
+			tool_LogMe(m_EventTarget, tool_LogStepStr(m_vStep, true), true);
+			tool_LogMe(m_EventTarget, wxString::Format("  %d/%d Completed in %ld ms.\n", m_vStep.m_MasterId, m_vStep.m_DetailProg, m_swTotCmd.Time()), false);
+
 			ChangeStatus(EXECSTATE_IDLE);
 			break;
 
 		case EXECSTATE_CHKCNT:
 			m_retryCount++;
-			LogMe(wxString::Format("Timeout/ShortMsg (%ld ms). Retransmitting (%d/50)...\n", m_TimeoutMs, m_retryCount), true);
+			tool_LogMe(m_EventTarget, wxString::Format("Timeout/ShortMsg (%ld ms). Retransmitting (%d/50)...\n", m_TimeoutMs, m_retryCount), true);
 			if (m_retryCount > 50) {
 				m_Error = EXEC_ERROR_TIMEOUT;
 				ChangeStatus(EXECSTATE_ERROR);
@@ -145,35 +138,27 @@ void cFsaExec::fsaExecutor() {
 		case EXECSTATE_ERROR:
 			switch (m_Error) {
 				case EXEC_ERROR_WRITE:
-					LogMe("Hardware error or timeout while writing.\n", true);
+					tool_LogMe(m_EventTarget, "Hardware error or timeout while writing.\n", true);
 					if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
 					ChangeStatus(EXECSTATE_IDLE);
 					break;
 				case EXEC_ERROR_ASK:
-					LogMe("\tERROR Received. Notifying UI thread...\n", false);
-					if (m_parentTarget) {
+					tool_LogMe(m_EventTarget, "\tERROR Received. Notifying UI thread...\n", false);
+
+					if (m_EventTarget) {
 						wxCommandEvent* evt = new wxCommandEvent(wxEVT_EXEC_PROMPT_USER);	// Creiamo un evento asincrono sicuro da inviare alla UI
 						evt->SetClientData(this);			// Passiamo il puntatore di questa istanza nell'evento così la UI sa a chi rispondere
-						wxQueueEvent(m_parentTarget, evt);	 //Spedisce l'evento nella coda della UI in modo thread-safe
+						wxQueueEvent(m_EventTarget, evt);	 //Spedisce l'evento nella coda della UI in modo thread-safe
 						ChangeStatus(EXECSTATE_WAIT_USER);	 //Congeliamo la macchina a stati in attesa dell'input utente
 					} else {
 						// Fallback se nessuno ascolta l'evento: abortiamo per sicurezza
-						LogMe("\tNo parent target registered. Aborting.\n", true);
+						tool_LogMe(m_EventTarget, "\tNo parent target registered. Aborting.\n", true);
 						if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
 						ChangeStatus(EXECSTATE_IDLE);
 					}
-					/*
-					LogMe("\tERROR Received. Ask if continue...", false);
-					{
-						// NOTA: Se fsaExecutor() gira su un Worker Thread secondario, 
-						// l'uso di wxMessageDialog sincrono qui causerà crash o deadlock.
-						// Deve essere invocato tramite wxQueueEvent o eseguito esclusivamente sul Main Thread.
-						wxMessageDialog dialog(nullptr, wxT("ERROR received"), wxT("Continue?"), wxNO_DEFAULT | wxYES_NO | wxICON_ERROR);
-						if (dialog.ShowModal() == wxID_YES) { LogMe("\tCONTINUE\n", false);		ChangeStatus(EXECSTATE_ENDSEND); }
-						else { LogMe("\tEND PROCESS\n", false);	*m_ptrRunning = false;	ChangeStatus(EXECSTATE_IDLE); }
-					}*/
 					break;
 				case EXEC_ERROR_TIMEOUT:
+					tool_LogMe(m_EventTarget, "\n********TIMEOUT.\n**********\n", true);
 				case EXEC_ERROR_TOOMANY:
 				case EXEC_ERROR_UNKNOWN:
 					if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
@@ -184,28 +169,6 @@ void cFsaExec::fsaExecutor() {
 					m_retryCount++;
 					ChangeStatus(EXECSTATE_TRYSEND);
 					break;
-#ifdef QQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
-				case EXEC_ERROR_TIMEOUT:
-					LogMe("\n******* Error: TimeOut. ****\n\n", true);
-					m_retryCount++;
-					*m_ptrRunning = false;
-					ChangeStatus(EXECSTATE_IDLE);	//ToDo: AAA dovrebbe essere bloccante
-					break;
-				case EXEC_ERROR_SHORTMSG:
-					LogMe("\nShort Message.... retry\n", true);
-					m_retryCount++;
-					ChangeStatus(EXECSTATE_TRYSEND);
-					break;
-				case EXEC_ERROR_TOOMANY:
-					LogMe("\n******* Too many failed attempts. Operation aborted. ****\n\n", true);
-					*m_ptrRunning = false;
-					ChangeStatus(EXECSTATE_IDLE);	//ToDo: AAA dovrebbe essere bloccante
-					break;
-				case EXEC_ERROR_UNKNOWN:
-					LogMe(wxString::Format("\tERROR: Unknown Result: %d\n", static_cast<int>(m_Answ)), false);
-					ChangeStatus(EXECSTATE_IDLE);	//ToDo: AAA dovrebbe essere bloccante
-					break;
-#endif
 			}
 			break;
 		case EXECSTATE_WAIT_USER:
@@ -218,56 +181,21 @@ void cFsaExec::fsaExecutor() {
 	}
 }
 
-#ifdef HOWHANDLEQQQQQQQ
-// Nel costruttore o nella fase di inizializzazione dove crei cFsaQueue/cFsaExec:
-m_fsaQueue.m_FsaExec.SetParentTarget(this); // Diciamo all'esecutore di inviare gli eventi a questo Frame
-
-// Colleghiamo l'evento al gestore nel Frame
-this->Bind(wxEVT_EXEC_PROMPT_USER, &cMainFrame::OnExecutorPromptUser, this);
-
-// Implementazione del gestore eventi nel Frame (.cpp)
-void cMainFrame::OnExecutorPromptUser(wxCommandEvent& event) {
-	// Recuperiamo il puntatore all'esecutore che ha generato l'evento
-	cFsaExec* executor = static_cast<cFsaExec*>(event.GetClientData());
-
-	if (!executor) return;
-
-	// Mostriamo il dialogo grafico in modo sicuro sul thread della UI
-	wxMessageDialog dialog(this, wxT("Si è verificato un errore di comunicazione. Vuoi continuare comunque il processo?"),
-		wxT("Errore Esecuzione"), wxNO_DEFAULT | wxYES_NO | wxICON_ERROR);
-
-	bool userChoice = (dialog.ShowModal() == wxID_YES);
-
-	// Rispondiamo asincronamente alla macchina a stati
-	executor->PostUserResponse(userChoice);
-}
-#endif
-
 //==========================================================================
 
-#if defined(USE_CFSA_TIMEDQ)
 void cFsaQueue::OnqueueTimer(wxTimerEvent&) {
 	fsaEnqueue();
 }
-#endif
 
-
-cFsaQueue::cFsaQueue()
-#if defined(USE_CFSA_TIMEDQ)
-	: m_queueTimer(this)
-#endif
-{
-#if defined(USE_CFSA_TIMEDQ)
+cFsaQueue::cFsaQueue() : m_queueTimer(this) {
 	this->Bind(wxEVT_TIMER, &cFsaQueue::OnqueueTimer, this, m_queueTimer.GetId());
 	m_queueTimer.Start(20);	// millisecond interval
-#endif
 }
 
 cFsaQueue::~cFsaQueue() {
-	if (m_ptrQRunning)	m_ptrQRunning->store(false, std::memory_order_seq_cst);
-#if defined(USE_CFSA_TIMEDQ)
+	this->Unbind(wxEVT_TIMER, &cFsaQueue::OnqueueTimer, this, m_queueTimer.GetId());
 	m_queueTimer.Stop();
-#endif
+	if (m_ptrQRunning) m_ptrQRunning->store(false, std::memory_order_seq_cst);
 };
 
 void cFsaQueue::fsaEnqueue() {
@@ -278,28 +206,47 @@ void cFsaQueue::fsaEnqueue() {
 		return;
 	}
 
-	switch (m_enqStatus) {
-		case ENQUEUE_IDLE: break;
-		case ENQUEUE_LOOP:
-			m_enqStatus = (!m_executionQueue.empty()) ? ENQUEUE_CHK : ENQUEUE_IDLE;
-			break;
-		case ENQUEUE_CHK:
-			m_enqStatus = (++m_safetyLoopCounter > MAX_SAFETY_STEPS) ? ENQUEUE_ERROR : ENQUEUE_FETCH;
-			break;
-		case ENQUEUE_FETCH:
-			m_currentStep = tool_Fetch(m_ptrQRunning, m_executionQueue, m_onStepCallback, m_flagShow);
-			m_enqStatus = (m_currentStep.m_SubSystem != eSystemCmd || (m_currentStep.m_Cmd != 'a')) ? ENQUEUE_STEP : ENQUEUE_LOOP;
-			break;
-		case ENQUEUE_STEP:
-			if (!m_FsaExec.IsIdle())				break;
-			tool_SureCommandFromDB(m_currentStep);	//Eventualmente sostituisce i valori prelevandoli dal DB
-			if(m_FsaExec.SendCommand(m_currentStep))	m_enqStatus = ENQUEUE_LOOP;
-			break;
-		case ENQUEUE_ERROR:
-			LogMe("\nCRITICAL ERROR: Overflow nelle subroutine (possible infinito loop in the DB)!\n", true);
-			if (m_ptrQRunning) m_ptrQRunning->store(false, std::memory_order_seq_cst);
-			m_enqStatus = ENQUEUE_IDLE;
-			break;
+	bool muoviMacchina = true;
+	while (muoviMacchina) {
+		muoviMacchina = false; // Di base ci si ferma, a meno che uno stato non richieda un salto immediato
+
+		switch (m_enqStatus) {
+			case ENQUEUE_IDLE: break;
+			case ENQUEUE_LOOP:
+				if (m_executionQueue.empty()) {
+					m_enqStatus = ENQUEUE_IDLE;
+				} else {
+					m_enqStatus = ENQUEUE_CHK;
+					muoviMacchina = true; // Continua subito nello stesso scatto del timer
+				}
+				break;
+			case ENQUEUE_CHK:
+				if (++m_safetyLoopCounter > MAX_SAFETY_STEPS) {
+					m_enqStatus = ENQUEUE_ERROR;
+				} else {
+					m_enqStatus = ENQUEUE_FETCH;
+					muoviMacchina = true; // Continua subito nello stesso scatto del timer
+				}
+				break;
+			case ENQUEUE_FETCH:
+				m_currentStep = tool_Fetch();
+				m_enqStatus = (m_currentStep.m_SubSystem != eSystemCmd || (m_currentStep.m_Cmd != 'a')) ? ENQUEUE_STEP : ENQUEUE_LOOP;
+				muoviMacchina = true; // Continua subito (se è una subroutine siriesegue il loop, se è uno step va a verificare l'hardware)
+				break;
+			case ENQUEUE_STEP:
+				if (!m_FsaExec.IsIdle())				break;
+				tool_SureCommandFromDB(m_currentStep);	//Eventualmente sostituisce i valori prelevandoli dal DB
+				if (m_FsaExec.SendCommand(m_currentStep)) {
+					m_enqStatus = ENQUEUE_LOOP;
+					muoviMacchina = true; // Il comando è partito, controlla subito se c'è altro da fare!
+				}
+				break;
+			case ENQUEUE_ERROR:
+				tool_LogMe(m_EventTarget, "\nCRITICAL ERROR: Overflow in subroutines (possible infinite loop in the DB)!\n", true);
+				if (m_ptrQRunning) m_ptrQRunning->store(false, std::memory_order_seq_cst);
+				m_enqStatus = ENQUEUE_IDLE;
+				break;
+		}
 	}
 }
 
@@ -325,6 +272,33 @@ bool cFsaQueue::ExecuteStep(sCommand& vStep) {
 	return ProcessExecutionQueue(nullptr, false);
 }
 
+sCommand cFsaQueue::tool_Fetch() {
+	if (m_executionQueue.empty()) {
+		tool_LogMe(m_EventTarget, "ERROR: tool_Fetch chiamata su una coda di esecuzione vuota!", true);
+		return sCommand{}; // Ritorna un comando vuoto di default
+	}
+	// Estrae l'elemento in testa usando lo spostamento (std::move) per massimizzare le prestazioni
+	sCommand currentStep = std::move(m_executionQueue.front());
+	m_executionQueue.pop_front();
+
+	if (m_flagShow) { // Esegue la notifica sulla callback per l'interfaccia se presente
+		if (m_onStepCallback) m_onStepCallback(currentStep);
+		tool_LogMe(m_EventTarget, tool_LogStepStr(currentStep, false), true);
+	}
+
+	// Il comando estratto è una chiamata a una sotto-routine
+	if (currentStep.m_SubSystem == eSystemCmd && (currentStep.m_Cmd == 'a')) {
+		tool_LogMe(m_EventTarget, wxString::Format("-> Espansione SubRoutine %d...\n", currentStep.m_Par[0]), false);
+		auto subSteps = tool_FetchStepsFromDB(m_ptrQRunning, currentStep.m_Par[0], 0, wxUINT16_MAX);
+
+		// Inserisce i nuovi passi in TESTA alla coda in ordine inverso (LIFO)
+		for (auto it = subSteps.rbegin(); it != subSteps.rend(); ++it) {
+			m_executionQueue.push_front(std::move(*it));
+		}
+	}
+	return currentStep;
+}
+
 bool cFsaQueue::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
 	if (!m_ptrQRunning || !m_ptrQRunning->load()) return false;
 
@@ -341,29 +315,25 @@ bool cFsaQueue::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t
 
 	bool Ret = ProcessExecutionQueue(onStepCallback, false);
 	wxString s;
-	if (from == 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld took %ld ms.", m_MasterId, swExecFromDB.Time());
+		 if (from == 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld took %ld ms.", m_MasterId, swExecFromDB.Time());
 	else if (from == 0 && to != wxUINT16_MAX)	s = wxString::Format("Programm %ld (Until %ld) took %ld ms.", m_MasterId, to, swExecFromDB.Time());
 	else if (from != 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld (from %d) took %ld ms.", m_MasterId, from, swExecFromDB.Time());
 	wxString bar = wxString('*', s.Len() + 8);
 
-	LogMe(wxString::Format("\n%s\n" "*** %s ***\n" "%s\n\n", bar, s, bar), false);
-
+	tool_LogMe(m_EventTarget, wxString::Format("\n%s\n" "*** %s ***\n" "%s\n\n", bar, s, bar), false);
 	return Ret;
 }
 
 //===================================================================================
-
-cExecutor::cExecutor() : m_Timer(this) {
+cExecutor::cExecutor() : m_FsaQueue() {
 	m_FsaQueue.SetRunningFlag(m_Running);
-	this->Bind(wxEVT_TIMER, &cExecutor::OnTimer, this, m_Timer.GetId());
-	m_Timer.Start(200);	// millisecond interval
-	m_ResponseBuffer.reserve(sizeof(AnswerHeader)+2);
 	m_Running = false;
+	m_poller = std::make_unique<cMotorPoller>(this);
+	m_poller->Start(200); // Fa partire il timer interno del poller
 }
 
 cExecutor::~cExecutor() {
 	m_Running = false;
-	m_Timer.Stop();
 }
 
 bool cExecutor::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
@@ -376,28 +346,8 @@ void cExecutor::ExecuteStepSingle(sCommand& step) {
 	m_Running = false;
 }
 
-void cExecutor::PoolElements() {
-	if (m_RotatePool)	IncPoolIdx();
-
-	sCommand AskMotor{};// = { eTypCommand, eStepDirect, '0', 1, "M", {m_PoolIdx}, 0, 0, 0 };
-	AskMotor.m_MsgType = eTypCommand;
-	AskMotor.m_SubSystem = eStepDirect;
-	AskMotor.m_Cmd = '0';
-	AskMotor.m_PatLen = 1;
-	AskMotor.m_Pattern[0] = 'M';
-	AskMotor.m_Par[0] = m_PoolIdx;
-	//		AskMotor.m_MasterId		= 0;			//2
-	//		AskMotor.m_DetailProg	= 0;			//2
-	//		AskMotor.m_ChkSum		= 0;			//2
-
-	ExecuteStepSingle(AskMotor);
-}
-
-
-void cExecutor::OnTimer(wxTimerEvent&) {
-	//m_Timer.Stop();
-	if (IsWorking() && m_PoolMotors && !m_Running) {
-		PoolElements();
-	}
-	//m_Timer.Start(250);	// Restart timer
+void cExecutor::StartProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
+	IsRunningSet(true);
+	ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
+	IsRunningSet(false);
 }

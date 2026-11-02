@@ -17,5 +17,6 @@ public:
 		cpanPower( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
 		~cpanPower()	{};
 		void Fill(const AnswerHeader* ptrHeader);
+		int  GetMotorSelected() { return m_grid_Motors ? m_grid_Motors->GetGridCursorRow() : 0; }
 
 };

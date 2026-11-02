@@ -283,12 +283,12 @@ SamplerFrame::SamplerFrame(const wxString& title, const wxPoint& pos, const wxSi
 
 	m_PanExec = new CmdExecutorCtrl(this);
 	m_PanExec->SetEditorAndDB(m_CmdEditor, m_lstPrgDetail);
-	m_PanExec->SetPoolMotors(false);
+	m_PanExec->SetPoolMotors(false, false);
 
 	m_PanAnswers = new cAnswersShow(this);
-	m_PanExec->SetAnswerHandler(m_PanAnswers);
+	m_PanExec->SetAnswerHandler(m_PanAnswers);	//Assegna
 
-//	m_PanAnswers2 = new cShowLogs(this);
+	//	m_PanAnswers2 = new cShowLogs(this);
 
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+"\\" ), false);
 	LogMe(wxString::Format("Working path:'%s'\n", wxFileName::GetCwd()+wxT("\\") ), false);
@@ -336,7 +336,7 @@ void SamplerFrame::SetLayouts ( void ) {
 }
 
 SamplerFrame::~SamplerFrame() {
-	if(m_PanExec)	m_PanExec->SetPoolMotors(false);
+	if(m_PanExec)	m_PanExec->SetPoolMotors(false, false);
 	wxDELETE(m_timer);
 	wxMilliSleep(100);	//Wait for the current command to finish, if any
 	wxDELETE(m_locale);
@@ -519,14 +519,30 @@ void SamplerFrame::OnMenu( wxCommandEvent& event ) {
 			}
 			break;
 #endif
-		case ID_MNU_POLL_MOTORS:	m_PanExec->SetPoolMotors(event.IsChecked()); break;
 //		case ID_MNU_POLL_NEXT:		m_PanExec->IncPoolIdx(); m_PanExec->SetPoolMotors(true, false);	break;
+		case ID_MNU_POLL_MOTORS:
+			m_PanExec->SetPoolMotors(event.IsChecked(), true);
+			if (event.IsChecked() == false) {
+				wxMenu* menu = event.GetEventObject() ? dynamic_cast<wxMenu*>(event.GetEventObject()) : nullptr;
+				if (menu) {
+					menu->Check(ID_MNU_POLL_CURRENT, false);
+				}
+			}
+			break;
 		case ID_MNU_POLL_CURRENT:
 			{
-				int idx = m_PanExec->GetMotorSelected();
-				if(idx>=0) m_PanExec->SetPoolIdx(idx);
-				m_PanExec->SetPoolMotors(event.IsChecked(), false);
-			}									
+				int idx = (m_PanAnswers ? m_PanAnswers->GetMotorSelected() : -1);
+				if (idx >= 0) {
+					m_PanExec->SetPoolIdx(idx);
+					m_PanExec->SetPoolMotors(event.IsChecked(), false);
+				}else {
+					wxMenu* menu = event.GetEventObject() ? dynamic_cast<wxMenu*>(event.GetEventObject()) : nullptr;
+					if (menu) {
+						menu->Check(event.GetId(), false);
+					}
+					m_PanExec->SetPoolMotors(false, false);
+				}
+			}
 			break;
 
 		default:

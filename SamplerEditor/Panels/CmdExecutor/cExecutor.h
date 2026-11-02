@@ -3,27 +3,53 @@
 
 #include "cCommPort.h"      //cCommPort
 #include "cShowAnswers.h"   //cAnswersShow
+#include "cMotorPoller.h"
 
 #include <functional>       //Callback
 #include <deque>
 #include <vector>
 #include <atomic>           // Sostituisce volatile per thread-safety
 
+#define USE_THREADING
 #define USE_CFSA_TIMED
 #define USE_CFSA_TIMEDQ
+//#define USE_LOG_CHANGESTATUS
+#define USE_POLLER
+
 
 #define MAX_SAFETY_STEPS  50000
 
-
+wxDECLARE_EVENT(wxEVT_FSAEXEC_ANSWER,   wxCommandEvent);
 wxDECLARE_EVENT(wxEVT_EXEC_PROMPT_USER, wxCommandEvent);
+wxDECLARE_EVENT(wxEVT_QUEUE_COMPLETED,  wxCommandEvent);
+
+#define EXEC_EXECEVENTS_LIST \
+    X(ID_EXEC_ANSWER)    \
+    X(ID_EXEC_LOGME)     \
+    X(ID_EXEC_NEWSTATE)  \
+    X(ID_EXEC_ERROR)
+
+enum {
+    ID_EXEC_NONE = wxID_HIGHEST + 1,
+#define X(evid) evid,
+    EXEC_EXECEVENTS_LIST
+#undef X
+};
+
+struct sFsaExecParams {
+    std::vector<uint8_t>    Response;
+    size_t                  lenAnswer   = 0;
+    wxString                ToLog;
+    bool                    UseDate = false;
+};
 
 #define EXEC_ERRORS_LIST \
-    X(EXEC_ERROR_WRITE) \
-    X(EXEC_ERROR_ASK) \
-    X(EXEC_ERROR_TIMEOUT) \
-    X(EXEC_ERROR_SHORTMSG) \
-    X(EXEC_ERROR_TOOMANY) \
-    X(EXEC_ERROR_UNKNOWN) \
+    X(EXEC_ERROR_WRITE)     \
+    X(EXEC_ERROR_ASK)       \
+    X(EXEC_ERROR_TIMEOUT)   \
+    X(EXEC_ERROR_SHORTMSG)  \
+    X(EXEC_ERROR_TOOMANY)   \
+    X(EXEC_ERROR_UNKNOWN)   \
     X(EXEC_ERROR_NONE)
 
 enum eExecutorErrors : uint8_t {
@@ -33,13 +59,13 @@ enum eExecutorErrors : uint8_t {
 };
 
 #define FSA_STATUS_EXEC_LIST \
-    X(EXECSTATE_INITSEND) \
-    X(EXECSTATE_TRYSEND) \
-    X(EXECSTATE_GETANSW) \
-    X(EXECSTATE_ENDSEND) \
-    X(EXECSTATE_CHKCNT) \
-    X(EXECSTATE_ERROR) \
-    X(EXECSTATE_WAIT_USER) /* Nuovo stato di attesa asincrona */ \
+    X(EXECSTATE_INITSEND)   \
+    X(EXECSTATE_TRYSEND)    \
+    X(EXECSTATE_GETANSW)    \
+    X(EXECSTATE_ENDSEND)    \
+    X(EXECSTATE_CHKCNT)     \
+    X(EXECSTATE_ERROR)      \
+    X(EXECSTATE_WAIT_USER)  \
     X(EXECSTATE_IDLE)
 
 
@@ -63,60 +89,51 @@ enum eEnqueueState : uint8_t {
 #undef X
 };
 
-class cFsaExec
-#if defined(USE_CFSA_TIMED)
-    : public wxEvtHandler 
-#endif
-{
+class cFsaExec : public wxEvtHandler {
 public:
     cFsaExec();
     virtual ~cFsaExec();
     void    SetRunning(std::atomic<bool>* ptrRunning) { m_ptrRunning = ptrRunning; }
 
-    void    SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
-    int     GetMotorSelected() { return (m_ptrAnswerShow ? m_ptrAnswerShow->GetMotorSelected() : -1); }
-
-    bool    IsWorking           ()  { return m_CommPort.IsWorking(); }
+    bool    IsUSBConnected      ()  { return m_CommPort.IsWorking(); }
     bool    SendCommand         (const sCommand& vStep, long TimeoutMs = 500);
     bool    IsIdle              ()  {return m_State == EXECSTATE_IDLE;}
     void    PostUserResponse    (bool continueProcess);    // Metodo che la UI chiamerà per inviare la risposta dell'utente
 
-    // Permette all'esecutore di sapere a chi inviare la notifica (es. il Frame principale)
-    void SetParentTarget(wxEvtHandler* target) { m_parentTarget = target; }
+    void SetEventTarget(wxEvtHandler* target) { m_EventTarget = target; }
 private:
-    wxEvtHandler* m_parentTarget = nullptr; 
-
-#if defined(USE_CFSA_TIMED)
+    wxEvtHandler* m_EventTarget = nullptr;
     wxTimer     m_execTimer;
-void            OnExecTimer(wxTimerEvent& event);
+
+#if !defined(USE_LOG_CHANGESTATUS)
+
 #endif
+    void ChangeStatus(eExecutorState newState);
+
+
+    void        OnExecTimer(wxTimerEvent& event);
     void        fsaExecutor         ();
     eCmdAnswer  GetAndShowMessage   (uint8_t chk, long TimeoutMs = 500);
     wxString    ExecStateName       (eExecutorState s);
 
     cCommPort               m_CommPort;
     std::vector<uint8_t>    m_ResponseBuffer;
-    cAnswersShow*           m_ptrAnswerShow = nullptr;
 
-    std::atomic<bool>* m_ptrRunning = nullptr;
-    eExecutorState          m_State = EXECSTATE_IDLE;
-    eExecutorErrors         m_Error = EXEC_ERROR_NONE;
-    eCmdAnswer              m_Answ = eCmdOk;
+    std::atomic<bool>*      m_ptrRunning    = nullptr;
+    eExecutorState          m_State         = EXECSTATE_IDLE;
+    eExecutorErrors         m_Error         = EXEC_ERROR_NONE;
+    eCmdAnswer              m_Answ          = eCmdOk;
     sCommand                m_vStep;
 
     wxStopWatch             m_swTotCmd;
-    long                    m_TimeoutMs = 500;
-    int			            m_retryCount = 0;
+    long                    m_TimeoutMs     = 500;
+    int			            m_retryCount    = 0;
 };
 
 
 wxDECLARE_EVENT(wxEVT_QUEUE_COMPLETED, wxCommandEvent); // Dichiarazione dell'evento di fine coda
 
-class cFsaQueue 
-#if defined(USE_CFSA_TIMEDQ)
-    : public wxEvtHandler
-#endif
-{
+class cFsaQueue : public wxEvtHandler {
 public:
     cFsaQueue();
     virtual ~cFsaQueue();
@@ -125,20 +142,23 @@ public:
                                                                             m_ptrQRunning =      &RunningFlag;
                                                                             m_FsaExec.SetRunning(&RunningFlag);
                                                                         }
-    void		SetAnswerHandler    (cAnswersShow* phandler)    { m_FsaExec.SetAnswerHandler(phandler); }
-    bool        IsWorking           ()                          { return m_FsaExec.IsWorking(); }
-    int         GetMotorSelected    ()                          { return m_FsaExec.GetMotorSelected(); }
+//    void		SetAnswerHandler    (cAnswersShow* phandler)    { m_FsaExec.SetAnswerHandler(phandler); }
+    bool        IsUSBConnected      ()                          { return m_FsaExec.IsUSBConnected(); }
 
     bool		ExecuteStep             (sCommand& vStep);
     bool        ExecuteSteps_FromDB     (uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
 
+    void SetEventTarget(wxEvtHandler* target) { m_EventTarget = target; m_FsaExec.SetEventTarget(target); }
+
 private:
-#if defined(USE_CFSA_TIMEDQ)
-    wxTimer m_queueTimer;
-    void    OnqueueTimer(wxTimerEvent& event);
-    void    fsaEnqueue();
-#endif
-    bool        ProcessExecutionQueue(std::function<void(sCommand&)> onStepCallback, bool Show = false);
+    wxEvtHandler*   m_EventTarget = nullptr;
+
+    wxTimer         m_queueTimer;
+    void            OnqueueTimer(wxTimerEvent& event);
+    void            fsaEnqueue();
+
+    bool            ProcessExecutionQueue   (std::function<void(sCommand&)> onStepCallback, bool Show = false);
+    sCommand        tool_Fetch              ();
 
     eEnqueueState                   m_enqStatus             = ENQUEUE_IDLE;
     size_t			                m_safetyLoopCounter     = 0;
@@ -153,36 +173,27 @@ private:
     cFsaExec                        m_FsaExec;
 };
 
-
-
 class cExecutor : public wxEvtHandler {
-    cFsaQueue               m_FsaQueue;
+    cFsaQueue                       m_FsaQueue;
+    std::unique_ptr<cMotorPoller>   m_poller;
+    std::atomic<bool>               m_Running       = false;
 
-    wxTimer                 m_Timer;
-    std::atomic<bool>       m_Running       = false;
-	ParamType	            m_PoolIdx		= 0;
-	bool		            m_PoolMotors	= false;
-	bool		            m_RotatePool	= true;
-    std::vector<uint8_t>    m_ResponseBuffer;
-
-    void    OnTimer         (wxTimerEvent& event);
-    void    PoolElements    ();
+    bool    ExecuteSteps_FromDB (uint16_t m_MasterId, uint16_t from=0, uint16_t to=wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
 public:
     cExecutor();
     ~cExecutor();
 
-    bool        ExecuteSteps_FromDB     (uint16_t m_MasterId, uint16_t from=0, uint16_t to=wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
-    void		ExecuteStepSingle       (sCommand& vStep);
+    void	ExecuteStepSingle   (sCommand& vStep);
+    void	StartProcess        (uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
 
+    void    IsRunningSet        (bool r)            { m_Running = r; }
+    bool    IsRunning           () const            { return m_Running; }
 
-    void        IsRunningSet        (bool r)        { m_Running = r; }
-    bool        IsRunning           () const        { return m_Running; }
+    bool    IsUSBConnected      ()                  { return m_FsaQueue.IsUSBConnected(); }
 
-    void		SetAnswerHandler    (cAnswersShow* phandler)    { m_FsaQueue.SetAnswerHandler(phandler);}
-    bool        IsWorking           ()                          { return m_FsaQueue.IsWorking(); }
-    int         GetMotorSelected    ()                          { return m_FsaQueue.GetMotorSelected(); }
+    void    SetPoolMotors      (bool enable, bool rotate)     { m_poller->EnablePooling(enable, rotate); }
+    void    SetPoolIdx         (int idx)            { m_poller->SetCurrentMotor(idx); }
+//    void    IncPoolIdx         ()                   { m_poller->IncPoolIdx(); }
 
-    void		SetPoolMotors   	(bool s, bool r = true) { m_PoolMotors = s; m_RotatePool = r; }
-    void        IncPoolIdx          ()                      { m_PoolIdx = (m_PoolIdx + 1) % NUMBER_OF_MOTORS; }
-    void		SetPoolIdx      	(int idx)               { m_PoolIdx = idx; }
+    void    SetEventTarget(wxEvtHandler* target)    { m_FsaQueue.SetEventTarget(target); }
 };

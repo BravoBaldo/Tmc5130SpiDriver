@@ -22,5 +22,16 @@ public:
     cAnswersShow            (wxWindow* parent);
 
     bool SetAnswer          (const AnswerHeader* Answer, size_t AnswerLen);
-    int  GetMotorSelected() { return m_panSteppers ? m_panSteppers->GetMotorSelected() : 0; }
+
+    //ToDo: AAA a seconda del pannello visualizzato...
+    int  GetMotorSelected() { 
+        wxWindow* paginaGenerica = m_NoteBook->GetCurrentPage();
+        if(paginaGenerica == m_panSteppers)
+            return m_panSteppers ? m_panSteppers->GetMotorSelected() : 0;
+        else if (paginaGenerica == m_PanMotorPowers)
+            return m_PanMotorPowers ? m_PanMotorPowers->GetMotorSelected() : 0;
+        //m_panSteppers = new cpanSteppers(m_NoteBook);	m_NoteBook->AddPage(m_panSteppers, _("Steppers"));
+        //m_PanMotorPowers = new cpanPower(m_NoteBook);	m_NoteBook->AddPage(m_PanMotorPowers, _("FSA"));
+        return -1;
+    }
 };

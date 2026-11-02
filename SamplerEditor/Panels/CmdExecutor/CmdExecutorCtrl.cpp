@@ -14,9 +14,7 @@ void CmdExecutorCtrl::SetEditorAndDB(CmdEditorCtrl* ptrEditor, cDetailListCtrl* 
 }
 
 void CmdExecutorCtrl::ExecuteProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
-	m_Executor.IsRunningSet(true);
-	m_Executor.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
-	m_Executor.IsRunningSet(false);
+	m_Executor.StartProcess(m_MasterId, from, to, onStepCallback);
 }
 
 void CmdExecutorCtrl::ShowCurrentStep(long i, sCommand& vStep) {
@@ -49,7 +47,7 @@ void CmdExecutorCtrl::OnBtnCommands(wxCommandEvent& event) {
 			break;
 		case ID_Btn_Panic:
 			m_Executor.IsRunningSet(false);
-			::wxSafeYield(this, true);	// ::wxYield();
+			::wxSafeYield(this, true);
 			break;
 		default:
 			LogMe(wxString::Format("(???) Event=%0X\n", event.GetId()), true);
@@ -64,10 +62,9 @@ void CmdExecutorCtrl::OnTimer(wxTimerEvent& ) {
 	m_Btn_ExecEditor->Enable(IsStartable);
 	m_Btn_ExecAll	->Enable(IsStartable);
 
-	bool isReady = m_Executor.IsWorking();	//Is USB connected
+	bool isReady = m_Executor.IsUSBConnected();	//Is USB connected
 	if (this->IsEnabled() != isReady) {
 		this->Enable(isReady);
-		//LogMe(isReady ? "Device Connected." : "Device Disconnected.", true);
 	}
 
 	m_timer.Start(250);	// Restart timer
@@ -110,11 +107,50 @@ CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 	this->Bind(wxEVT_TIMER,	 &CmdExecutorCtrl::OnTimer,			this, m_timer.GetId());
 
 	m_timer.Start(100);	// millisecond interval
+
+	this->Bind(wxEVT_FSAEXEC_ANSWER,	&CmdExecutorCtrl::OnThreadNotification, this);
+	this->Bind(wxEVT_EXEC_PROMPT_USER,	&CmdExecutorCtrl::OnThreadAskUser, this);
+	m_Executor.SetEventTarget(this);
 }
 
 CmdExecutorCtrl::~CmdExecutorCtrl() {
-	m_Executor.IsRunningSet(false);
 	m_timer.Stop();
+	m_Executor.IsRunningSet(false);
 	::wxSafeYield(this, true);	// wxYield();
 	hid_exit();	//Avoid Memory Leak about error_buffer
+}
+
+void CmdExecutorCtrl::OnThreadAskUser(wxCommandEvent& event) {
+	cFsaExec* executor = static_cast<cFsaExec*>(event.GetClientData());	// Recuperiamo il puntatore all'esecutore che ha generato l'evento
+	if (!executor) return;
+
+	// Mostriamo il dialogo grafico in modo sicuro sul thread della UI
+	wxMessageDialog dialog(this, wxT("Si è verificato un errore di comunicazione. Vuoi continuare comunque il processo?"),
+		wxT("Errore Esecuzione"), wxNO_DEFAULT | wxYES_NO | wxICON_ERROR);
+	bool userChoice = (dialog.ShowModal() == wxID_YES);
+	executor->PostUserResponse(userChoice);		// Rispondiamo asincronamente alla macchina a stati
+}
+
+void CmdExecutorCtrl::OnThreadNotification(wxCommandEvent& event) {
+	void* rawData = event.GetClientData();
+	if (!rawData) return;
+
+	sFsaExecParams* answ = static_cast<sFsaExecParams*>(rawData);
+	switch (event.GetId()) {
+		case ID_EXEC_ANSWER:
+			{
+				const auto* ptrHeader = reinterpret_cast<const AnswerHeader*>(answ->Response.data());
+				if (m_ptrAnswerShow && ptrHeader)	m_ptrAnswerShow->SetAnswer(ptrHeader, answ->lenAnswer);
+			}
+			break;
+		case ID_EXEC_LOGME:
+			LogMe(answ->ToLog, answ->UseDate);
+			break;
+		default:
+			LogMe(
+				wxString::Format("OnThreadNotification: ricevuto ID evento non gestito (%d)\n", event.GetId()), true
+			);
+			break;
+	}
+	delete answ;
 }
