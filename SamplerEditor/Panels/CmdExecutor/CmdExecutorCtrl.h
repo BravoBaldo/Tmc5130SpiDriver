@@ -7,6 +7,8 @@
 #include "CmdEditorCtrl.h"
 #include "DBCmdView.h"		//cDetailListCtrl
 
+#include "cMotorPoller.h"
+
 class CmdExecutorCtrl : public wxPanel {
     // Componenti GUI gestiti dal ciclo di vita nativo di wxWidgets
 	wxButton*	m_Btn_ExecAll		= nullptr;
@@ -19,6 +21,7 @@ class CmdExecutorCtrl : public wxPanel {
 
     wxTimer 	m_timer;
     cExecutor   m_Executor;
+	std::unique_ptr<cMotorPoller>   m_poller;
 
 	void		OnBtnCommands		(wxCommandEvent& Evt);
 	void		OnTimer				(wxTimerEvent& Evt);
@@ -32,16 +35,18 @@ public:
 						const wxString&	name	= wxPanelNameStr
 					);
 	~CmdExecutorCtrl();
-	void	    SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
+	void			SetEditorAndDB      (CmdEditorCtrl* ptrEditor, cDetailListCtrl* ptrPrgDetail);
 
-	void		ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
-    void		SetPoolMotors       (bool enable, bool rotate) { m_Executor.SetPoolMotors(enable, rotate); }
-    void		SetPoolIdx          (int idx)               { m_Executor.SetPoolIdx(idx); }
-	bool        IsRunning			() const				{ return m_Executor.IsRunning(); }
+	void			ExecuteProcess		(uint16_t m_MasterId, uint16_t from = 0, uint16_t to = wxUINT16_MAX, std::function<void(sCommand&)> onStepCallback = nullptr);
 
-	void        OnThreadNotification(wxCommandEvent& event);
-	void        OnThreadAskUser(wxCommandEvent& event);
+	void			SetPoolMotors		(bool enable, bool rotate)	{ m_poller->EnablePooling(enable, rotate); }
+	void			SetPoolIdx			(int idx)					{ m_poller->SetCurrentMotor(idx); }
 
-	cAnswersShow* m_ptrAnswerShow = nullptr;
-	void		SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
+	bool			IsRunning			() const				{ return m_Executor.IsRunning(); }
+
+	void			OnThreadNotification(wxCommandEvent& event);
+	void			OnThreadAskUser		(wxCommandEvent& event);
+
+	cAnswersShow*	m_ptrAnswerShow = nullptr;
+	void			SetAnswerHandler(cAnswersShow* phandler) { m_ptrAnswerShow = phandler; }
 };

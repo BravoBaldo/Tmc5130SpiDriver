@@ -111,6 +111,9 @@ CmdExecutorCtrl::CmdExecutorCtrl(wxWindow* parent,
 	this->Bind(wxEVT_FSAEXEC_ANSWER,	&CmdExecutorCtrl::OnThreadNotification, this);
 	this->Bind(wxEVT_EXEC_PROMPT_USER,	&CmdExecutorCtrl::OnThreadAskUser, this);
 	m_Executor.SetEventTarget(this);
+
+	m_poller = std::make_unique<cMotorPoller>(&m_Executor);
+	m_poller->Start(200); // Fa partire il timer interno del poller
 }
 
 CmdExecutorCtrl::~CmdExecutorCtrl() {

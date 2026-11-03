@@ -4,8 +4,15 @@
 #include "cExecutor.h"
 #include "cExecTools.h"
 
-wxDEFINE_EVENT(wxEVT_EXEC_PROMPT_USER,	wxCommandEvent);
-wxDEFINE_EVENT(wxEVT_FSAEXEC_ANSWER,	wxCommandEvent);
+/*
+ExecuteStepSingle	--> ExecuteStep				-->	ProcessExecutionQueue
+StartProcess		--> ExecuteSteps_FromDB		-->	ProcessExecutionQueue
+*/
+
+
+wxDEFINE_EVENT(wxEVT_EXEC_PROMPT_USER,	wxCommandEvent);	//cFsaExec
+wxDEFINE_EVENT(wxEVT_FSAEXEC_ANSWER,	wxCommandEvent);	//eCmdAnswer
+wxDEFINE_EVENT(wxEVT_QUEUE_COMPLETED,	wxCommandEvent);
 
 void cFsaExec::ChangeStatus(eExecutorState newState) {
 #ifdef USE_LOG_CHANGESTATUS // Abilita il log esteso solo in modalità Debug per non appesantire la seriale in Release
@@ -25,26 +32,20 @@ wxString cFsaExec::ExecStateName(eExecutorState s) {
 	return "???";
 }
 
-void cFsaExec::OnExecTimer(wxTimerEvent& WXUNUSED(event)) {
-	if (m_ptrRunning && m_ptrRunning->load(std::memory_order_relaxed)) 
-		fsaExecutor();
-}
-
-cFsaExec::cFsaExec() : m_CommPort(), m_execTimer(this) {
-	this->Bind(wxEVT_TIMER, &cFsaExec::OnExecTimer, this, m_execTimer.GetId());
-	m_execTimer.Start(15);	// millisecond interval
+cFsaExec::cFsaExec() : m_CommPort() {
 	m_ResponseBuffer.reserve(sizeof(AnswerHeader) + 2);
+	m_State = EXECSTATE_IDLE;
 }
 
 cFsaExec::~cFsaExec() {
-	this->Unbind(wxEVT_TIMER, &cFsaExec::OnExecTimer, this, m_execTimer.GetId());
-	m_execTimer.Stop();
-	if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
+	if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_relaxed);
 }
 
 eCmdAnswer cFsaExec::GetAndShowMessage(uint8_t chk, long TimeoutMs) {
 	m_ResponseBuffer.clear();
+	//ToDo: Rimuovere il check di chk da m_CommPort.Read: deve uscire subito
 	size_t bytesRead = m_CommPort.Read(m_ResponseBuffer, chk, TimeoutMs);	//Aspetta una risposta al messaggio chk
+
 	if (bytesRead == 0)						return eErrTimeout;
 	if (bytesRead < sizeof(AnswerHeader))	return eErrShortMsg;
 	const auto* ptrHeader = reinterpret_cast<const AnswerHeader*>(m_ResponseBuffer.data());
@@ -82,12 +83,11 @@ void cFsaExec::PostUserResponse(bool continueProcess) {
 		}
 	}
 }
-
 void cFsaExec::fsaExecutor() {
 	bool isRunning = m_ptrRunning && m_ptrRunning->load(std::memory_order_relaxed);
 
 	if (!isRunning && m_State != EXECSTATE_IDLE) {
-		ChangeStatus(EXECSTATE_IDLE);
+		m_State = EXECSTATE_IDLE;
 		return;
 	}
 
@@ -95,33 +95,56 @@ void cFsaExec::fsaExecutor() {
 		case EXECSTATE_INITSEND:
 			m_retryCount = 0;
 			m_Error = EXEC_ERROR_NONE;
-			m_swTotCmd.Start(0);
-			ChangeStatus(EXECSTATE_TRYSEND);
-			break;
+			m_swTotCmd.Start(0); // Avvia il cronometro per il calcolo del timeout
+			m_State = EXECSTATE_TRYSEND;
+			// Fall-through intenzionale per inviare il pacchetto senza aspettare altri 20ms
+			[[fallthrough]];
 
 		case EXECSTATE_TRYSEND:
+			// Scrittura fisica sulla porta seriale
 			if (!m_CommPort.Write(&m_vStep, sizeof(sCommand), 1000)) {
 				m_Error = EXEC_ERROR_WRITE;
-				ChangeStatus(EXECSTATE_ERROR);
+				m_State = EXECSTATE_ERROR;
 				break;
 			}
-			if (m_retryCount > 50) { m_Error = EXEC_ERROR_TOOMANY;	ChangeStatus(EXECSTATE_ERROR);	break; }
-			m_Answ = GetAndShowMessage(m_vStep.m_Cmd, m_TimeoutMs);
+			m_State = EXECSTATE_GETANSW;
+			break;
+
+		case EXECSTATE_GETANSW:
+			// Verifica se sono arrivati i dati dalla seriale (in modalità non bloccante)
+			m_Answ = GetAndShowMessage(m_vStep.m_Cmd, 30); // ToDo: Era 0... Passiamo 0ms per non bloccare il Main Thread!
+
 			switch (m_Answ) {
-				case eCmdOk:										ChangeStatus(EXECSTATE_ENDSEND);	break;
-				case eCmdRetry:										ChangeStatus(EXECSTATE_TRYSEND);	break;
-				case eCmdError:		m_Error = EXEC_ERROR_ASK;		ChangeStatus(EXECSTATE_ERROR);		break;
-				case eErrTimeout:	m_Error = EXEC_ERROR_TIMEOUT;	ChangeStatus(EXECSTATE_ERROR);		break;
-				case eErrShortMsg:									ChangeStatus(EXECSTATE_CHKCNT);		break;
-				default:			m_Error = EXEC_ERROR_UNKNOWN;	ChangeStatus(EXECSTATE_ERROR);		break;
+				case eCmdOk:
+					m_State = EXECSTATE_ENDSEND;
+					break;
+				case eCmdRetry:
+					m_State = EXECSTATE_TRYSEND; // Il firmware della scheda chiede di riprovare l'invio
+					break;
+				case eCmdError:
+					m_Error = EXEC_ERROR_ASK;
+					m_State = EXECSTATE_ERROR;
+					break;
+				case eErrTimeout:
+				case eErrShortMsg:
+					// Se non è arrivato nulla o il messaggio è parziale, verifichiamo il cronometro software
+					if (m_swTotCmd.Time() > m_TimeoutMs) {
+						m_State = EXECSTATE_CHKCNT; // Tempo scaduto, gestiamo il tentativo di retransmitting
+					}
+					// Se il tempo NON è scaduto, la macchina resta in EXECSTATE_GETANSW 
+					// e ricontrollerà la seriale al prossimo impulso della coda (tra 20 ms).
+					break;
+				default:
+					m_Error = EXEC_ERROR_UNKNOWN;
+					m_State = EXECSTATE_ERROR;
+					break;
 			}
 			break;
 
 		case EXECSTATE_ENDSEND:
 			tool_LogMe(m_EventTarget, tool_LogStepStr(m_vStep, true), true);
 			tool_LogMe(m_EventTarget, wxString::Format("  %d/%d Completed in %ld ms.\n", m_vStep.m_MasterId, m_vStep.m_DetailProg, m_swTotCmd.Time()), false);
-
-			ChangeStatus(EXECSTATE_IDLE);
+			m_State = EXECSTATE_IDLE;
 			break;
 
 		case EXECSTATE_CHKCNT:
@@ -129,52 +152,43 @@ void cFsaExec::fsaExecutor() {
 			tool_LogMe(m_EventTarget, wxString::Format("Timeout/ShortMsg (%ld ms). Retransmitting (%d/50)...\n", m_TimeoutMs, m_retryCount), true);
 			if (m_retryCount > 50) {
 				m_Error = EXEC_ERROR_TIMEOUT;
-				ChangeStatus(EXECSTATE_ERROR);
-			} else {
-				ChangeStatus(EXECSTATE_TRYSEND); // Riprova
+				m_State = EXECSTATE_ERROR;
+			}
+			else {
+				m_swTotCmd.Start(0); // Resetta il cronometro per il nuovo tentativo
+				m_State = EXECSTATE_TRYSEND; // Riprova a inviare fisicamente
 			}
 			break;
 
 		case EXECSTATE_ERROR:
 			switch (m_Error) {
-				case EXEC_ERROR_WRITE:
-					tool_LogMe(m_EventTarget, "Hardware error or timeout while writing.\n", true);
-					if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
-					ChangeStatus(EXECSTATE_IDLE);
-					break;
-				case EXEC_ERROR_ASK:
-					tool_LogMe(m_EventTarget, "\tERROR Received. Notifying UI thread...\n", false);
-
-					if (m_EventTarget) {
-						wxCommandEvent* evt = new wxCommandEvent(wxEVT_EXEC_PROMPT_USER);	// Creiamo un evento asincrono sicuro da inviare alla UI
-						evt->SetClientData(this);			// Passiamo il puntatore di questa istanza nell'evento così la UI sa a chi rispondere
-						wxQueueEvent(m_EventTarget, evt);	 //Spedisce l'evento nella coda della UI in modo thread-safe
-						ChangeStatus(EXECSTATE_WAIT_USER);	 //Congeliamo la macchina a stati in attesa dell'input utente
-					} else {
-						// Fallback se nessuno ascolta l'evento: abortiamo per sicurezza
-						tool_LogMe(m_EventTarget, "\tNo parent target registered. Aborting.\n", true);
-						if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
-						ChangeStatus(EXECSTATE_IDLE);
-					}
-					break;
-				case EXEC_ERROR_TIMEOUT:
-					tool_LogMe(m_EventTarget, "\n********TIMEOUT.\n**********\n", true);
-				case EXEC_ERROR_TOOMANY:
-				case EXEC_ERROR_UNKNOWN:
-					if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_seq_cst);
-					ChangeStatus(EXECSTATE_IDLE);
-					break;
-
-				case EXEC_ERROR_SHORTMSG:
-					m_retryCount++;
-					ChangeStatus(EXECSTATE_TRYSEND);
-					break;
+			case EXEC_ERROR_WRITE:
+				tool_LogMe(m_EventTarget, "Hardware error or timeout while writing.\n", true);
+				if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_relaxed);
+				m_State = EXECSTATE_IDLE;
+				break;
+			case EXEC_ERROR_ASK:
+				tool_LogMe(m_EventTarget, "\tERROR Received. Notifying UI thread...\n", false);
+				if (m_EventTarget) {
+					wxCommandEvent* evt = new wxCommandEvent(wxEVT_EXEC_PROMPT_USER);
+					evt->SetClientData(this); // Passa l'istanza per permettere la PostUserResponse
+					wxQueueEvent(m_EventTarget, evt);
+					m_State = EXECSTATE_WAIT_USER; // Congela l'esecutore in attesa dell'utente
+				}
+				else {
+					tool_LogMe(m_EventTarget, "\tNo parent target registered. Aborting.\n", true);
+					if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_relaxed);
+					m_State = EXECSTATE_IDLE;
+				}
+				break;
+			default:
+				if (m_ptrRunning) m_ptrRunning->store(false, std::memory_order_relaxed);
+				m_State = EXECSTATE_IDLE;
+				break;
 			}
 			break;
+
 		case EXECSTATE_WAIT_USER:
-			// In questo stato la macchina a stati non fa nulla (gira a vuoto nel timer).
-			// Attende che la UI chiami il metodo `PostUserResponse`.
-			break;
 		case EXECSTATE_IDLE:
 		default:
 			break;
@@ -202,50 +216,95 @@ void cFsaQueue::fsaEnqueue() {
 	bool isRunning = m_ptrQRunning && m_ptrQRunning->load(std::memory_order_relaxed);
 
 	if (!isRunning) {
-		m_enqStatus = ENQUEUE_IDLE;
+		if (m_enqStatus != ENQUEUE_IDLE) {
+			m_executionQueue.clear();
+			m_enqStatus = ENQUEUE_IDLE;
+		}
 		return;
 	}
 
-	bool muoviMacchina = true;
-	while (muoviMacchina) {
-		muoviMacchina = false; // Di base ci si ferma, a meno che uno stato non richieda un salto immediato
+	// 1. GESTIONE DELL'ESECUTORE BASSO (AD IMPULSI):
+	// Se l'esecutore hardware sta attendendo una risposta dalla seriale (EXECSTATE_GETANSW) 
+	// o sta gestendo un errore/reinvio, gli diamo un "impulso" usando il timer della coda (ogni 20ms).
+	if (!m_FsaExec.IsIdle()) {
+		m_FsaExec.fsaExecutor(); // Controlla la porta, valuta il timeout software, ecc.
+
+		// Finché l'esecutore non torna in IDLE, congeliamo l'avanzamento della coda 
+		// e ritorniamo al ciclo dei messaggi di wxWidgets.
+		return;
+	}
+
+	// 2. CICLO DI AVANZAMENTO DELLA CODA (OTTIMIZZATO IN MEMORIA):
+	// Usiamo un flag per processare gli stati di memoria in cascata senza aspettare 20ms per ogni cambio stato
+	bool stateChanged = true;
+	while (stateChanged) {
+		stateChanged = false;
 
 		switch (m_enqStatus) {
-			case ENQUEUE_IDLE: break;
-			case ENQUEUE_LOOP:
-				if (m_executionQueue.empty()) {
-					m_enqStatus = ENQUEUE_IDLE;
-				} else {
-					m_enqStatus = ENQUEUE_CHK;
-					muoviMacchina = true; // Continua subito nello stesso scatto del timer
-				}
-				break;
-			case ENQUEUE_CHK:
-				if (++m_safetyLoopCounter > MAX_SAFETY_STEPS) {
-					m_enqStatus = ENQUEUE_ERROR;
-				} else {
-					m_enqStatus = ENQUEUE_FETCH;
-					muoviMacchina = true; // Continua subito nello stesso scatto del timer
-				}
-				break;
-			case ENQUEUE_FETCH:
-				m_currentStep = tool_Fetch();
-				m_enqStatus = (m_currentStep.m_SubSystem != eSystemCmd || (m_currentStep.m_Cmd != 'a')) ? ENQUEUE_STEP : ENQUEUE_LOOP;
-				muoviMacchina = true; // Continua subito (se è una subroutine siriesegue il loop, se è uno step va a verificare l'hardware)
-				break;
-			case ENQUEUE_STEP:
-				if (!m_FsaExec.IsIdle())				break;
-				tool_SureCommandFromDB(m_currentStep);	//Eventualmente sostituisce i valori prelevandoli dal DB
-				if (m_FsaExec.SendCommand(m_currentStep)) {
-					m_enqStatus = ENQUEUE_LOOP;
-					muoviMacchina = true; // Il comando è partito, controlla subito se c'è altro da fare!
-				}
-				break;
-			case ENQUEUE_ERROR:
-				tool_LogMe(m_EventTarget, "\nCRITICAL ERROR: Overflow in subroutines (possible infinite loop in the DB)!\n", true);
-				if (m_ptrQRunning) m_ptrQRunning->store(false, std::memory_order_seq_cst);
+		case ENQUEUE_IDLE:
+			break;
+
+		case ENQUEUE_LOOP:
+			if (m_executionQueue.empty()) {
 				m_enqStatus = ENQUEUE_IDLE;
-				break;
+
+				// La coda è terminata! Lanciamo l'evento asincrono per svegliare la GUI
+				/*if (m_EventTarget) {
+					wxCommandEvent* completionEvent = new wxCommandEvent(wxEVT_QUEUE_COMPLETED);
+					wxQueueEvent(m_EventTarget, completionEvent);
+				}*/
+				if (m_EventCompleted) {
+					wxCommandEvent* completionEvent = new wxCommandEvent(wxEVT_QUEUE_COMPLETED);
+					wxQueueEvent(m_EventCompleted, completionEvent);
+				}
+			}
+			else {
+				m_enqStatus = ENQUEUE_CHK;
+				stateChanged = true; // Salta subito al controllo di sicurezza
+			}
+			break;
+
+		case ENQUEUE_CHK:
+			if (++m_safetyLoopCounter > MAX_SAFETY_STEPS) {
+				m_enqStatus = ENQUEUE_ERROR;
+			}
+			else {
+				m_enqStatus = ENQUEUE_FETCH;
+				stateChanged = true; // Salta subito all'estrazione del comando
+			}
+			break;
+
+		case ENQUEUE_FETCH:
+			m_currentStep = tool_Fetch();
+
+			// Se è un comando normale va a ENQUEUE_STEP, se è un'espansione subroutine torna a LOOP
+			m_enqStatus = (m_currentStep.m_SubSystem != eSystemCmd || (m_currentStep.m_Cmd != 'a')) ? ENQUEUE_STEP : ENQUEUE_LOOP;
+			stateChanged = true; // Continua l'elaborazione immediata dello stato scelto
+			break;
+
+		case ENQUEUE_STEP:
+			// Controllo di sicurezza ridondante (m_FsaExec è già in IDLE grazie al controllo in cima)
+			tool_SureCommandFromDB(m_currentStep);	// Sostituisce i valori prelevandoli dal DB
+
+			if (m_FsaExec.SendCommand(m_currentStep)) {
+				// Abbiamo avviato il comando hardware (m_FsaExec ora è in EXECSTATE_INITSEND).
+				// Forziamo IMMEDIATAMENTE il primo impulso esecutivo per inviare il pacchetto 
+				// sulla porta seriale senza attendere il prossimo scatto del timer da 20ms.
+				m_FsaExec.fsaExecutor();
+
+				// Impostiamo lo stato successivo e torniamo al ciclo principale. 
+				// Al prossimo scatto del timer, la funzione si bloccherà sul controllo "if (!m_FsaExec.IsIdle())"
+				// finché la transazione hardware (o il timeout) non sarà completata.
+				m_enqStatus = ENQUEUE_LOOP;
+			}
+			break;
+
+		case ENQUEUE_ERROR:
+			tool_LogMe(m_EventTarget, "\nCRITICAL ERROR: Overflow nelle subroutine (possible infinito loop in the DB)!\n", true);
+			if (m_ptrQRunning) m_ptrQRunning->store(false, std::memory_order_seq_cst);
+			m_executionQueue.clear();
+			m_enqStatus = ENQUEUE_IDLE;
+			break;
 		}
 	}
 }
@@ -257,19 +316,7 @@ bool cFsaQueue::ProcessExecutionQueue(std::function<void(sCommand&)> onStepCallb
 	m_flagShow			= flagShow;
 	m_enqStatus			= ENQUEUE_LOOP;
 
-	while (m_enqStatus != ENQUEUE_IDLE)
-		::wxYield();
-
-	m_executionQueue.clear();
 	return true;
-}
-
-bool cFsaQueue::ExecuteStep(sCommand& vStep) {
-	if (!m_ptrQRunning || !m_ptrQRunning->load()) return false;
-
-	m_executionQueue.clear();
-	m_executionQueue.push_back(vStep);
-	return ProcessExecutionQueue(nullptr, false);
 }
 
 sCommand cFsaQueue::tool_Fetch() {
@@ -299,55 +346,143 @@ sCommand cFsaQueue::tool_Fetch() {
 	return currentStep;
 }
 
-bool cFsaQueue::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
-	if (!m_ptrQRunning || !m_ptrQRunning->load()) return false;
+bool cFsaQueue::fillQueue(sCommand& vStep) {
+	// Verifica preventiva dello stato di esecuzione
+	if (!m_ptrQRunning || !m_ptrQRunning->load(std::memory_order_relaxed)) {
+		return false;
+	}
 
-	wxStopWatch     swExecFromDB;
+	m_executionQueue.clear();
+	m_executionQueue.push_back(std::move(vStep)); // Usa std::move per efficienza
+	return true;
+}
 
-	auto initialSteps = tool_FetchStepsFromDB(m_ptrQRunning, m_MasterId, from, to); // Carica i passi iniziali dal database
-	if (initialSteps.empty()) return false;
+bool cFsaQueue::fillQueue(uint16_t m_MasterId, uint16_t from, uint16_t to) {
+	if (!m_ptrQRunning || !m_ptrQRunning->load(std::memory_order_relaxed)) {
+		return false;
+	}
+
+	auto initialSteps = tool_FetchStepsFromDB(m_ptrQRunning, m_MasterId, from, to);
+	if (initialSteps.empty())	return false;	//Process not found
 
 	// Inizializza la coda muovendo direttamente gli elementi dal vettore
 	m_executionQueue.clear();
 	for (auto& step : initialSteps) {
 		m_executionQueue.push_back(std::move(step));
 	}
+	return true;
+}
 
-	bool Ret = ProcessExecutionQueue(onStepCallback, false);
-	wxString s;
-		 if (from == 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld took %ld ms.", m_MasterId, swExecFromDB.Time());
-	else if (from == 0 && to != wxUINT16_MAX)	s = wxString::Format("Programm %ld (Until %ld) took %ld ms.", m_MasterId, to, swExecFromDB.Time());
-	else if (from != 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld (from %d) took %ld ms.", m_MasterId, from, swExecFromDB.Time());
-	wxString bar = wxString('*', s.Len() + 8);
+bool cFsaQueue::ExecuteStep(sCommand& vStep) {
+	if (!fillQueue(vStep))	return false;
+	return ProcessExecutionQueue(nullptr, false);
+}
 
-	tool_LogMe(m_EventTarget, wxString::Format("\n%s\n" "*** %s ***\n" "%s\n\n", bar, s, bar), false);
-	return Ret;
+bool cFsaQueue::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
+	if (!fillQueue(m_MasterId, from, to))	return false;
+	return ProcessExecutionQueue(onStepCallback, false);
 }
 
 //===================================================================================
 cExecutor::cExecutor() : m_FsaQueue() {
 	m_FsaQueue.SetRunningFlag(m_Running);
 	m_Running = false;
-	m_poller = std::make_unique<cMotorPoller>(this);
-	m_poller->Start(200); // Fa partire il timer interno del poller
+#if defined(USENEWEXEC)
+	// Invia gli eventi di cFsaQueue a questo cExecutor
+	m_FsaQueue.SetEventTarget(this);
+
+	// Agganciamo l'evento di fine coda
+	this->Bind(wxEVT_QUEUE_COMPLETED, &cExecutor::OnQueueCompleted, this);
+#endif
 }
 
 cExecutor::~cExecutor() {
+#if defined(USENEWEXEC)
+	this->Unbind(wxEVT_QUEUE_COMPLETED, &cExecutor::OnQueueCompleted, this);
+#endif
 	m_Running = false;
-}
-
-bool cExecutor::ExecuteSteps_FromDB(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
-	return m_FsaQueue.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
 }
 
 void cExecutor::ExecuteStepSingle(sCommand& step) {
+#if defined(USENEWEXEC)
+	if (m_Running) return; // Protezione: se sta già girando un programma, rifiuta
+
+	IsRunningSet(true);   // Accendiamo il flag operativo
+	m_FsaQueue.ExecuteStep(step);
+	// NOTA: NON spegniamo m_Running qui! Ci penserà OnQueueCompleted.
+#else
 	m_Running = true;
 	m_FsaQueue.ExecuteStep(step);
 	m_Running = false;
+#endif
 }
 
 void cExecutor::StartProcess(uint16_t m_MasterId, uint16_t from, uint16_t to, std::function<void(sCommand&)> onStepCallback) {
+#if defined(USENEWEXEC)
+	if (m_Running) return; // Protezione
+
+	IsRunningSet(true); // Il sistema è ufficialmente occupato
+
+	// Memorizziamo i dati del contesto per poter stampare il log alla fine
+	m_currentMasterId = m_MasterId;
+	m_currentFrom = from;
+	m_currentTo = to;
+
+	// Far partire il cronometro MEMBRO della classe
+	m_swTotalProcess.Start(0);
+
+	bool r = m_FsaQueue.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
+
+	if (!r) {
+		// Se il database era vuoto o il caricamento è fallito, spegniamo subito
+		IsRunningSet(false);
+	}
+	// Ritorna SUBITO al Main Thread. La GUI resta fluida al 100%.
+#else
 	IsRunningSet(true);
-	ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
+
+	wxStopWatch     swExecFromDB;
+	bool r = m_FsaQueue.ExecuteSteps_FromDB(m_MasterId, from, to, onStepCallback);
+	if (r) {
+		wxString s;
+			 if (from == 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld took %ld ms.",				m_MasterId,			swExecFromDB.Time());
+		else if (from == 0 && to != wxUINT16_MAX)	s = wxString::Format("Programm %ld (Until %ld) took %ld ms.",	m_MasterId, to,		swExecFromDB.Time());
+		else if (from != 0 && to == wxUINT16_MAX)	s = wxString::Format("Programm %ld (from %d) took %ld ms.",		m_MasterId, from,	swExecFromDB.Time());
+		wxString bar = wxString('*', s.Len() + 8);
+
+		tool_LogMe(m_EventTarget, wxString::Format("\n%s\n" "*** %s ***\n" "%s\n\n", bar, s, bar), false);
+	}
 	IsRunningSet(false);
+#endif
 }
+
+#if defined(USENEWEXEC)
+void cExecutor::OnQueueCompleted(wxCommandEvent& event) {
+	// 1. Spegniamo il flag globale: ora il sistema è di nuovo IDLE e pronto ad accettare nuovi comandi o Polling
+	IsRunningSet(false);
+
+	// 2. Calcoliamo il tempo REALE impiegato dall'hardware (poteva durare anche diversi secondi/minuti)
+	long tempoImpiegatoMs = m_swTotalProcess.Time();
+
+	// 3. Generiamo il log finale accurato (solo se stavamo eseguendo un processo da DB)
+	if (m_currentMasterId > 0) {
+		wxString s;
+		if (m_currentFrom == 0 && m_currentTo == wxUINT16_MAX)
+			s = wxString::Format("Programm %ld took %ld ms. (REAL HARDWARE TIME)", m_currentMasterId, tempoImpiegatoMs);
+		else if (m_currentFrom == 0 && m_currentTo != wxUINT16_MAX)
+			s = wxString::Format("Programm %ld (Until %ld) took %ld ms. (REAL HARDWARE TIME)", m_currentMasterId, m_currentTo, tempoImpiegatoMs);
+		else if (m_currentFrom != 0 && m_currentTo == wxUINT16_MAX)
+			s = wxString::Format("Programm %ld (from %d) took %ld ms. (REAL HARDWARE TIME)", m_currentMasterId, m_currentFrom, tempoImpiegatoMs);
+
+		wxString bar = wxString('*', s.Len() + 8);
+		tool_LogMe(m_EventTarget, wxString::Format("\n%s\n" "*** %s ***\n" "%s\n\n", bar, s, bar), false);
+
+		// Resettiamo il contesto
+		m_currentMasterId = 0;
+	}
+
+	// 4. Se la finestra principale della GUI deve sapere che l'esecuzione è finita 
+	// (es. per riabilitare i pulsanti sullo schermo), lasciamo che l'evento continui a salire
+	event.Skip();
+}
+#endif
